@@ -1,0 +1,612 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>The Chain Ladder Method &mdash; trikit 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Reserve Variability Estimates" href="range.html" />
+    <link rel="prev" title="triangle — Incremental and Cumulative Triangle Objects" href="triangle.html" />
+    <link href="_static/style.css" rel="stylesheet" type="text/css">
+
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> trikit
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Project Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="triangle.html">Triangle Implementation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">The Chain Ladder Method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="range.html">Reserve Variability Estimates</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">Sample Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lrdb.html">The CAS Loss Reserving Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="questions.html">Frequently Asked Questions</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">trikit</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>The Chain Ladder Method</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/chainladder.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="the-chain-ladder-method">
+<span id="chainladder"></span><h1>The Chain Ladder Method<a class="headerlink" href="#the-chain-ladder-method" title="Permalink to this headline">¶</a></h1>
+<p>This is the Chain Ladder page.</p>
+<dl class="class">
+<dt id="trikit.chainladder._BaseChainLadder">
+<em class="property">class </em><code class="descname">_BaseChainLadder</code><span class="sig-paren">(</span><em>cumtri</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/chainladder.html#_BaseChainLadder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.chainladder._BaseChainLadder" title="Permalink to this definition">¶</a></dt>
+<dd><p>From the Casualty Actuarial Society’s “Estimating Unpaid Claims Using
+Basic Techniques” Version 3 (Friedland, Jacqueline - 2010), the
+development method (‘Chain Ladder’) consists of seven basic steps:</p>
+<ol class="arabic simple">
+<li>Compile claims data in a development triangle</li>
+<li>Calculate age-to-age factors</li>
+<li>Calculate averages of the age-to-age factors</li>
+<li>Select claim development factors</li>
+<li>Select tail factor</li>
+<li>Calculate cumulative claims</li>
+<li>Project ultimate claims</li>
+</ol>
+<p>Once an instance of <code class="docutils literal notranslate"><span class="pre">_BaseChainLadder</span></code> has been initialized, <code class="docutils literal notranslate"><span class="pre">sel</span></code>
+and <code class="docutils literal notranslate"><span class="pre">tail</span></code> are specified via the instance’s __call__ method, which
+squares the triangle and generates ultimate loss projection point</p>
+<blockquote>
+<div>estimates by origin year and in aggregate.</div></blockquote>
+<dl class="method">
+<dt id="trikit.chainladder._BaseChainLadder.trisqrd">
+<code class="descname">trisqrd</code><span class="sig-paren">(</span><em>sel='all-weighted'</em>, <em>tail=1.0</em><span class="sig-paren">)</span> &#x2192; numpy.ndarray<a class="reference internal" href="_modules/trikit/chainladder.html#_BaseChainLadder.trisqrd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.chainladder._BaseChainLadder.trisqrd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Project claims growth for each future development period. Returns a
+DataFrame of loss projections for each subsequent development period
+for each accident year. Populates the triangle’s lower-right or
+southeast portion (i.e., “squaring the triangle”).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>sel</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – Specifies which set of age-to-age averages should be specified as
+the chain ladder loss development factors (LDFs). All available
+age-to-age averages can be obtained by calling
+<code class="docutils literal notranslate"><span class="pre">self.tri.a2a_avgs</span></code>. Default value is “all-weighted”.</li>
+<li><strong>tail</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – The Chain Ladder tail factor, which accounts for development
+beyond the last development period. Default value is 1.0.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DataFrame of “squared” triangle.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">pd.DataFrame</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="trikit.chainladder.mack._MackChainLadder">
+<em class="property">class </em><code class="descname">_MackChainLadder</code><span class="sig-paren">(</span><em>data</em>, <em>alpha=1</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/chainladder/mack.html#_MackChainLadder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.chainladder.mack._MackChainLadder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform Mack Chain Ladder method.</p>
+<p>Prediction Variance = Estimation Variance + Process Variance</p>
+<blockquote>
+<div><ul class="simple">
+<li><dl class="first docutils">
+<dt>Estimation Variance: Inability to accurately define the distribution</dt>
+<dd>from which past events have been generated.</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Process Variance <span class="classifier-delimiter">:</span> <span class="classifier">Inability to accurately predict which single</span></dt>
+<dd>outcome from the distribution will occur at
+a given time.</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+<p>Prediction Error - Standard Deviation of the forecast</p>
+<p>f_k  = ldfs
+C_il = Ultimate
+R_i  = Reserve amount</p>
+<dl class="attribute">
+<dt id="trikit.chainladder.mack._MackChainLadder.covariance_term">
+<code class="descname">covariance_term</code><a class="headerlink" href="#trikit.chainladder.mack._MackChainLadder.covariance_term" title="Permalink to this definition">¶</a></dt>
+<dd><p>Used to derive the conditional mean squared error of total
+reserve prediction. MSE_(i,j) is non-zero only for cells
+in which i &lt; j (i.e., the
+:return:</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="trikit.chainladder.mack._MackChainLadder.devpref">
+<code class="descname">devpref</code><a class="headerlink" href="#trikit.chainladder.mack._MackChainLadder.devpref" title="Permalink to this definition">¶</a></dt>
+<dd><p>Intended for implementation use only. Contains
+data by development period.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="trikit.chainladder.mack._MackChainLadder.devpvar">
+<code class="descname">devpvar</code><a class="headerlink" href="#trikit.chainladder.mack._MackChainLadder.devpvar" title="Permalink to this definition">¶</a></dt>
+<dd><p>devpvar = <cite>development period variance</cite>. Return the variance
+of each n-1 development periods as a Series object.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="trikit.chainladder.mack._MackChainLadder.inverse_sums">
+<code class="descname">inverse_sums</code><a class="headerlink" href="#trikit.chainladder.mack._MackChainLadder.inverse_sums" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience aggregation for use in parameter error
+calcuation.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="trikit.chainladder.mack._MackChainLadder.msepi">
+<code class="descname">msepi</code><a class="headerlink" href="#trikit.chainladder.mack._MackChainLadder.msepi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the mean squared error of predicition by origin year.
+Does not contain estimate for total MSEP.
+MSE_i = process error + parameter error</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="trikit.chainladder.mack._MackChainLadder.originref">
+<code class="descname">originref</code><a class="headerlink" href="#trikit.chainladder.mack._MackChainLadder.originref" title="Permalink to this definition">¶</a></dt>
+<dd><p>Intended for implementation use only. Contains
+data by origin year.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="trikit.chainladder.mack._MackChainLadder.parameter_error">
+<code class="descname">parameter_error</code><a class="headerlink" href="#trikit.chainladder.mack._MackChainLadder.parameter_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>Estimation/parameter error reflects the uncertainty in
+the estimation of the parameters.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="trikit.chainladder.mack._MackChainLadder.process_error">
+<code class="descname">process_error</code><a class="headerlink" href="#trikit.chainladder.mack._MackChainLadder.process_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>process error == forecast error.
+The process error component originates from the stochastic
+movement of the process. Returns a pandas Series containing
+estimates of process variance by origin year.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="trikit.chainladder.mack._MackChainLadder.rmsepi">
+<code class="descname">rmsepi</code><a class="headerlink" href="#trikit.chainladder.mack._MackChainLadder.rmsepi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the root mean squared error of predicition by origin
+year. Does not contain estimate for total MSEP.</p>
+<blockquote>
+<div>MSE_i = process error + parameter error</div></blockquote>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="trikit.chainladder.mack._MackChainLadder.summary">
+<code class="descname">summary</code><a class="headerlink" href="#trikit.chainladder.mack._MackChainLadder.summary" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a DataFrame containing summary statistics resulting
+from applying the development method to tri, in addition
+to Mack-generated range estimates.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="trikit.chainladder.bootstrap._BootstrapChainLadder">
+<em class="property">class </em><code class="descname">_BootstrapChainLadder</code><span class="sig-paren">(</span><em>data</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/chainladder/bootstrap.html#_BootstrapChainLadder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.chainladder.bootstrap._BootstrapChainLadder" title="Permalink to this definition">¶</a></dt>
+<dd><p>The purpose of the bootstrap technique is to estimate the
+Predicition error of the total reserve estimate and to approximate
+the predictive distribution. It is often impractical to obtain
+the Prediction error using an analytical approach due to the
+complexity of reserve estimators.</p>
+<p>Predicition error is comprised of two components: Process error
+and Estimation error:</p>
+<blockquote>
+<div>Prediction Error = Estimation Error + Process Error</div></blockquote>
+<p>The Estimation error (Parameter error) represents the uncertainty
+in the parameter estimates given that the model is correctly
+specified. The Process Error is analogous to the variance of a
+random variable, representing the uncertainty in future outcomes.</p>
+<p>The procedure used to generate the predicitive distribution of
+reserve estimates is based on Leong et al. Appendix A, assuming
+the starting point is a triangle of cumulative losses:</p>
+<ol class="arabic">
+<li><p class="first">Calculate the all-year volume-weighted age-to-age factors.</p>
+</li>
+<li><p class="first">Estimate the fitted historical cumulative paid loss and ALAE
+using the latest diagonal of the original triangle and the
+age-to-age factors from [1] to un-develop the losses.</p>
+</li>
+<li><p class="first">Calculate the unscaled Pearson residuals, degrees of freedom
+and scale parameter.</p>
+</li>
+<li><p class="first">Calculate the adjusted Pearson residuals.</p>
+</li>
+<li><p class="first">Sample with replacement from the adjusted Pearson residuals.</p>
+</li>
+<li><p class="first">Calculate the triangle of sampled incremental losses:</p>
+<blockquote>
+<div><p>I^ = m + r_adj * sqrt(m)</p>
+</div></blockquote>
+<p>Where:</p>
+<blockquote>
+<div><p>I^    = Resampled incremental loss
+m     = Incremental fitted loss (from [2])
+r_adj = Adjusted Pearson residuals</p>
+</div></blockquote>
+</li>
+<li><p class="first">Using the triangle from [6], project future losses using the
+chain-ladder method.</p>
+</li>
+<li><p class="first">Include Process variance by simulating each incremental future
+loss from a Gamma distribution with:</p>
+<blockquote>
+<div><p>mean     = I^
+variance = I^ * scale parameter</p>
+</div></blockquote>
+</li>
+<li><p class="first">Estimate unpaid losses using the chain-ladder technique.</p>
+</li>
+<li><p class="first">Repeat for the number of cycles specified (given by <cite>sims</cite>
+in the <code class="docutils literal notranslate"><span class="pre">BootChainLadder</span></code> initializer. By default, this is
+1000.</p>
+</li>
+</ol>
+<p>The collection of projected ultimates for each origin year over all
+bootstrap cycles comprises the predictive distribtuion of reserve
+estimates.</p>
+<p>Note that the estimate of the distribution of losses assumes
+development is complete by the final development period. This is
+to avoid the complication in modeling a tail factor.</p>
+<dl class="attribute">
+<dt id="trikit.chainladder.bootstrap._BootstrapChainLadder.bs_forecasts">
+<code class="descname">bs_forecasts</code><a class="headerlink" href="#trikit.chainladder.bootstrap._BootstrapChainLadder.bs_forecasts" title="Permalink to this definition">¶</a></dt>
+<dd><p>Populate lower-right of each synthetic triangle using development
+factors from self.bs_ldfs.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="trikit.chainladder.bootstrap._BootstrapChainLadder.bs_ldfs">
+<code class="descname">bs_ldfs</code><a class="headerlink" href="#trikit.chainladder.bootstrap._BootstrapChainLadder.bs_ldfs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute and return loss development factors for each set of
+synthetic loss data.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="trikit.chainladder.bootstrap._BootstrapChainLadder.bs_process_error">
+<code class="descname">bs_process_error</code><span class="sig-paren">(</span><em>all_cols=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/chainladder/bootstrap.html#_BootstrapChainLadder.bs_process_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.chainladder.bootstrap._BootstrapChainLadder.bs_process_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>Incorporate process variance by simulating each incremental future
+loss from procdist. The mean and variance are given by:</p>
+<blockquote>
+<div>mean = forecast incremental loss amount
+var  = mean * self.scale_param</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>all_cols</strong> – If True, return al lcolumns required for resampling.</td>
+</tr>
+</tbody>
+</table>
+<p>Otherwise, return only, SIM, ORIGIN, DEV and the final cumulative
+amount renamed as VALUE.
+:type all_cols: bool</p>
+<p>The parameters for <code class="docutils literal notranslate"><span class="pre">procdist</span></code> must be positive. Since the mean
+and variance used to parameterize <code class="docutils literal notranslate"><span class="pre">procdist</span></code> depend on the
+resampled incremental losses, it is necessary to incorporate logic
+to address the possibility of negative incremental losses arising
+in the resampling stage. The approach used to handle negative
+incremental values is described in  Shapland [1], and is given by:</p>
+<blockquote>
+<div>I^       = Resampled incremental loss amount &lt; 0
+mean     = abs(I^)
+var      = abs(I^) * self.scale_param
+procdist = -gamma([abs(I^)], [abs(I^) * self.scale_param])</div></blockquote>
+<p>Returns a DataFrame of cumulated, simulated losses after the
+incorporation of process variance.</p>
+<p>If the BootChainLadder class is initialized with procdist=”odp”.
+the negative binomial distribution is parameterized
+in such a way that results in a linear relationship between
+mean and variance.</p>
+<dl class="docutils">
+<dt>[1] Shapland, Mark R - CAS Monograph Series Number 4:</dt>
+<dd><em>Using the ODP Bootstrap Model: A Practicioner’s Guide</em>,
+Casualty Actuarial Society, 2016.</dd>
+</dl>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="trikit.chainladder.bootstrap._BootstrapChainLadder.bs_samples">
+<code class="descname">bs_samples</code><a class="headerlink" href="#trikit.chainladder.bootstrap._BootstrapChainLadder.bs_samples" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return DataFrame containing self.sims resampled-with-replacement
+incremental loss triangles. Randomly generated incremental data
+will be cumulated in preparation for ldf calculation in next step.
+Negative values appearing in the first development period can
+be handled in one of two ways. If <code class="docutils literal notranslate"><span class="pre">self.neg_handler==1</span></code>, then
+any first development period column negative cells will be coerced
+to +1. Without this correction, negatives in the first development
+period column may result in unreasonable link ratios. If
+<code class="docutils literal notranslate"><span class="pre">neg_handler==2</span></code>, then the minimum value in all triangle cells is
+referenced (henceforth ‘MIN_CELL’). If MIN_CELL is less than or equal
+to 0, the equation (MIN_CELL + X = +1.0) is solved for X. The value
+of X is then added to every other cell in the target triangle,
+resulting in all triangle cells having a value strictly greater
+than 0.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="trikit.chainladder.bootstrap._BootstrapChainLadder.dof">
+<code class="descname">dof</code><a class="headerlink" href="#trikit.chainladder.bootstrap._BootstrapChainLadder.dof" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute and return the target triangle’s degress of freedom.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="trikit.chainladder.bootstrap._BootstrapChainLadder.nbr_cells">
+<code class="descname">nbr_cells</code><a class="headerlink" href="#trikit.chainladder.bootstrap._BootstrapChainLadder.nbr_cells" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute and return the number of non-NaN cells in self.tri.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="trikit.chainladder.bootstrap._BootstrapChainLadder.resid_adj">
+<code class="descname">resid_adj</code><a class="headerlink" href="#trikit.chainladder.bootstrap._BootstrapChainLadder.resid_adj" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute and return the adjusted Pearson residuals, given by:</p>
+<blockquote>
+<div>r_adj = sqrt(N/dof) * r_us</div></blockquote>
+<dl class="docutils">
+<dt>Where:</dt>
+<dd>r_adj = Adjusted Pearson residuals
+N     = Number of triangle cells
+dof   = Degress of freedom
+r_us  = Unscaled Pearson residuals</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="trikit.chainladder.bootstrap._BootstrapChainLadder.resid_info">
+<code class="descname">resid_info</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/chainladder/bootstrap.html#_BootstrapChainLadder.resid_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.chainladder.bootstrap._BootstrapChainLadder.resid_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the average of unscaled and adjusted residuals.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="trikit.chainladder.bootstrap._BootstrapChainLadder.resid_us">
+<code class="descname">resid_us</code><a class="headerlink" href="#trikit.chainladder.bootstrap._BootstrapChainLadder.resid_us" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute and return unscaled Pearson residuals, given by:</p>
+<blockquote>
+<div>r_us = (I - m)/sqrt(<a href="#id1"><span class="problematic" id="id2">|m|</span></a>),</div></blockquote>
+<dl class="docutils">
+<dt>Where:</dt>
+<dd>r_us = Unscaled Pearson residuals
+I    = Actual incremental loss
+m    = Fitted incremental loss</dd>
+</dl>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="trikit.chainladder.bootstrap._BootstrapChainLadder.sampling_dist">
+<code class="descname">sampling_dist</code><a class="headerlink" href="#trikit.chainladder.bootstrap._BootstrapChainLadder.sampling_dist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return self.resid_adj as a 1-dimensional array, which will be
+sampled from with replacement in order to produce synthetic
+triangles for bootstrapping. NaN’s and 0’s, if present in
+self.resid_adj, will not be present in self.sampling_dist.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="trikit.chainladder.bootstrap._BootstrapChainLadder.scale_param">
+<code class="descname">scale_param</code><a class="headerlink" href="#trikit.chainladder.bootstrap._BootstrapChainLadder.scale_param" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute and return the scale parameter, which is the sum of the
+squared unscaled Pearson residuals over the degrees of freedom.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="trikit.chainladder.bootstrap._BootstrapChainLadder.tri_fit_cum">
+<code class="descname">tri_fit_cum</code><a class="headerlink" href="#trikit.chainladder.bootstrap._BootstrapChainLadder.tri_fit_cum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute and return the cumulative fitted triangle using backwards
+recursion, starting with the observed cumulative paid-to-date along
+the latest diagonal.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="trikit.chainladder.bootstrap._BootstrapChainLadder.tri_fit_incr">
+<code class="descname">tri_fit_incr</code><a class="headerlink" href="#trikit.chainladder.bootstrap._BootstrapChainLadder.tri_fit_incr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute and return the fitted incremental triangle.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="range.html" class="btn btn-neutral float-right" title="Reserve Variability Estimates" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="triangle.html" class="btn btn-neutral" title="triangle — Incremental and Cumulative Triangle Objects" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, James D. Triveri
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'./',
+              VERSION:'0.1',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

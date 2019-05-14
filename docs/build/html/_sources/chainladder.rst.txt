@@ -1,0 +1,21 @@
+
+.. _chainladder:
+
+===============================================================================
+The Chain Ladder Method
+===============================================================================
+
+This is the Chain Ladder page.
+
+
+
+
+.. autoclass:: trikit.chainladder._BaseChainLadder
+	:members:
+
+.. autoclass:: trikit.chainladder.mack._MackChainLadder
+	:members:
+
+.. autoclass:: trikit.chainladder.bootstrap._BootstrapChainLadder
+	:members:
+

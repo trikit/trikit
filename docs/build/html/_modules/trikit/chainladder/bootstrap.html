@@ -1,0 +1,1034 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>trikit.chainladder.bootstrap &mdash; trikit 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link href="../../../_static/style.css" rel="stylesheet" type="text/css">
+
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> trikit
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../overview.html">Project Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../triangle.html">Triangle Implementation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../chainladder.html">The Chain Ladder Method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../range.html">Reserve Variability Estimates</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../datasets.html">Sample Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../lrdb.html">The CAS Loss Reserving Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../questions.html">Frequently Asked Questions</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">trikit</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+        
+          <li><a href="../../trikit.html">trikit</a> &raquo;</li>
+        
+          <li><a href="../chainladder.html">trikit.chainladder</a> &raquo;</li>
+        
+      <li>trikit.chainladder.bootstrap</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for trikit.chainladder.bootstrap</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">BootChainLadder Implementation</span>
+
+<span class="sd">Generates predicitive distribtuion of reserve estimates for all origin</span>
+<span class="sd">years.</span>
+
+<span class="sd">======================================</span>
+<span class="sd">FUTURE STATE ENHANCEMENTS            |</span>
+<span class="sd">======================================</span>
+<span class="sd">- Allow for residuals other than Pearson (Anscombe, Deviance, etc.)</span>
+<span class="sd">- Enable other distributions for process variance.</span>
+<span class="sd">- Add staticmethod for neg_handler==2 (needed in bs_samples).</span>
+
+<span class="sd">  From scipy nbinom parameterization:</span>
+
+<span class="sd">            Mean     = n * p / (1 - p)</span>
+<span class="sd">            Variance = n * p / (1 - p)^2</span>
+<span class="sd">            Variance = Mean / (1 - p)</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">numpy.random</span> <span class="k">import</span> <span class="n">RandomState</span>
+<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="k">import</span> <span class="n">norm</span><span class="p">,</span> <span class="n">gamma</span><span class="p">,</span> <span class="n">nbinom</span><span class="p">,</span> <span class="n">invgauss</span><span class="p">,</span> <span class="n">lognorm</span>
+<span class="kn">from</span> <span class="nn">..chainladder</span> <span class="k">import</span> <span class="n">_BaseChainLadder</span>
+<span class="kn">from</span> <span class="nn">..triangle</span> <span class="k">import</span> <span class="n">incremental</span><span class="p">,</span> <span class="n">cumulative</span>
+<span class="kn">from</span> <span class="nn">..utils</span> <span class="k">import</span> <span class="n">totri</span><span class="p">,</span> <span class="n">_cumtoincr</span><span class="p">,</span> <span class="n">_incrtocum</span><span class="p">,</span> <span class="n">_tritotbl</span>
+
+
+
+
+<div class="viewcode-block" id="_BootstrapChainLadder"><a class="viewcode-back" href="../../../chainladder.html#trikit.chainladder.bootstrap._BootstrapChainLadder">[docs]</a><span class="k">class</span> <span class="nc">_BootstrapChainLadder</span><span class="p">(</span><span class="n">_BaseChainLadder</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The purpose of the bootstrap technique is to estimate the</span>
+<span class="sd">    Predicition error of the total reserve estimate and to approximate</span>
+<span class="sd">    the predictive distribution. It is often impractical to obtain</span>
+<span class="sd">    the Prediction error using an analytical approach due to the</span>
+<span class="sd">    complexity of reserve estimators.</span>
+
+<span class="sd">    Predicition error is comprised of two components: Process error</span>
+<span class="sd">    and Estimation error:</span>
+
+<span class="sd">        Prediction Error = Estimation Error + Process Error</span>
+
+<span class="sd">    The Estimation error (Parameter error) represents the uncertainty</span>
+<span class="sd">    in the parameter estimates given that the model is correctly</span>
+<span class="sd">    specified. The Process Error is analogous to the variance of a</span>
+<span class="sd">    random variable, representing the uncertainty in future outcomes.</span>
+
+<span class="sd">    The procedure used to generate the predicitive distribution of</span>
+<span class="sd">    reserve estimates is based on Leong et al. Appendix A, assuming</span>
+<span class="sd">    the starting point is a triangle of cumulative losses:</span>
+
+<span class="sd">    1.  Calculate the all-year volume-weighted age-to-age factors.</span>
+<span class="sd">    2.  Estimate the fitted historical cumulative paid loss and ALAE</span>
+<span class="sd">        using the latest diagonal of the original triangle and the</span>
+<span class="sd">        age-to-age factors from [1] to un-develop the losses.</span>
+<span class="sd">    3.  Calculate the unscaled Pearson residuals, degrees of freedom</span>
+<span class="sd">        and scale parameter.</span>
+<span class="sd">    4.  Calculate the adjusted Pearson residuals.</span>
+<span class="sd">    5.  Sample with replacement from the adjusted Pearson residuals.</span>
+<span class="sd">    6.  Calculate the triangle of sampled incremental losses:</span>
+
+<span class="sd">            I^ = m + r_adj * sqrt(m)</span>
+
+<span class="sd">        Where:</span>
+
+<span class="sd">            I^    = Resampled incremental loss</span>
+<span class="sd">            m     = Incremental fitted loss (from [2])</span>
+<span class="sd">            r_adj = Adjusted Pearson residuals</span>
+
+<span class="sd">    7.  Using the triangle from [6], project future losses using the</span>
+<span class="sd">        chain-ladder method.</span>
+<span class="sd">    8.  Include Process variance by simulating each incremental future</span>
+<span class="sd">        loss from a Gamma distribution with:</span>
+
+<span class="sd">            mean     = I^</span>
+<span class="sd">            variance = I^ * scale parameter</span>
+
+<span class="sd">    9.  Estimate unpaid losses using the chain-ladder technique.</span>
+<span class="sd">    10. Repeat for the number of cycles specified (given by `sims`</span>
+<span class="sd">        in the ``BootChainLadder`` initializer. By default, this is</span>
+<span class="sd">        1000.</span>
+
+<span class="sd">    The collection of projected ultimates for each origin year over all</span>
+<span class="sd">    bootstrap cycles comprises the predictive distribtuion of reserve</span>
+<span class="sd">    estimates.</span>
+
+<span class="sd">    Note that the estimate of the distribution of losses assumes</span>
+<span class="sd">    development is complete by the final development period. This is</span>
+<span class="sd">    to avoid the complication in modeling a tail factor.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The BootChainLadder initializer. Initialization triggers the</span>
+<span class="sd">        bootstrapping stage, thus it is not necessary to call a run</span>
+<span class="sd">        method to trigger execution. Statistics associated with the</span>
+<span class="sd">        predicitve distribution of reserve estimates can be obtained</span>
+<span class="sd">        via the ``summary`` method, from which the percentiles of</span>
+<span class="sd">        interest can be specified directly.</span>
+
+<span class="sd">        :param data: Either a tabular dataset with ``origin``, ``dev``</span>
+<span class="sd">        and ``value`` explicitly defined, or CumTriangle instance.</span>
+<span class="sd">        :type data: np.ndarray</span>
+
+<span class="sd">        :param neg_handler: If ``neg_handler=1``, then any first</span>
+<span class="sd">        development period column negative cells will be coerced to +1.</span>
+<span class="sd">        If ``neg_handler=2``, the minimum value in all triangle cells is</span>
+<span class="sd">        referenced (henceforth &#39;MIN_CELL&#39;). If MIN_CELL is less than or</span>
+<span class="sd">        equal to 0, the equation (MIN_CELL + X = +1.0) is solved</span>
+<span class="sd">        for X. X is then added to every other cell in the target triangle,</span>
+<span class="sd">        resulting in all triangle cells having a value strictly greater</span>
+<span class="sd">        than 0.</span>
+<span class="sd">        :type neg_handler: int</span>
+
+<span class="sd">        :param procdist: The distribution used to incorporate process</span>
+<span class="sd">        variance. Currently, this can only be &quot;gamma&quot;.</span>
+<span class="sd">        :type procdist: str</span>
+
+<span class="sd">        :param sims: The number of bootstrap cycles to run. Default is 1000.</span>
+<span class="sd">        :type sims: int</span>
+
+<span class="sd">        :param parametric: If True, fit standardized residuals to a normal</span>
+<span class="sd">        distribution, and sample from the parameterized distribution.</span>
+<span class="sd">        Otherwise, bootstrapping proceeds by sampling with replacement from</span>
+<span class="sd">        the collection of standardized residuals. Default value isFalse.</span>
+<span class="sd">        :type parametric: bool</span>
+
+<span class="sd">        :param random_state: If int, random_state is the seed used by the</span>
+<span class="sd">        random number generator; If RandomState instance, random_state is</span>
+<span class="sd">        the random number generator; If None, the random number generator</span>
+<span class="sd">        is the RandomState instance used by np.random.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">random_state</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;random_state&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">neg_handler</span>  <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;neg_handler&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sims</span>         <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sims&quot;</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">procdist</span>     <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;procdist&quot;</span><span class="p">,</span> <span class="s2">&quot;gamma&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parametric</span>   <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;parametric&quot;</span><span class="p">,</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pctl</span>         <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pctl&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="c1"># properties</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_nbr_cells</span>      <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dof</span>            <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scale_param</span>    <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tri_fit_cum</span>    <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tri_fit_incr</span>   <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_resid_us</span>       <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_resid_adj</span>      <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_dist</span>  <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lvi</span>            <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bs_samples</span>     <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bs_ldfs</span>        <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bs_forecasts</span>   <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">default_pctl</span>    <span class="o">=</span> <span class="p">[</span><span class="o">.</span><span class="mi">95</span><span class="p">,</span> <span class="o">.</span><span class="mi">75</span><span class="p">,</span> <span class="o">.</span><span class="mi">50</span><span class="p">,</span> <span class="o">.</span><span class="mi">25</span><span class="p">,</span> <span class="o">.</span><span class="mi">05</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pctl</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">pctl1</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pctl</span><span class="p">)</span>
+            <span class="n">eval_pctl</span> <span class="o">=</span> <span class="n">pctl1</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">default_pctl</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">eval_pctl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_pctl</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">eval_pctl</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">eval_pctl</span> <span class="k">if</span> <span class="n">i</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
+
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">nbr_cells</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute and return the number of non-NaN cells in self.tri.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nbr_cells</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_nbr_cells</span> <span class="o">=</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">count</span><span class="p">(),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_nbr_cells</span><span class="p">)</span>
+
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dof</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute and return the target triangle&#39;s degress of freedom.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dof</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_dof</span> <span class="o">=</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">nbr_cells</span> <span class="o">-</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">size</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">size</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dof</span><span class="p">)</span>
+
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">scale_param</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute and return the scale parameter, which is the sum of the</span>
+<span class="sd">        squared unscaled Pearson residuals over the degrees of freedom.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale_param</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_scale_param</span> <span class="o">=</span> \
+                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resid_us</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_scale_param</span><span class="p">)</span>
+
+
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">tri_fit_cum</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute and return the cumulative fitted triangle using backwards</span>
+<span class="sd">        recursion, starting with the observed cumulative paid-to-date along</span>
+<span class="sd">        the latest diagonal.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tri_fit_cum</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_tri_fit_cum</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tri_fit_cum</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+
+                <span class="n">iterrow</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tri_fit_cum</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">,:]</span> <span class="c1"># same as tri.iloc[i]</span>
+
+                <span class="k">if</span> <span class="n">iterrow</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                    <span class="c1"># Find first NaN element in iterrow.</span>
+                    <span class="n">nan_hdr</span>  <span class="o">=</span> <span class="n">iterrow</span><span class="o">.</span><span class="n">isnull</span><span class="p">()[</span><span class="n">iterrow</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">==</span><span class="kc">True</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="n">nan_idx</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tri_fit_cum</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">nan_hdr</span><span class="p">)</span>
+                    <span class="n">init_idx</span> <span class="o">=</span> <span class="n">nan_idx</span><span class="o">-</span><span class="mi">1</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># If here, iterrow is the most mature exposure period.</span>
+                    <span class="n">init_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tri_fit_cum</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span>
+
+                <span class="c1"># Set to NaN those development periods earlier than init_idx.</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_tri_fit_cum</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">,:</span><span class="n">init_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span>
+
+                <span class="c1"># Iterate over rows, undeveloping triangle from latest diagonal.</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tri_fit_cum</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">,:</span><span class="n">init_idx</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+                    <span class="n">prev_col_idx</span> <span class="o">=</span> <span class="n">j</span>
+                    <span class="n">curr_col_idx</span> <span class="o">=</span> <span class="n">j</span> <span class="o">-</span> <span class="mi">1</span>
+                    <span class="n">curr_ldf_idx</span> <span class="o">=</span> <span class="n">j</span> <span class="o">-</span> <span class="mi">1</span>
+                    <span class="n">prev_col_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tri_fit_cum</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">prev_col_idx</span><span class="p">]</span>
+                    <span class="n">curr_ldf_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ldfs</span><span class="p">[</span><span class="n">curr_ldf_idx</span><span class="p">]</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_tri_fit_cum</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">curr_col_idx</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">prev_col_val</span><span class="o">/</span><span class="n">curr_ldf_val</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tri_fit_cum</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">tri_fit_incr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute and return the fitted incremental triangle.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tri_fit_incr</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_tri_fit_incr</span> <span class="o">=</span> <span class="n">_cumtoincr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tri_fit_cum</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tri_fit_incr</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">resid_us</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute and return unscaled Pearson residuals, given by:</span>
+
+<span class="sd">            r_us = (I - m)/sqrt(|m|),</span>
+
+<span class="sd">        Where:</span>
+<span class="sd">            r_us = Unscaled Pearson residuals</span>
+<span class="sd">            I    = Actual incremental loss</span>
+<span class="sd">            m    = Fitted incremental loss</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resid_us</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">actuals</span> <span class="o">=</span> <span class="n">_cumtoincr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="p">)</span>
+            <span class="n">fitted</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri_fit_incr</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_resid_us</span> <span class="o">=</span> <span class="p">(</span><span class="n">actuals</span><span class="o">-</span><span class="n">fitted</span><span class="p">)</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">fitted</span><span class="o">.</span><span class="n">abs</span><span class="p">())</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_resid_us</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">resid_adj</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute and return the adjusted Pearson residuals, given by:</span>
+
+<span class="sd">            r_adj = sqrt(N/dof) * r_us</span>
+
+<span class="sd">        Where:</span>
+<span class="sd">            r_adj = Adjusted Pearson residuals</span>
+<span class="sd">            N     = Number of triangle cells</span>
+<span class="sd">            dof   = Degress of freedom</span>
+<span class="sd">            r_us  = Unscaled Pearson residuals</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resid_adj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_resid_adj</span> <span class="o">=</span> \
+                <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbr_cells</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">resid_us</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_resid_adj</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">sampling_dist</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return self.resid_adj as a 1-dimensional array, which will be</span>
+<span class="sd">        sampled from with replacement in order to produce synthetic</span>
+<span class="sd">        triangles for bootstrapping. NaN&#39;s and 0&#39;s, if present in</span>
+<span class="sd">        self.resid_adj, will not be present in self.sampling_dist.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_dist</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">residuals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resid_adj</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+            <span class="n">residuals</span> <span class="o">=</span> <span class="n">residuals</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">residuals</span><span class="p">)]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_dist</span> <span class="o">=</span> <span class="n">residuals</span><span class="p">[</span><span class="n">residuals</span><span class="o">!=</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sampling_dist</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">bs_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return DataFrame containing self.sims resampled-with-replacement</span>
+<span class="sd">        incremental loss triangles. Randomly generated incremental data</span>
+<span class="sd">        will be cumulated in preparation for ldf calculation in next step.</span>
+<span class="sd">        Negative values appearing in the first development period can</span>
+<span class="sd">        be handled in one of two ways. If ``self.neg_handler==1``, then</span>
+<span class="sd">        any first development period column negative cells will be coerced</span>
+<span class="sd">        to +1. Without this correction, negatives in the first development</span>
+<span class="sd">        period column may result in unreasonable link ratios. If</span>
+<span class="sd">        ``neg_handler==2``, then the minimum value in all triangle cells is</span>
+<span class="sd">        referenced (henceforth &#39;MIN_CELL&#39;). If MIN_CELL is less than or equal</span>
+<span class="sd">        to 0, the equation (MIN_CELL + X = +1.0) is solved for X. The value</span>
+<span class="sd">        of X is then added to every other cell in the target triangle,</span>
+<span class="sd">        resulting in all triangle cells having a value strictly greater</span>
+<span class="sd">        than 0.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bs_samples</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">random_state</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                    <span class="n">prng</span> <span class="o">=</span> <span class="n">RandomState</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">random_state</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">random_state</span><span class="p">,</span> <span class="n">RandomState</span><span class="p">):</span>
+                    <span class="n">prng</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_state</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">prng</span> <span class="o">=</span> <span class="n">RandomState</span><span class="p">()</span>
+
+            <span class="n">dfm</span> <span class="o">=</span> <span class="n">_tritotbl</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tri_fit_incr</span><span class="p">)</span>
+
+            <span class="n">dflist</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;ORIGIN&quot;</span><span class="p">:</span><span class="n">i</span><span class="p">,</span><span class="s2">&quot;DEV&quot;</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">columns</span><span class="p">})</span>
+                    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">index</span>
+                <span class="p">]</span>
+
+            <span class="c1"># Create single DataFrame from dflist.</span>
+            <span class="n">dfi</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">dflist</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">dfp</span> <span class="o">=</span> <span class="n">dfi</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">dfm</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;outer&quot;</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ORIGIN&quot;</span><span class="p">,</span><span class="s2">&quot;DEV&quot;</span><span class="p">])</span>
+
+            <span class="c1"># Add record identifier field.</span>
+            <span class="n">dfp</span><span class="p">[</span><span class="s2">&quot;RECTYPE&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">dfp</span><span class="p">[</span><span class="s2">&quot;VALUE&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span>
+                    <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="s2">&quot;actual&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;forecast&quot;</span>
+                    <span class="p">)</span>
+
+            <span class="n">dfp</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;VALUE&quot;</span><span class="p">:</span><span class="s2">&quot;INCR&quot;</span><span class="p">},</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">dfp</span><span class="p">[</span><span class="s2">&quot;INCR_SQRT&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">dfp</span><span class="p">[</span><span class="s2">&quot;INCR&quot;</span><span class="p">])</span>
+
+            <span class="c1"># Merge loss development factors.</span>
+            <span class="n">pretypes</span> <span class="o">=</span> <span class="n">dfp</span><span class="o">.</span><span class="n">dtypes</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+
+            <span class="c1"># Replicate dfp self.sims times, then reset dtypes.</span>
+            <span class="n">dfr</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">dfp</span><span class="p">,(</span><span class="bp">self</span><span class="o">.</span><span class="n">sims</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span>
+                <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ORIGIN&quot;</span><span class="p">,</span><span class="s2">&quot;DEV&quot;</span><span class="p">,</span><span class="s2">&quot;INCR&quot;</span><span class="p">,</span><span class="s2">&quot;RECTYPE&quot;</span><span class="p">,</span><span class="s2">&quot;INCR_SQRT&quot;</span><span class="p">]</span>
+                <span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">dfr</span><span class="p">:</span>
+                <span class="n">dfr</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">dfr</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">pretypes</span><span class="p">[</span><span class="n">col</span><span class="p">])</span>
+
+            <span class="c1"># Assign identifier to each record in dfr (`SIM`).</span>
+            <span class="n">dfr</span><span class="p">[</span><span class="s2">&quot;SIM&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">np</span><span class="o">.</span><span class="n">divmod</span><span class="p">(</span><span class="n">dfr</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="c1"># Set random residual on records having RECTYPE==&quot;actual&quot;.</span>
+            <span class="n">dfr</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">dfr</span><span class="o">.</span><span class="n">RECTYPE</span><span class="o">==</span><span class="s2">&quot;actual&quot;</span><span class="p">,</span> <span class="s2">&quot;RESID&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">prng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">sampling_dist</span><span class="p">,</span>
+                    <span class="n">dfr</span><span class="p">[</span><span class="n">dfr</span><span class="o">.</span><span class="n">RECTYPE</span><span class="o">==</span><span class="s1">&#39;actual&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">replace</span><span class="o">=</span><span class="kc">True</span>
+                    <span class="p">)</span>
+
+            <span class="c1"># Calcuate resampled incremental and cumulative losses.</span>
+            <span class="n">dfr</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;SIM&quot;</span><span class="p">,</span> <span class="s2">&quot;ORIGIN&quot;</span><span class="p">,</span> <span class="s2">&quot;DEV&quot;</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="n">dfr</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">dfr</span><span class="o">.</span><span class="n">RECTYPE</span><span class="o">==</span><span class="s2">&quot;actual&quot;</span><span class="p">,</span> <span class="s2">&quot;SAMP_INCR&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">dfr</span><span class="o">.</span><span class="n">INCR</span> <span class="o">+</span> <span class="n">dfr</span><span class="o">.</span><span class="n">RESID</span> <span class="o">*</span> <span class="n">dfr</span><span class="o">.</span><span class="n">INCR_SQRT</span>
+
+            <span class="n">dfr</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">dfr</span><span class="o">.</span><span class="n">RECTYPE</span><span class="o">==</span><span class="s2">&quot;actual&quot;</span><span class="p">,</span> <span class="s2">&quot;SAMP_CUM&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">dfr</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;SIM&quot;</span><span class="p">,</span> <span class="s2">&quot;ORIGIN&quot;</span><span class="p">],</span><span class="n">sort</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span><span class="s2">&quot;SAMP_INCR&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">cumsum</span><span class="p">()</span>
+
+            <span class="c1"># Handle negatives in synthetic triangles.</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">neg_handler</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">dfr</span><span class="p">[(</span><span class="n">dfr</span><span class="o">.</span><span class="n">DEV</span><span class="o">==</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dfr</span><span class="o">.</span><span class="n">SAMP_INCR</span><span class="o">&lt;</span><span class="mi">0</span><span class="p">)]</span><span class="o">.</span><span class="n">SAMP_INCR</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1">##### Add neg_handler #2 staticmethod here #####</span>
+                <span class="n">dfr</span><span class="p">[(</span><span class="n">dfr</span><span class="o">.</span><span class="n">DEV</span><span class="o">==</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dfr</span><span class="o">.</span><span class="n">SAMP_INCR</span><span class="o">&lt;</span><span class="mi">0</span><span class="p">)]</span><span class="o">.</span><span class="n">SAMP_INCR</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_bs_samples</span> <span class="o">=</span> \
+                <span class="n">dfr</span><span class="p">[[</span><span class="s2">&quot;SIM&quot;</span><span class="p">,</span><span class="s2">&quot;ORIGIN&quot;</span><span class="p">,</span><span class="s2">&quot;DEV&quot;</span><span class="p">,</span><span class="s2">&quot;INCR&quot;</span><span class="p">,</span><span class="s2">&quot;INCR_SQRT&quot;</span><span class="p">,</span>
+                     <span class="s2">&quot;RECTYPE&quot;</span><span class="p">,</span><span class="s2">&quot;RESID&quot;</span><span class="p">,</span><span class="s2">&quot;SAMP_INCR&quot;</span><span class="p">,</span><span class="s2">&quot;SAMP_CUM&quot;</span><span class="p">]]</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bs_samples</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">bs_ldfs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute and return loss development factors for each set of</span>
+<span class="sd">        synthetic loss data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bs_ldfs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+
+            <span class="n">df</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bs_samples</span>
+            <span class="n">lvi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">clvi</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+            <span class="n">lvi</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+                <span class="n">columns</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s2">&quot;index&quot;</span><span class="p">:</span><span class="s2">&quot;DEV&quot;</span><span class="p">,</span><span class="s2">&quot;ORIGIN&quot;</span><span class="p">:</span><span class="s2">&quot;LAST_ORIGIN&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;ROW_OFFSET&quot;</span><span class="p">:</span><span class="s2">&quot;ORIGIN_OFFSET&quot;</span>
+                    <span class="p">},</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span>
+                <span class="p">)</span>
+
+            <span class="n">df</span>    <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">lvi</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DEV&quot;</span><span class="p">])</span>
+            <span class="n">dfgrp</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;SIM&quot;</span><span class="p">],</span> <span class="n">sort</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">ldflist</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+            <span class="n">simlist</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">dfgrp</span><span class="o">.</span><span class="n">get_group</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">dfgrp</span><span class="o">.</span><span class="n">groups</span>
+                <span class="p">]</span>
+
+            <span class="k">for</span> <span class="n">indx</span><span class="p">,</span> <span class="n">simgrp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">simlist</span><span class="p">):</span>
+                <span class="n">idf</span> <span class="o">=</span> <span class="n">simgrp</span><span class="p">[[</span><span class="s2">&quot;ORIGIN&quot;</span><span class="p">,</span><span class="s2">&quot;DEV&quot;</span><span class="p">,</span><span class="s2">&quot;SAMP_CUM&quot;</span><span class="p">,</span><span class="s2">&quot;LAST_ORIGIN&quot;</span><span class="p">]]</span>
+                <span class="n">idf</span> <span class="o">=</span> <span class="n">idf</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">ll</span>  <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+                <span class="n">pairs</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span>
+                    <span class="n">idf</span><span class="o">.</span><span class="n">DEV</span><span class="o">.</span><span class="n">unique</span><span class="p">()[::</span><span class="o">-</span><span class="mi">1</span><span class="p">][:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+                    <span class="n">idf</span><span class="o">.</span><span class="n">DEV</span><span class="o">.</span><span class="n">unique</span><span class="p">()[::</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+                    <span class="p">)</span>
+
+                <span class="k">for</span> <span class="n">devp2</span><span class="p">,</span><span class="n">devp1</span> <span class="ow">in</span> <span class="n">pairs</span><span class="p">:</span>
+                    <span class="n">devp2sum</span> <span class="o">=</span> <span class="n">idf</span><span class="p">[</span><span class="n">idf</span><span class="o">.</span><span class="n">DEV</span><span class="o">==</span><span class="n">devp2</span><span class="p">]</span><span class="o">.</span><span class="n">SAMP_CUM</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                    <span class="n">devp2lo</span>  <span class="o">=</span> <span class="n">idf</span><span class="p">[</span><span class="n">idf</span><span class="o">.</span><span class="n">DEV</span><span class="o">==</span><span class="n">devp2</span><span class="p">]</span><span class="o">.</span><span class="n">LAST_ORIGIN</span><span class="o">.</span><span class="n">unique</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="n">devp1sum</span> <span class="o">=</span> <span class="n">idf</span><span class="p">[(</span><span class="n">idf</span><span class="o">.</span><span class="n">DEV</span><span class="o">==</span><span class="n">devp1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">idf</span><span class="o">.</span><span class="n">ORIGIN</span><span class="o">&lt;=</span><span class="n">devp2lo</span><span class="p">)]</span><span class="o">.</span><span class="n">SAMP_CUM</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                    <span class="n">ll</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">devp1</span><span class="p">,(</span><span class="n">devp2sum</span><span class="o">/</span><span class="n">devp1sum</span><span class="p">)))</span>
+
+                <span class="n">idevp</span><span class="p">,</span> <span class="n">ildfs</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">ll</span><span class="p">)</span>
+                <span class="n">ldflist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;DEV&quot;</span><span class="p">:</span><span class="n">idevp</span><span class="p">,</span><span class="s2">&quot;LDF&quot;</span><span class="p">:</span><span class="n">ildfs</span><span class="p">,</span><span class="s2">&quot;SIM&quot;</span><span class="p">:</span><span class="n">indx</span><span class="p">})</span>
+                    <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_bs_ldfs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">ldflist</span><span class="p">)[[</span><span class="s2">&quot;SIM&quot;</span><span class="p">,</span><span class="s2">&quot;DEV&quot;</span><span class="p">,</span><span class="s2">&quot;LDF&quot;</span><span class="p">]]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_bs_ldfs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bs_ldfs</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;SIM&quot;</span><span class="p">,</span><span class="s2">&quot;DEV&quot;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_bs_ldfs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bs_ldfs</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bs_ldfs</span><span class="p">)</span>
+
+
+    <span class="c1"># @property</span>
+    <span class="c1"># def bs_forecasts(self):</span>
+    <span class="c1">#     &quot;&quot;&quot;</span>
+    <span class="c1">#     Populate lower-right of each synthetic triangle using development</span>
+    <span class="c1">#     factors from self.bs_ldfs.</span>
+    <span class="c1">#     &quot;&quot;&quot;</span>
+    <span class="c1">#     if self._bs_forecasts is None:</span>
+    <span class="c1">#         base_df = self.bs_samples</span>
+    <span class="c1">#         ldfs_df = self.bs_ldfs</span>
+    <span class="c1">#         full_df = base_df.merge(ldfs_df, how=&quot;left&quot;, on=[&quot;SIM&quot;,&quot;DEV&quot;])</span>
+    <span class="c1">#         grps_df = full_df.groupby([&quot;SIM&quot;,&quot;ORIGIN&quot;],sort=False)</span>
+    <span class="c1">#         sq_list = list()</span>
+    <span class="c1">#         df_list = [</span>
+    <span class="c1">#             grps_df.get_group(i).reset_index(drop=True)</span>
+    <span class="c1">#                 for i in grps_df.groups</span>
+    <span class="c1">#             ]</span>
+    <span class="c1">#</span>
+    <span class="c1">#         for indx, idf in enumerate(df_list):</span>
+    <span class="c1">#             if idf.SAMP_CUM.isnull().any():</span>
+    <span class="c1">#                 l_act_indx  = idf.index[idf.RECTYPE==&quot;actual&quot;].max()</span>
+    <span class="c1">#                 f_fcst_indx = idf.index[idf.RECTYPE==&quot;forecast&quot;].min()</span>
+    <span class="c1">#                 l_act_cum   = idf.loc[l_act_indx, &quot;SAMP_CUM&quot;]</span>
+    <span class="c1">#                 idf.loc[f_fcst_indx:, &quot;SAMP_CUM&quot;] = \</span>
+    <span class="c1">#                     idf.loc[l_act_indx:,&quot;LDF&quot;].cumprod().values[:-1] * l_act_cum</span>
+    <span class="c1">#</span>
+    <span class="c1">#                 df_list[j].sort_values(by=[&quot;DEV&quot;],ascending=True,inplace=True)</span>
+    <span class="c1">#         df_list[j].SAMP_INCR[1:] = df_list[j].SAMP_CUM.diff(periods=1)[1:]</span>
+    <span class="c1">#</span>
+    <span class="c1">#</span>
+    <span class="c1">#             sq_list.append(idf)</span>
+    <span class="c1">#         sqrd_df = pd.concat(sq_list)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         # Append variance (self.scale_param * SAMP_INCR).</span>
+    <span class="c1">#         sqrd_df[&quot;VAR&quot;] = \</span>
+    <span class="c1">#             sqrd_df.apply(</span>
+    <span class="c1">#                 lambda rec: np.abs(rec.SAMP_INCR * self.scale_param) \</span>
+    <span class="c1">#                     if rec.RECTYPE==&quot;forecast&quot; else np.NaN, axis=1)</span>
+    <span class="c1">#         sqrd_df[&quot;SIGN&quot;] = \</span>
+    <span class="c1">#             sqrd_df.apply(</span>
+    <span class="c1">#                 lambda rec: 1 if rec.SAMP_INCR &gt; 0 else -1, axis=1)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         self._bs_forecasts = sqrd_df.reset_index(drop=True)</span>
+    <span class="c1">#     return(self._bs_forecasts)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">bs_forecasts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Populate lower-right of each synthetic triangle using development</span>
+<span class="sd">        factors from self.bs_ldfs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bs_forecasts</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">full_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bs_samples</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">bs_ldfs</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;SIM&quot;</span><span class="p">,</span><span class="s2">&quot;DEV&quot;</span><span class="p">])</span>
+            <span class="n">grps_df</span> <span class="o">=</span> <span class="n">full_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;SIM&quot;</span><span class="p">,</span><span class="s2">&quot;ORIGIN&quot;</span><span class="p">],</span> <span class="n">sort</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">df_list</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">grps_df</span><span class="o">.</span><span class="n">get_group</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">grps_df</span><span class="o">.</span><span class="n">groups</span>
+                <span class="p">]</span>
+
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df_list</span><span class="p">)):</span>
+                <span class="n">df_list</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DEV&quot;</span><span class="p">],</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">df_list</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">RECTYPE</span><span class="o">==</span><span class="s2">&quot;forecast&quot;</span><span class="p">):</span>
+                    <span class="n">l_act_indx</span>  <span class="o">=</span> <span class="n">df_list</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">df_list</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">RECTYPE</span><span class="o">==</span><span class="s2">&quot;actual&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+                    <span class="n">f_fcst_indx</span> <span class="o">=</span> <span class="n">df_list</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">df_list</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">RECTYPE</span><span class="o">==</span><span class="s2">&quot;forecast&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+                    <span class="n">l_act_cum</span>   <span class="o">=</span> <span class="n">df_list</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">l_act_indx</span><span class="p">,</span> <span class="s2">&quot;SAMP_CUM&quot;</span><span class="p">]</span>
+                    <span class="n">df_list</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">f_fcst_indx</span><span class="p">:,</span><span class="s2">&quot;SAMP_CUM&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                        <span class="n">df_list</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">l_act_indx</span><span class="p">:,</span><span class="s2">&quot;LDF&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">cumprod</span><span class="p">()</span><span class="o">.</span><span class="n">values</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">l_act_cum</span>
+                    <span class="n">df_list</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="s2">&quot;SAMP_INCR&quot;</span><span class="p">][</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="n">df_list</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="s2">&quot;SAMP_CUM&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">periods</span><span class="o">=</span><span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]</span>
+            <span class="n">sqrd_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">df_list</span><span class="p">)</span>
+
+            <span class="c1"># Append variance (self.scale_param * SAMP_INCR) and sign.</span>
+            <span class="n">sqrd_df</span><span class="p">[</span><span class="s2">&quot;VAR&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">sqrd_df</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+                    <span class="k">lambda</span> <span class="n">rec</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">rec</span><span class="o">.</span><span class="n">SAMP_INCR</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale_param</span><span class="p">)</span> \
+                        <span class="k">if</span> <span class="n">rec</span><span class="o">.</span><span class="n">RECTYPE</span><span class="o">==</span><span class="s2">&quot;forecast&quot;</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">sqrd_df</span><span class="p">[</span><span class="s2">&quot;SIGN&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">sqrd_df</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+                    <span class="k">lambda</span> <span class="n">rec</span><span class="p">:</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">rec</span><span class="o">.</span><span class="n">SAMP_INCR</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_bs_forecasts</span> <span class="o">=</span> <span class="n">sqrd_df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bs_forecasts</span><span class="p">)</span>
+
+
+
+<div class="viewcode-block" id="_BootstrapChainLadder.bs_process_error"><a class="viewcode-back" href="../../../chainladder.html#trikit.chainladder.bootstrap._BootstrapChainLadder.bs_process_error">[docs]</a>    <span class="k">def</span> <span class="nf">bs_process_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">all_cols</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Incorporate process variance by simulating each incremental future</span>
+<span class="sd">        loss from procdist. The mean and variance are given by:</span>
+
+<span class="sd">            mean = forecast incremental loss amount</span>
+<span class="sd">            var  = mean * self.scale_param</span>
+
+<span class="sd">        :param all_cols: If True, return al lcolumns required for resampling.</span>
+<span class="sd">        Otherwise, return only, SIM, ORIGIN, DEV and the final cumulative</span>
+<span class="sd">        amount renamed as VALUE.</span>
+<span class="sd">        :type all_cols: bool</span>
+
+<span class="sd">        The parameters for ``procdist`` must be positive. Since the mean</span>
+<span class="sd">        and variance used to parameterize ``procdist`` depend on the</span>
+<span class="sd">        resampled incremental losses, it is necessary to incorporate logic</span>
+<span class="sd">        to address the possibility of negative incremental losses arising</span>
+<span class="sd">        in the resampling stage. The approach used to handle negative</span>
+<span class="sd">        incremental values is described in  Shapland [1], and is given by:</span>
+
+<span class="sd">            I^       = Resampled incremental loss amount &lt; 0</span>
+<span class="sd">            mean     = abs(I^)</span>
+<span class="sd">            var      = abs(I^) * self.scale_param</span>
+<span class="sd">            procdist = -gamma([abs(I^)], [abs(I^) * self.scale_param])</span>
+
+<span class="sd">        Returns a DataFrame of cumulated, simulated losses after the</span>
+<span class="sd">        incorporation of process variance.</span>
+
+<span class="sd">        If the BootChainLadder class is initialized with procdist=&quot;odp&quot;.</span>
+<span class="sd">        the negative binomial distribution is parameterized</span>
+<span class="sd">        in such a way that results in a linear relationship between</span>
+<span class="sd">        mean and variance.</span>
+
+<span class="sd">        [1] Shapland, Mark R - CAS Monograph Series Number 4:</span>
+<span class="sd">            *Using the ODP Bootstrap Model: A Practicioner&#39;s Guide*,</span>
+<span class="sd">            Casualty Actuarial Society, 2016.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">bs_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bs_forecasts</span>
+
+        <span class="c1"># Initialize pseudo random number generator.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">random_state</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                <span class="n">prng</span> <span class="o">=</span> <span class="n">RandomState</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">random_state</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">random_state</span><span class="p">,</span> <span class="n">RandomState</span><span class="p">):</span>
+                <span class="n">prng</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_state</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">prng</span> <span class="o">=</span> <span class="n">RandomState</span><span class="p">()</span>
+
+        <span class="c1"># Specify distribution to incorporate process variance.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">procdist</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">==</span><span class="s2">&quot;gamma&quot;</span><span class="p">:</span>
+            <span class="c1"># For gamma: PARAM1=shape (`a`), PARAM2=scale (`scale`).</span>
+            <span class="n">bs_df</span><span class="p">[</span><span class="s2">&quot;PARAM2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale_param</span>
+            <span class="n">bs_df</span><span class="p">[</span><span class="s2">&quot;PARAM1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">bs_df</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+                <span class="k">lambda</span> <span class="n">rec</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">rec</span><span class="o">.</span><span class="n">SAMP_INCR</span><span class="o">/</span><span class="n">rec</span><span class="o">.</span><span class="n">PARAM2</span><span class="p">)</span> \
+                    <span class="k">if</span> <span class="n">rec</span><span class="o">.</span><span class="n">RECTYPE</span><span class="o">==</span><span class="s2">&quot;forecast&quot;</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+                    <span class="p">)</span>
+
+            <span class="k">def</span> <span class="nf">fdist</span><span class="p">(</span><span class="n">param1</span><span class="p">,</span> <span class="n">param2</span><span class="p">,</span> <span class="n">random_state</span><span class="p">):</span>
+                <span class="sd">&quot;&quot;&quot;gamma.rvs(a, scale=1, size=1, random_state=None)&quot;&quot;&quot;</span>
+                <span class="k">return</span><span class="p">(</span><span class="n">gamma</span><span class="o">.</span><span class="n">rvs</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="n">param1</span><span class="p">,</span><span class="n">scale</span><span class="o">=</span><span class="n">param2</span><span class="p">,</span><span class="n">random_state</span><span class="o">=</span><span class="n">random_state</span><span class="p">))</span>
+
+        <span class="c1"># elif self.procdist.lower()==&quot;odp&quot;:</span>
+        <span class="c1">#      # For odp: PARAM1=n (`n`), PARAM2=prob (`p`).</span>
+        <span class="c1">#     dist = nbinom</span>
+        <span class="c1">#     bs_df[&quot;PARAM2&quot;] = ((self.scale_param - 1) / self.scale_param)</span>
+        <span class="c1">#     bs_df[&quot;PARAM1&quot;] = bs_df.apply(</span>
+        <span class="c1">#             lambda rec: ((rec.SAMP_INCR * (1 - rec.PARAM2)) / rec.PARAM2) \</span>
+        <span class="c1">#                 if rec.RECTYPE==&quot;forecast&quot; else np.NaN, axis=1</span>
+        <span class="c1">#                 )</span>
+        <span class="c1">#</span>
+        <span class="c1">#     def fdist(param1, param2, random_state):</span>
+        <span class="c1">#         &quot;&quot;&quot;nbinom.rvs(n, p, size=1, random_state=None)&quot;&quot;&quot;</span>
+        <span class="c1">#         return(nbinom.rvs(n=param1,p=param2,random_state=random_state))</span>
+
+        <span class="n">grps_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bs_forecasts</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;SIM&quot;</span><span class="p">,</span><span class="s2">&quot;ORIGIN&quot;</span><span class="p">],</span> <span class="n">sort</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="c1"># from numpy.random import RandomState</span>
+        <span class="c1"># bs_df   = bcl.bs_forecasts</span>
+        <span class="c1"># sel.scale_param = bcl.scale_param</span>
+        <span class="c1"># prng    = RandomState(30)</span>
+        <span class="c1"># grps_df = bs_fore.groupby([&quot;SIM&quot;,&quot;ORIGIN&quot;], sort=False)</span>
+        <span class="c1"># dist    = gamma</span>
+
+        <span class="n">df_list</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">grps_df</span><span class="o">.</span><span class="n">get_group</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">grps_df</span><span class="o">.</span><span class="n">groups</span>
+            <span class="p">]</span>
+
+        <span class="c1"># Incorporate process variance.</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df_list</span><span class="p">)):</span>
+            <span class="n">df_list</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="s2">&quot;FINAL_INCR&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">df_list</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+                    <span class="k">lambda</span> <span class="n">rec</span><span class="p">:</span> <span class="n">fdist</span><span class="p">(</span><span class="n">rec</span><span class="o">.</span><span class="n">PARAM1</span><span class="p">,</span> <span class="n">rec</span><span class="o">.</span><span class="n">PARAM2</span><span class="p">,</span> <span class="n">prng</span><span class="p">)</span> <span class="o">*</span> <span class="n">rec</span><span class="o">.</span><span class="n">SIGN</span>
+                        <span class="k">if</span> <span class="n">rec</span><span class="o">.</span><span class="n">RECTYPE</span><span class="o">==</span><span class="s2">&quot;forecast&quot;</span> <span class="k">else</span> <span class="n">rec</span><span class="o">.</span><span class="n">SAMP_INCR</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+                        <span class="p">)</span>
+
+        <span class="c1"># Concatenate elements of df_list and compute final cumulative sum.</span>
+        <span class="n">ult_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">df_list</span><span class="p">)</span>
+        <span class="n">ult_df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;SIM&quot;</span><span class="p">,</span><span class="s2">&quot;ORIGIN&quot;</span><span class="p">,</span><span class="s2">&quot;DEV&quot;</span><span class="p">],</span><span class="n">ascending</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">ult_df</span><span class="p">[</span><span class="s2">&quot;FINAL_CUM&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ult_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;SIM&quot;</span><span class="p">,</span><span class="s2">&quot;ORIGIN&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">FINAL_INCR</span><span class="o">.</span><span class="n">cumsum</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">all_cols</span><span class="p">:</span>
+            <span class="n">ult_df</span> <span class="o">=</span> <span class="n">ult_df</span><span class="p">[[</span><span class="s2">&quot;SIM&quot;</span><span class="p">,</span><span class="s2">&quot;ORIGIN&quot;</span><span class="p">,</span><span class="s2">&quot;DEV&quot;</span><span class="p">,</span><span class="s2">&quot;FINAL_CUM&quot;</span><span class="p">]]</span>
+            <span class="n">ult_df</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;FINAL_CUM&quot;</span><span class="p">:</span><span class="s2">&quot;VALUE&quot;</span><span class="p">},</span><span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">return</span><span class="p">(</span><span class="n">ult_df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span></div>
+
+
+
+    <span class="c1"># def bs_process_error(self):</span>
+    <span class="c1">#     &quot;&quot;&quot;</span>
+    <span class="c1">#     Incorporate process variance by simulating each incremental future</span>
+    <span class="c1">#     loss from procdist. The mean and variance are given by:</span>
+    <span class="c1">#</span>
+    <span class="c1">#         mean = forecast incremental loss amount</span>
+    <span class="c1">#         var  = mean * self.scale_param</span>
+    <span class="c1">#</span>
+    <span class="c1">#     The parameters for ``procdist`` must be positive. Since the mean</span>
+    <span class="c1">#     and variance used to parameterize ``procdist`` depend on the</span>
+    <span class="c1">#     resampled incremental losses, it is necessary to incorporate logic</span>
+    <span class="c1">#     to address the possibility of negative incremental losses arising</span>
+    <span class="c1">#     in the resampling stage. The approach used to handle negative</span>
+    <span class="c1">#     incremental values is described in  Shapland [1], and is given by:</span>
+    <span class="c1">#</span>
+    <span class="c1">#         I^       = Resampled incremental loss amount &lt; 0</span>
+    <span class="c1">#         mean     = abs(I^)</span>
+    <span class="c1">#         var      = abs(I^) * self.scale_param</span>
+    <span class="c1">#         procdist = -gamma([abs(I^)], [abs(I^) * self.scale_param])</span>
+    <span class="c1">#</span>
+    <span class="c1">#     Returns a DataFrame of cumulated, simulated losses after the</span>
+    <span class="c1">#     incorporation of process variance.</span>
+    <span class="c1">#</span>
+    <span class="c1">#     If the BootChainLadder class is initialized with procdist=&quot;odp&quot;.</span>
+    <span class="c1">#     the negative binomial distribution is parameterized</span>
+    <span class="c1">#     in such a way that results in a linear relationship between</span>
+    <span class="c1">#     mean and variance.</span>
+    <span class="c1">#</span>
+    <span class="c1">#     [1] Shapland, Mark R - CAS Monograph Series Number 4:</span>
+    <span class="c1">#         *Using the ODP Bootstrap Model: A Practicioner&#39;s Guide*,</span>
+    <span class="c1">#         Casualty Actuarial Society, 2016.</span>
+    <span class="c1">#</span>
+    <span class="c1">#     &quot;&quot;&quot;</span>
+    <span class="c1">#     # Initialize pseudo random number generator.</span>
+    <span class="c1">#     if self.random_state is not None:</span>
+    <span class="c1">#         if isinstance(self.random_state, int):</span>
+    <span class="c1">#             prng = RandomState(self.random_state)</span>
+    <span class="c1">#         elif isinstance(self.random_state, RandomState):</span>
+    <span class="c1">#             prng = self.random_state</span>
+    <span class="c1">#     else:</span>
+    <span class="c1">#         prng = RandomState()</span>
+    <span class="c1">#</span>
+    <span class="c1">#     # Specify distribution to incorporate process variance.</span>
+    <span class="c1">#     if self.procdist.lower()==&quot;gamma&quot;:</span>
+    <span class="c1">#         dist = gamma</span>
+    <span class="c1">#     elif self.procdist.lower()==&quot;odp&quot;:</span>
+    <span class="c1">#         dist = nbinom</span>
+    <span class="c1">#</span>
+    <span class="c1">#     grps_df = self._bs_forecasts.groupby(</span>
+    <span class="c1">#         [&quot;SIM&quot;,&quot;ORIGIN&quot;], sort=False</span>
+    <span class="c1">#         )</span>
+    <span class="c1">#</span>
+    <span class="c1">#     # from numpy.random import RandomState</span>
+    <span class="c1">#     # prng     = RandomState()</span>
+    <span class="c1">#     # grps_df = bs_fore.groupby([&quot;SIM&quot;,&quot;ORIGIN&quot;], sort=False)</span>
+    <span class="c1">#     # dist = gamma</span>
+    <span class="c1">#</span>
+    <span class="c1">#</span>
+    <span class="c1">#     df_list = [</span>
+    <span class="c1">#         grps_df.get_group(i).reset_index(drop=True)</span>
+    <span class="c1">#             for i in grps_df.groups</span>
+    <span class="c1">#         ]</span>
+    <span class="c1">#</span>
+    <span class="c1">#     # Compute variance for each forecast value</span>
+    <span class="c1">#</span>
+    <span class="c1">#     # Incorporate process variance via procdist.</span>
+    <span class="c1">#     for j in range(len(df_list)):</span>
+    <span class="c1">#</span>
+    <span class="c1">#         df_list[j].sort_values(by=[&quot;DEV&quot;],ascending=True,inplace=True)</span>
+    <span class="c1">#         df_list[j].SAMP_INCR[1:] = df_list[j].SAMP_CUM.diff(periods=1)[1:]</span>
+    <span class="c1">#</span>
+    <span class="c1">#         # Mean     = n * p / (1 - p)</span>
+    <span class="c1">#         # Variance = n * p / (1 - p)^2</span>
+    <span class="c1">#         # Variance = Mean / (1 - p)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         # df_list[j][&quot;VAR&quot;] = \</span>
+    <span class="c1">#         #     df_list[j].apply(</span>
+    <span class="c1">#         #         lambda rec: rec.SAMP_INCR * self.scale_param \</span>
+    <span class="c1">#         #             if rec.RECTYPE==&quot;forecast&quot; else np.NaN, axis=1)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         df_list[j][&quot;VAR&quot;] = \</span>
+    <span class="c1">#             df_list[j].apply(</span>
+    <span class="c1">#                 lambda rec: np.abs(rec.SAMP_INCR * sclparam) \</span>
+    <span class="c1">#                     if rec.RECTYPE==&quot;forecast&quot; else np.NaN, axis=1)</span>
+    <span class="c1">#</span>
+    <span class="c1">#</span>
+    <span class="c1">#         # If procdist==`gamma`, PARAM=SHAPE, if procdist==`odp`,</span>
+    <span class="c1">#         # PARAM=PROB.</span>
+    <span class="c1">#         df_list[j][&quot;P&quot;] = \</span>
+    <span class="c1">#             df_list[j].apply(</span>
+    <span class="c1">#                 lambda rec: ((sclparam - 1) / sclparam) \</span>
+    <span class="c1">#                     if rec.RECTYPE==&quot;forecast&quot; else np.NaN, axis=1)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         df_list[j][&quot;N&quot;] = \</span>
+    <span class="c1">#             df_list[j].apply(</span>
+    <span class="c1">#                 lambda rec: ((rec.SAMP_INCR * (1 - rec.P)) / rec.P) \</span>
+    <span class="c1">#                     if rec.RECTYPE==&quot;forecast&quot; else np.NaN, axis=1)</span>
+    <span class="c1">#</span>
+    <span class="c1">#</span>
+    <span class="c1">#         # df_list[j][&quot;SCALE&quot;] = \</span>
+    <span class="c1">#         #     df_list[j].apply(</span>
+    <span class="c1">#         #         lambda rec: rec.VAR/rec.SAMP_INCR \</span>
+    <span class="c1">#         #             if rec.RECTYPE==&quot;forecast&quot; else np.NaN, axis=1)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         df_list[j][&quot;SHAPE&quot;] = \</span>
+    <span class="c1">#             df_list[j].apply(</span>
+    <span class="c1">#                 lambda rec: np.abs(rec.SAMP_INCR/sclparam) \</span>
+    <span class="c1">#                     if rec.RECTYPE==&quot;forecast&quot; else np.NaN, axis=1)</span>
+    <span class="c1">#</span>
+    <span class="c1">#         df_list[j][&quot;FINAL_INCR&quot;] = \</span>
+    <span class="c1">#             df_list[j].apply(</span>
+    <span class="c1">#                 lambda rec: dist.rvs(a=rec.SHAPE,scale=sclparam,random_state=prng)</span>
+    <span class="c1">#                     if rec.RECTYPE==&quot;forecast&quot; else rec.SAMP_INCR, axis=1)</span>
+    <span class="c1">#</span>
+    <span class="c1">#</span>
+    <span class="c1">#</span>
+    <span class="c1">#</span>
+    <span class="c1">#     # Concatenate elements of df_list and compute final cumulative sum.</span>
+    <span class="c1">#     ult_df = pd.concat(df_list)</span>
+    <span class="c1">#     ult_df.sort_values(by=[&quot;SIM&quot;,&quot;ORIGIN&quot;,&quot;DEV&quot;],ascending=True,inplace=True)</span>
+    <span class="c1">#     ult_df[&quot;FINAL_CUM&quot;] = ult_df.groupby([&quot;SIM&quot;,&quot;ORIGIN&quot;]).FINAL_INCR.cumsum()</span>
+    <span class="c1">#</span>
+    <span class="c1">#     df_list[j][&quot;FINAL_INCR&quot;].cumsum()</span>
+    <span class="c1">#</span>
+    <span class="c1">#     return(pd.concat(df_list))</span>
+
+
+
+
+<div class="viewcode-block" id="_BootstrapChainLadder.resid_info"><a class="viewcode-back" href="../../../chainladder.html#trikit.chainladder.bootstrap._BootstrapChainLadder.resid_info">[docs]</a>    <span class="k">def</span> <span class="nf">resid_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the average of unscaled and adjusted residuals.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">usarr</span>      <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resid_us</span><span class="o">.</span><span class="n">as_matrix</span><span class="p">())</span>
+        <span class="n">adjarr</span>     <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resid_adj</span><span class="o">.</span><span class="n">as_matrix</span><span class="p">())</span>
+        <span class="n">usarr</span>      <span class="o">=</span> <span class="n">usarr</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">usarr</span><span class="p">)]</span>
+        <span class="n">adjarr</span>     <span class="o">=</span> <span class="n">adjarr</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">adjarr</span><span class="p">)]</span>
+        <span class="n">usarr</span>      <span class="o">=</span> <span class="n">usarr</span><span class="p">[</span><span class="n">usarr</span><span class="o">!=</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">adjarr</span>     <span class="o">=</span> <span class="n">adjarr</span><span class="p">[</span><span class="n">adjarr</span><span class="o">!=</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">us_avg</span>     <span class="o">=</span> <span class="n">usarr</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">adj_avg</span>    <span class="o">=</span> <span class="n">adjarr</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">us_median</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">usarr</span><span class="p">)</span>
+        <span class="n">adj_median</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">adjarr</span><span class="p">)</span>
+
+        <span class="n">resdict</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;unscaled&#39;</span><span class="p">:{</span>
+                <span class="s1">&#39;mean&#39;</span>  <span class="p">:</span><span class="n">us_avg</span><span class="p">,</span>
+                <span class="s1">&#39;arr&#39;</span>   <span class="p">:</span><span class="n">usarr</span><span class="p">,</span>
+                <span class="s1">&#39;n&#39;</span>     <span class="p">:</span><span class="n">usarr</span><span class="o">.</span><span class="n">size</span><span class="p">,</span>
+                <span class="s1">&#39;median&#39;</span><span class="p">:</span><span class="n">us_median</span><span class="p">,</span>
+                <span class="s1">&#39;sum&#39;</span>   <span class="p">:</span><span class="n">usarr</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span>
+                <span class="s1">&#39;min&#39;</span>   <span class="p">:</span><span class="n">usarr</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span>
+                <span class="s1">&#39;max&#39;</span>   <span class="p">:</span><span class="n">usarr</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+                <span class="p">},</span>
+            <span class="s1">&#39;adjusted&#39;</span><span class="p">:{</span>
+                <span class="s1">&#39;mean&#39;</span>  <span class="p">:</span><span class="n">adj_avg</span><span class="p">,</span>
+                <span class="s1">&#39;arr&#39;</span>   <span class="p">:</span><span class="n">adjarr</span><span class="p">,</span>
+                <span class="s1">&#39;n&#39;</span>     <span class="p">:</span><span class="n">adjarr</span><span class="o">.</span><span class="n">size</span><span class="p">,</span>
+                <span class="s1">&#39;median&#39;</span><span class="p">:</span><span class="n">adj_median</span><span class="p">,</span>
+                <span class="s1">&#39;sum&#39;</span>   <span class="p">:</span><span class="n">adjarr</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span>
+                <span class="s1">&#39;min&#39;</span>   <span class="p">:</span><span class="n">adjarr</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span>
+                <span class="s1">&#39;max&#39;</span>   <span class="p">:</span><span class="n">adjarr</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">resdict</span><span class="p">)</span></div></div>
+
+
+
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, James D. Triveri
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../../../',
+              VERSION:'0.1',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

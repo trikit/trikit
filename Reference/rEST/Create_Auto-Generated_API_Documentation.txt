@@ -1,0 +1,1 @@
+sphinx-apidoc -o <output dir> <code dir>

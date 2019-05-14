@@ -1,0 +1,17 @@
+.. function:: load(dataset, loss="paid", loss_key=None, loss_type=None,
+				   grcode=None, grname=None, upper_left_ind=True,
+				   lower_right_ind=False, allcols=True, action=None,
+				   random_state=None)
+
+	Load the specified dataset, returning a DataFrame of incremental
+	losses. If ``dataset``=="lrdb", additional keyword arguments are used
+	to subset the CAS Loss Reserving Database to the records of interest.
+	Within the Loss Reserving Datbase, "loss_key" and "grname" uniquely
+	partition losses into 100 record blocks if ``lower_right_ind``=True,
+	otherwise losses are partitioned into 55 record blocks. All available
+	combinations of "loss_key" and "grcode" (referred to as "specs")
+	can be obtained by calling ``get_lrdb_specs``.
+	If ``dataset`` is something other than "lrdb", then only the name of
+	the target dataset as a string is required.
+
+

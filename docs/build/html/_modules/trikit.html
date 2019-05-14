@@ -1,0 +1,435 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>trikit &mdash; trikit 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link href="../_static/style.css" rel="stylesheet" type="text/css">
+
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> trikit
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Project Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../triangle.html">Triangle Implementation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chainladder.html">The Chain Ladder Method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../range.html">Reserve Variability Estimates</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../datasets.html">Sample Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lrdb.html">The CAS Loss Reserving Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../questions.html">Frequently Asked Questions</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">trikit</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="index.html">Module code</a> &raquo;</li>
+        
+      <li>trikit</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for trikit</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;</span>
+<span class="sd">|  _                                                                     |</span>
+<span class="sd">| | |_ _ __(_) | _(_) |_                                                 |</span>
+<span class="sd">| | __| &#39;__| | |/ / | __|                                                |</span>
+<span class="sd">| | |_| |  | |   &lt;| | |_                                                 |</span>
+<span class="sd">|  \__|_|  |_|_|\_\_|\__|                                                |</span>
+<span class="sd">|                                                                        |</span>
+<span class="sd">| Actuarial Reserving Methods in Python                                  |</span>
+<span class="sd">|_______________________________________________________________________ |</span>
+<span class="sd">|                                                                        |</span>
+<span class="sd">| Created by      =&gt; James D Triveri &lt;&lt;&lt;james.triveri@gmail.com&gt;&gt;&gt;       |</span>
+<span class="sd">| License         =&gt; 3-Clause BSD (See LICENSE in top-level directory    |</span>
+<span class="sd">| Repository Link =&gt; https://github.com/jtrive84/trikit                  |                                                                  |</span>
+<span class="sd">&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;=&lt;&gt;</span>
+
+<span class="sd">Outstanding Tasks =&gt;</span>
+
+<span class="sd"> 1.] Implement option to generate random incremental loss data</span>
+
+<span class="sd"> 2.] Ability to write triangle to file as .xlsx</span>
+
+<span class="sd"> 3.] Add ability to add user-defined functions to a2a_avgs</span>
+
+<span class="sd"> 4.] Find out how to suppress scientific notation without distorting the</span>
+<span class="sd">     appearance of NaN&#39;s in DataFrames</span>
+
+<span class="sd"> 5.] Implement option to output loss emergence as panneled exhibit</span>
+
+<span class="sd"> 6.] Create CAS Loss Reserving Database interface/API</span>
+
+<span class="sd"> 7.] Convert fields to lowercase</span>
+
+<span class="sd"> 8.] Implement __call__ method in BootChainLadder method</span>
+
+<span class="sd"> 9.] Create triangle directory and split out file contents</span>
+
+<span class="sd">10.] Create chainladder directory and split out file contents</span>
+
+<span class="sd">11.] Implement BFChainLadder</span>
+
+<span class="sd">12.] Split each chain ladder summary array into separate Series object</span>
+
+<span class="sd">13.] Implement MCMC Chain Ladder</span>
+
+<span class="sd">x 14.] Implement closure in utils which consumes datasets dictionary.</span>
+
+<span class="sd">15.] Add __call__ method to ChainLadder classes</span>
+
+<span class="sd">16.] Make IncrTriangle and CumTriangle classes semi-provate</span>
+
+<span class="sd">17.] Implement save to file option in plot_devp in utils.</span>
+
+<span class="sd">:param percentiles: When ``range_method`` is not None, specifies the</span>
+<span class="sd">    percentiles at which to evaluate the reserve range. If ``range_method``</span>
+<span class="sd">    is None, ``percentiles`` is ignored. Default value is [.75, .95].</span>
+<span class="sd">    :type percentiles: list</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">os.path</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">scipy</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">seaborn</span> <span class="k">as</span> <span class="nn">sns</span>
+
+
+<span class="c1">#from .triangle import base, incremental, cumulative</span>
+
+<span class="kn">from</span> <span class="nn">.triangle</span> <span class="k">import</span> <span class="n">_BaseTriangle</span>
+<span class="kn">from</span> <span class="nn">.triangle.incremental</span> <span class="k">import</span> <span class="n">IncrTriangle</span>
+<span class="kn">from</span> <span class="nn">.triangle.cumulative</span> <span class="k">import</span> <span class="n">CumTriangle</span>
+
+<span class="kn">from</span> <span class="nn">.chainladder</span> <span class="k">import</span> <span class="n">_BaseChainLadder</span>
+<span class="kn">from</span> <span class="nn">.chainladder.mack</span> <span class="k">import</span> <span class="n">_MackChainLadder</span>
+<span class="kn">from</span> <span class="nn">.chainladder.bootstrap</span> <span class="k">import</span> <span class="n">_BootstrapChainLadder</span>
+
+<span class="kn">from</span> <span class="nn">.datasets</span> <span class="k">import</span> <span class="n">dataref</span>
+
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">_load</span><span class="p">,</span> <span class="n">_get_datasets</span><span class="p">,</span> <span class="n">_get_lrdb_lobs</span><span class="p">,</span> <span class="n">_get_lrdb_groups</span><span class="p">,</span> <span class="n">_get_lrdb_specs</span><span class="p">,</span>
+    <span class="n">totri</span><span class="p">,</span> <span class="n">_cumtoincr</span><span class="p">,</span> <span class="n">_incrtocum</span><span class="p">,</span> <span class="n">_tritotbl</span><span class="p">,</span> <span class="n">plot_devp</span><span class="p">,</span> <span class="n">_get_datasets</span>
+    <span class="p">)</span>
+
+
+<span class="c1"># Initialize _load closure using dataref mapping.</span>
+<span class="n">lrdb_path</span>       <span class="o">=</span> <span class="n">dataref</span><span class="p">[</span><span class="s2">&quot;lrdb&quot;</span><span class="p">]</span>
+<span class="n">load</span>            <span class="o">=</span> <span class="n">_load</span><span class="p">(</span><span class="n">dataref</span><span class="o">=</span><span class="n">dataref</span><span class="p">)</span>
+<span class="n">get_datasets</span>    <span class="o">=</span> <span class="n">_get_datasets</span><span class="p">(</span><span class="n">dataref</span><span class="o">=</span><span class="n">dataref</span><span class="p">)</span>
+<span class="n">get_lrdb_lobs</span>   <span class="o">=</span> <span class="n">_get_lrdb_lobs</span><span class="p">(</span><span class="n">lrdb_path</span><span class="o">=</span><span class="n">lrdb_path</span><span class="p">)</span>
+<span class="n">get_lrdb_groups</span> <span class="o">=</span> <span class="n">_get_lrdb_groups</span><span class="p">(</span><span class="n">lrdb_path</span><span class="o">=</span><span class="n">lrdb_path</span><span class="p">)</span>
+<span class="n">get_lrdb_specs</span>  <span class="o">=</span> <span class="n">_get_lrdb_specs</span><span class="p">(</span><span class="n">lrdb_path</span><span class="o">=</span><span class="n">lrdb_path</span><span class="p">)</span>
+
+
+
+<span class="n">plt</span><span class="o">.</span><span class="n">switch_backend</span><span class="p">(</span><span class="s1">&#39;Qt4Agg&#39;</span><span class="p">)</span>
+<span class="n">pd</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">mode</span><span class="o">.</span><span class="n">chained_assignment</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># &#39;warn&#39;</span>
+<span class="c1">#pd.options.display.float_format = &#39;{:.2f}&#39;.format</span>
+<span class="n">pd</span><span class="o">.</span><span class="n">set_option</span><span class="p">(</span><span class="s1">&#39;display.max_columns&#39;</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+<span class="n">pd</span><span class="o">.</span><span class="n">set_option</span><span class="p">(</span><span class="s1">&#39;display.width&#39;</span><span class="p">,</span> <span class="mi">500</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">style</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;ggplot&#39;</span><span class="p">)</span>
+<span class="n">np</span><span class="o">.</span><span class="n">set_printoptions</span><span class="p">(</span>
+    <span class="n">edgeitems</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">suppress</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nanstr</span><span class="o">=</span><span class="s1">&#39;NaN&#39;</span><span class="p">,</span>
+    <span class="n">infstr</span><span class="o">=</span><span class="s1">&#39;Inf&#39;</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mi">5</span>
+    <span class="p">)</span>
+
+
+<span class="kn">from</span> <span class="nn">.__pkginfo__</span> <span class="k">import</span> <span class="n">version</span> <span class="k">as</span> <span class="n">__version__</span>
+
+
+
+<div class="viewcode-block" id="chladder"><a class="viewcode-back" href="../autogen/trikit.html#trikit.chladder">[docs]</a><span class="k">def</span> <span class="nf">chladder</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">trifmt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+             <span class="n">datafmt</span><span class="o">=</span><span class="s2">&quot;incremental&quot;</span><span class="p">,</span> <span class="n">range_method</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return *ChainLadder initializer with optional reserve range method</span>
+<span class="sd">    specification.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data: pd.DataFrame</span>
+<span class="sd">        The dataset to be coerced into a *Triangle instance. ``data`` can be</span>
+<span class="sd">        tabular loss data or a pandas DataFrame formatted as a triangle but</span>
+<span class="sd">        not typed as such. In the latter case, ``trifmt`` must be specified to</span>
+<span class="sd">        indicate the representation of ``data`` (either &quot;cumulative&quot; or</span>
+<span class="sd">        &quot;incremental&quot;).</span>
+
+<span class="sd">    origin: str</span>
+<span class="sd">        The field in ``data`` representing the origin year. When</span>
+<span class="sd">        ``trifmt`` is not None, ``origin`` is ignored. Defaults to None.</span>
+
+<span class="sd">    dev: str</span>
+<span class="sd">        The field in ``data`` representing the development period. When</span>
+<span class="sd">        ``trifmt`` is not None, ``dev`` is ignored. Defaults to None.</span>
+
+<span class="sd">    value: str</span>
+<span class="sd">        The field in ``data`` representing loss amounts. When ``trifmt`` is</span>
+<span class="sd">        not None, ``value`` is ignored. Defaults to None.</span>
+
+<span class="sd">    trifmt: str</span>
+<span class="sd">        One of &quot;cumulative&quot;, &quot;incremental&quot; or None (None by default).</span>
+<span class="sd">        ``trifmt`` should only be set to something other than None if ``data``</span>
+<span class="sd">        is a DataFrame formatted as a loss triangle, but hasn&#39;t yet been</span>
+<span class="sd">        converted to a ``CumTriangle`` or ``IncrTriangle`` instance. When</span>
+<span class="sd">        ``datafmt`` is not None, ``trifmt`` is ignored.</span>
+
+<span class="sd">    datafmt: str</span>
+<span class="sd">        When ``data`` is in tabular form, ``datafmt`` indicates whether the</span>
+<span class="sd">        records comprising ``data`` represent cumulative or incremental</span>
+<span class="sd">        losses.  When ``trifmt`` is not None, ``datafmt`` is ignored. Default</span>
+<span class="sd">        value is &quot;incremental&quot;.</span>
+
+<span class="sd">    range_method: str</span>
+<span class="sd">        One of &quot;mack&quot;, &quot;bootstrap&quot; or None. Additional methods will</span>
+<span class="sd">        be available in future releases. Default value is None.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    *ChainLadder instance.</span>
+<span class="sd">        An instance of *ChainLadder, optionally with ranges quantifying</span>
+<span class="sd">        reserve variability.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Here we demonstrate how to produce Chain Ladder estimates for the</span>
+<span class="sd">    ``raa`` sample dataset. Note that what is returned by ``chladder``</span>
+<span class="sd">    is callable: In order to obtain the Chain Ladder summary, the</span>
+<span class="sd">    object returned by ``chladder`` must be called, optionally</span>
+<span class="sd">    specifying ``sel`` (defaults to &quot;all-weighted&quot;) and ``tail`` (defaults</span>
+<span class="sd">    to 1.0). Implemented this way, the Chain Ladder ultimates resulting</span>
+<span class="sd">    from any number of `loss development factor - tail factor` combinations</span>
+<span class="sd">    can be specified for the same triangle and compared, in preference</span>
+<span class="sd">    to instantiating a new ``_BaseChainLadder`` instance each time ``sel``</span>
+<span class="sd">    or ``tail`` should be varied.</span>
+
+<span class="sd">    &gt;&gt;&gt; import trikit</span>
+<span class="sd">    &gt;&gt;&gt; dat = trikit.load(&quot;ta83&quot;)</span>
+<span class="sd">    &gt;&gt;&gt; cl_init = trikit.chladder(data=dat)</span>
+<span class="sd">    &gt;&gt;&gt; cl_init(sel=&quot;all-weighted&quot;, tail=1.005)</span>
+<span class="sd">       origin maturity    latest      cldf       ultimate       reserve</span>
+<span class="sd">    0    1981       10   18834.0  1.005000   18928.170000     94.170000</span>
+<span class="sd">    1    1982        9   16704.0  1.014263   16942.243687    238.243687</span>
+<span class="sd">    2    1983        8   23466.0  1.031441   24203.787778    737.787778</span>
+<span class="sd">    3    1984        7   27067.0  1.065750   28846.657874   1779.657874</span>
+<span class="sd">    4    1985        6   26180.0  1.110442   29071.370025   2891.370025</span>
+<span class="sd">    5    1986        5   15852.0  1.236349   19598.608700   3746.608700</span>
+<span class="sd">    6    1987        4   12314.0  1.448599   17838.049103   5524.049103</span>
+<span class="sd">    7    1988        3   13112.0  1.841007   24139.288472  11027.288472</span>
+<span class="sd">    8    1989        2    5395.0  2.988917   16125.209021  10730.209021</span>
+<span class="sd">    9    1990        1    2063.0  8.964835   18494.454742  16431.454742</span>
+<span class="sd">    10  total           160987.0       NaN  214187.839403  53200.839403</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tri</span> <span class="o">=</span> <span class="n">totri</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">type_</span><span class="o">=</span><span class="s2">&quot;cumulative&quot;</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="n">origin</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="n">dev</span><span class="p">,</span>
+                <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">,</span> <span class="n">trifmt</span><span class="o">=</span><span class="n">trifmt</span><span class="p">,</span> <span class="n">datafmt</span><span class="o">=</span><span class="n">datafmt</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">range_method</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Instantiate BaseChainLadder instance.</span>
+        <span class="n">cl_init</span> <span class="o">=</span> <span class="n">_BaseChainLadder</span><span class="p">(</span><span class="n">cumtri</span><span class="o">=</span><span class="n">tri</span><span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">range_method</span> <span class="ow">and</span> <span class="n">range_method</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;mack&quot;</span><span class="p">):</span>
+        <span class="c1"># Instantiate _MackChainLadder instance.</span>
+        <span class="n">cl_init</span> <span class="o">=</span> <span class="n">_MackChainLadder</span><span class="p">(</span><span class="n">cumtri</span><span class="o">=</span><span class="n">tri</span><span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">range_method</span> <span class="ow">and</span> <span class="n">range_method</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;boot&quot;</span><span class="p">):</span>
+        <span class="c1"># Instantiate BootstrapChainLadder instance.</span>
+        <span class="n">cl_init</span> <span class="o">=</span> <span class="n">_BootstrapChainLadder</span><span class="p">(</span><span class="n">cumtri</span><span class="o">=</span><span class="n">tri</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+            <span class="s2">&quot;Specified range_method does not exist: `</span><span class="si">{}</span><span class="s2">`&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">range_method</span><span class="p">)</span>
+            <span class="p">)</span>
+
+    <span class="k">return</span><span class="p">(</span><span class="n">cl_init</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, James D. Triveri
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../',
+              VERSION:'0.1',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

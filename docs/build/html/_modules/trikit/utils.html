@@ -1,0 +1,783 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>trikit.utils &mdash; trikit 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link href="../../_static/style.css" rel="stylesheet" type="text/css">
+
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> trikit
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.html">Project Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../triangle.html">Triangle Implementation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../chainladder.html">The Chain Ladder Method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../range.html">Reserve Variability Estimates</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../datasets.html">Sample Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../lrdb.html">The CAS Loss Reserving Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../questions.html">Frequently Asked Questions</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">trikit</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+          <li><a href="../trikit.html">trikit</a> &raquo;</li>
+        
+      <li>trikit.utils</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for trikit.utils</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Various trikit utilities. Contains convenience functions in support of</span>
+<span class="sd">the CAS Loss Reserving Database, as well as the intended primary interface</span>
+<span class="sd">with which to transform tabular data to Triangle objects (``totri``).</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">os.path</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">seaborn</span> <span class="k">as</span> <span class="nn">sns</span>
+<span class="kn">from</span> <span class="nn">numpy.random</span> <span class="k">import</span> <span class="n">RandomState</span>
+<span class="kn">from</span> <span class="nn">..triangle</span> <span class="k">import</span> <span class="n">incremental</span><span class="p">,</span> <span class="n">cumulative</span>
+
+
+
+
+<span class="k">def</span> <span class="nf">_load</span><span class="p">(</span><span class="n">dataref</span><span class="p">:</span><span class="nb">dict</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Sample dataset loading utility.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">func</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">loss_type</span><span class="o">=</span><span class="s2">&quot;paid&quot;</span><span class="p">,</span> <span class="n">loss_key</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">grcode</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+             <span class="n">grname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">upper_left_ind</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">lower_right_ind</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+             <span class="n">allcols</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load the specified dataset, returning a DataFrame of incremental</span>
+<span class="sd">        losses. If ``dataset`` =&quot;lrdb&quot;, additional keyword arguments are used</span>
+<span class="sd">        to subset the CAS Loss Reserving Database to the records of interest.</span>
+<span class="sd">        Within the Loss Reserving Database, &quot;loss_key&quot; and &quot;grname&quot; uniquely</span>
+<span class="sd">        partition losses into 100 record blocks if ``lower_right_ind`` =True,</span>
+<span class="sd">        otherwise losses are partitioned into 55 record blocks. All available</span>
+<span class="sd">        combinations of &quot;loss_key&quot; and &quot;grcode&quot; (referred to as &quot;specs&quot;)</span>
+<span class="sd">        can be obtained by calling ``get_lrdb_specs``.</span>
+<span class="sd">        If ``dataset`` is something other than &quot;lrdb&quot;, then only the name of</span>
+<span class="sd">        the target dataset as a string is required.</span>
+
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        dataset: str</span>
+<span class="sd">            Specifies which sample dataset to load. The complete set of sample</span>
+<span class="sd">            datasets can be obtained by calling ``get_datasets``.</span>
+
+<span class="sd">        loss_key: str</span>
+<span class="sd">            One of &quot;WC&quot;, &quot;COM_AUTO&quot;, &quot;MED_MAL&quot;, &quot;OTHR_LIAB&quot;, &quot;PP_AUTO&quot; or</span>
+<span class="sd">            &quot;PROD_LIAB&quot;. When ``dataset`` =&quot;lrdb&quot;, specifies which losses to</span>
+<span class="sd">            target. The complete mapping of available loss_keys can be</span>
+<span class="sd">            obtained by calling ``get_lrdb_lobs``. Applies only when</span>
+<span class="sd">            ``dataset`` =&quot;lrdb&quot;, otherwise parameter is ignored.</span>
+
+<span class="sd">        grcode: str</span>
+<span class="sd">            NAIC company code including insurer groups and single insurers.</span>
+<span class="sd">            The complete mapping of available grcodes can be obtained by</span>
+<span class="sd">            calling ``get_lrdb_groups``. Applies only when</span>
+<span class="sd">            ``dataset`` =&quot;lrdb&quot;, otherwise parameter is ignored.</span>
+
+<span class="sd">        grname: str</span>
+<span class="sd">            NAIC company name (including insurer groups and single insurers).</span>
+<span class="sd">            The complete mapping of available grcodes can be obtained by</span>
+<span class="sd">            calling ``get_lrdb_groups``. Applies only when</span>
+<span class="sd">            ``dataset`` =&quot;lrdb&quot;, otherwise parameter is ignored.</span>
+
+<span class="sd">        loss_type: str</span>
+<span class="sd">            Specifies which loss data to load. Can be one of &quot;paid&quot;,</span>
+<span class="sd">            &quot;incurred&quot; or &quot;bulk&quot;. Defaults to &quot;paid&quot;. Applies only when</span>
+<span class="sd">            ``dataset`` =&quot;lrdb&quot;, otherwise parameter is ignored.</span>
+
+<span class="sd">        upper_left_ind: bool</span>
+<span class="sd">            If True, the upper-left portion of the triangle will be returned.</span>
+<span class="sd">            The upper-left portion of the triangle typically consists of</span>
+<span class="sd">            actual loss experience. Defaults to True. Applies only when</span>
+<span class="sd">            ``dataset`` =&quot;lrdb&quot;, otherwise parameter is ignored.</span>
+
+<span class="sd">        lower_right_ind: bool</span>
+<span class="sd">            If True, the lower-right portion of the triangle will be returned.</span>
+<span class="sd">            The CAS Loss Reserve Database includes 10 development lags for</span>
+<span class="sd">            each loss year, the intention being that the data comprising the</span>
+<span class="sd">            lower-right portion of the triangle can be used for model</span>
+<span class="sd">            validation purposes. Defaults to False. Applies only when</span>
+<span class="sd">            ``dataset`` =&quot;lrdb&quot;, otherwise parameter is ignored.</span>
+
+<span class="sd">        allcols: bool</span>
+<span class="sd">            If True, the returned DataFrame contains all columns that comprise</span>
+<span class="sd">            the CAS Loss Reserving Database. Defaults to False. When</span>
+<span class="sd">            ``allcols`` =False, only the columns required to convert the</span>
+<span class="sd">            dataset to an ``IncrTriangle`` or ``CumTriangle`` instance, namely</span>
+<span class="sd">            &quot;origin&quot;, &quot;dev&quot; and &quot;value&quot;, with the field specified by ``loss``</span>
+<span class="sd">            renamed to &quot;value&quot; will be returned. Note that if</span>
+<span class="sd">            ``action`` =&quot;aggregate&quot;, ``allcols`` is bound to False,</span>
+<span class="sd">            regardless of how it was originally specified in the function</span>
+<span class="sd">            call.</span>
+
+<span class="sd">        action: str</span>
+<span class="sd">            Action to perform if the specified subsetting parameters do not</span>
+<span class="sd">            reduce to a single &quot;loss_key&quot;-&quot;grcode&quot;. If more than one</span>
+<span class="sd">            combination of &quot;loss_key&quot; and &quot;grcode&quot; remains after applying all</span>
+<span class="sd">            subsetting specifications, the remaining records can either be</span>
+<span class="sd">            (1) aggregated (``action`` =&quot;aggregate&quot;), (2) a single</span>
+<span class="sd">            &quot;loss_key&quot;-&quot;grcode&quot; combination can be selected at random and the</span>
+<span class="sd">            associated records returned (``action`` =&quot;random&quot;) or (3) the</span>
+<span class="sd">            remaining records can be returned as-is without additional</span>
+<span class="sd">            processing (``action`` =None). Defaults to None. Note that</span>
+<span class="sd">            ``action``=&quot;aggregate&quot; implicitly sets ``allcols`` to False,</span>
+<span class="sd">            regardless of how the parameter may have been set initially.</span>
+<span class="sd">            Applies only when ``dataset`` =&quot;lrdb&quot;, otherwise parameter is</span>
+<span class="sd">            ignored.</span>
+
+<span class="sd">        random_state: RandomState/int</span>
+<span class="sd">            If int, random_state is the seed used by the random number</span>
+<span class="sd">            generator; If RandomState instance, random_state is the random</span>
+<span class="sd">            number generator; If None, the random number generator is the</span>
+<span class="sd">            RandomState instance used by np.random. Applies only when</span>
+<span class="sd">            ``dataset =&quot;lrdb&quot;``, otherwise parameter is ignored.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">            Subset of the CAS Loss Reserving Database.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># dataref         = trikit.dataref</span>
+        <span class="c1"># dataset         = &quot;lrdb&quot;</span>
+        <span class="c1"># loss_type       = &quot;paid&quot;</span>
+        <span class="c1"># loss_key        = None</span>
+        <span class="c1"># grcode          = 2143</span>
+        <span class="c1"># grname          = None</span>
+        <span class="c1"># upper_left_ind  = True</span>
+        <span class="c1"># lower_right_ind = False</span>
+        <span class="c1"># allcols         = False</span>
+        <span class="c1"># action          = &quot;aggregate&quot;</span>
+        <span class="c1"># random_state    = None</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">dataset</span>  <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="n">datapath</span> <span class="o">=</span> <span class="n">dataref</span><span class="p">[</span><span class="n">dataset</span><span class="p">]</span>
+            <span class="n">dat_init</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">datapath</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s2">&quot;,&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Specified dataset does not exist: `</span><span class="si">{}</span><span class="s2">`&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dataset</span><span class="p">))</span>
+
+        <span class="c1"># Additional filtering/subsetting if dataset=&quot;lrdb&quot;.</span>
+        <span class="k">if</span> <span class="n">dataset</span><span class="o">==</span><span class="s2">&quot;lrdb&quot;</span><span class="p">:</span>
+            <span class="k">if</span>   <span class="n">loss_type</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">==</span><span class="s2">&quot;incrd&quot;</span><span class="p">:</span> <span class="n">loss_field</span> <span class="o">=</span> <span class="s2">&quot;incrd_loss&quot;</span>
+            <span class="k">elif</span> <span class="n">loss_type</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">==</span><span class="s2">&quot;paid&quot;</span> <span class="p">:</span> <span class="n">loss_field</span> <span class="o">=</span> <span class="s2">&quot;paid_loss&quot;</span>
+            <span class="k">elif</span> <span class="n">loss_type</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">==</span><span class="s2">&quot;bulk&quot;</span> <span class="p">:</span> <span class="n">loss_field</span> <span class="o">=</span> <span class="s2">&quot;bulk_loss&quot;</span>
+
+            <span class="n">basecols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;loss_key&quot;</span><span class="p">,</span> <span class="s2">&quot;grcode&quot;</span><span class="p">,</span> <span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="n">loss_field</span><span class="p">]</span>
+            <span class="n">lower_right_spec</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">lower_right_ind</span><span class="o">==</span><span class="kc">True</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="n">upper_left_spec</span>  <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">upper_left_ind</span><span class="o">==</span><span class="kc">True</span>  <span class="k">else</span> <span class="mi">0</span>
+            <span class="n">loss_key_spec</span><span class="p">,</span> <span class="n">loss_type_spec</span> <span class="o">=</span> <span class="n">loss_key</span><span class="p">,</span> <span class="n">loss_type</span>
+            <span class="n">grname_spec</span><span class="p">,</span> <span class="n">grcode_spec</span> <span class="o">=</span> <span class="n">grname</span><span class="p">,</span> <span class="n">grcode</span>
+
+            <span class="n">dat_init</span> <span class="o">=</span> <span class="n">dat_init</span><span class="p">[</span><span class="n">dat_init</span><span class="p">[</span><span class="s2">&quot;lower_right_ind&quot;</span><span class="p">]</span><span class="o">==</span><span class="n">lower_right_spec</span><span class="p">]</span>
+            <span class="n">dat_init</span> <span class="o">=</span> <span class="n">dat_init</span><span class="p">[</span><span class="n">dat_init</span><span class="p">[</span><span class="s2">&quot;upper_left_ind&quot;</span><span class="p">]</span><span class="o">==</span><span class="n">upper_left_spec</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">loss_key_spec</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">dat_init</span> <span class="o">=</span> <span class="n">dat_init</span><span class="p">[</span><span class="n">dat_init</span><span class="p">[</span><span class="s2">&quot;loss_key&quot;</span><span class="p">]</span><span class="o">==</span><span class="n">loss_key_spec</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">grname_spec</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">dat_init</span> <span class="o">=</span> <span class="n">dat_init</span><span class="p">[</span><span class="n">dat_init</span><span class="p">[</span><span class="s2">&quot;grname&quot;</span><span class="p">]</span><span class="o">==</span><span class="n">grname_spec</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">grcode_spec</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">dat_init</span> <span class="o">=</span> <span class="n">dat_init</span><span class="p">[</span><span class="n">dat_init</span><span class="p">[</span><span class="s2">&quot;grcode&quot;</span><span class="p">]</span><span class="o">==</span><span class="n">grcode_spec</span><span class="p">]</span>
+
+            <span class="c1"># Check whether provided filter specs reduce down to a single</span>
+            <span class="c1"># loss_key-grname/grcode combination. If more than one spec</span>
+            <span class="c1"># remains, look to `action` parameter.</span>
+            <span class="n">fields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;loss_key&quot;</span><span class="p">,</span> <span class="s2">&quot;grcode&quot;</span><span class="p">]</span>
+            <span class="n">remaining_specs</span> <span class="o">=</span> \
+                <span class="n">dat_init</span><span class="p">[</span><span class="n">fields</span><span class="p">]</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">remaining_specs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+
+                <span class="k">if</span> <span class="n">action</span> <span class="ow">and</span> <span class="n">action</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;agg&quot;</span><span class="p">):</span>
+                    <span class="c1"># Aggregate remaining records over `origin` and `dev`.</span>
+                    <span class="c1"># Requires dropping `loss_key` and `grcode`.</span>
+                    <span class="n">dat</span> <span class="o">=</span> <span class="n">dat_init</span><span class="p">[[</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="n">loss_field</span><span class="p">]]</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="s2">&quot;dev&quot;</span><span class="p">],</span>
+                        <span class="n">as_index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+                <span class="k">elif</span> <span class="n">action</span> <span class="ow">and</span> <span class="n">action</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;rand&quot;</span><span class="p">):</span>
+                    <span class="c1"># Check random_state and initialize random number generator.</span>
+                    <span class="k">if</span> <span class="n">random_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">random_state</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                            <span class="n">prng</span> <span class="o">=</span> <span class="n">RandomState</span><span class="p">(</span><span class="n">random_state</span><span class="p">)</span>
+                        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">random_state</span><span class="p">,</span> <span class="n">RandomState</span><span class="p">):</span>
+                            <span class="n">prng</span> <span class="o">=</span> <span class="n">random_state</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">prng</span> <span class="o">=</span> <span class="n">RandomState</span><span class="p">()</span>
+
+                    <span class="c1"># Randomly select record from remaining_specs.</span>
+                    <span class="n">keepspec</span> <span class="o">=</span> <span class="n">remaining_specs</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">prng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">remaining_specs</span><span class="o">.</span><span class="n">index</span><span class="p">)]</span>
+                    <span class="n">keep_loss_key</span><span class="p">,</span> <span class="n">keep_grcode</span> <span class="o">=</span> <span class="n">keepspec</span><span class="o">.</span><span class="n">loss_key</span><span class="p">,</span> <span class="n">keepspec</span><span class="o">.</span><span class="n">grcode</span>
+
+                    <span class="c1"># Filter dat_init using keep_*-prefixed fields.</span>
+                    <span class="n">dat</span> <span class="o">=</span> <span class="n">dat_init</span><span class="p">[</span>
+                        <span class="p">(</span><span class="n">dat_init</span><span class="o">.</span><span class="n">loss_key</span><span class="o">==</span><span class="n">keep_loss_key</span><span class="p">)</span> <span class="o">&amp;</span>
+                        <span class="p">(</span><span class="n">dat_init</span><span class="o">.</span><span class="n">grcode</span><span class="o">==</span><span class="n">keep_grcode</span><span class="p">)</span>
+                        <span class="p">]</span>
+
+                    <span class="n">dat</span> <span class="o">=</span> <span class="n">dat</span><span class="p">[</span><span class="n">basecols</span><span class="p">]</span>
+
+                <span class="k">else</span><span class="p">:</span> <span class="c1"># Return dataset &quot;as-is&quot;, containing &gt; 1 specs.</span>
+                    <span class="n">dat</span> <span class="o">=</span> <span class="n">dat_init</span><span class="p">[</span><span class="n">basecols</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">dat</span> <span class="o">=</span> <span class="n">dat_init</span><span class="p">[</span><span class="n">basecols</span><span class="p">]</span>
+
+        <span class="k">else</span><span class="p">:</span> <span class="c1"># Specified dataset is not &quot;lrdb&quot;.</span>
+            <span class="n">loss_field</span> <span class="o">=</span> <span class="s2">&quot;value&quot;</span>
+            <span class="n">basecols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">]</span>
+            <span class="n">dat</span>      <span class="o">=</span> <span class="n">dat_init</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">allcols</span><span class="p">:</span>
+            <span class="n">dat</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="n">loss_field</span><span class="p">:</span><span class="s2">&quot;value&quot;</span><span class="p">},</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">dat</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+
+
+
+
+
+<span class="c1"># Loss Reserving Database utility functions ==================================]</span>
+<span class="k">def</span> <span class="nf">_get_datasets</span><span class="p">(</span><span class="n">dataref</span><span class="p">:</span><span class="nb">dict</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">func</span><span class="p">():</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate a list containing the names of available sample datasets.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list</span>
+<span class="sd">            Names of available sample datasets.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">dataref</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+
+
+
+<span class="k">def</span> <span class="nf">_get_lrdb_lobs</span><span class="p">(</span><span class="n">lrdb_path</span><span class="p">:</span><span class="nb">str</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the unique &quot;loss_key&quot; entries present in the CAS Loss</span>
+<span class="sd">    Reserving Database (lrdb).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">lrdb</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">lrdb_path</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;,&quot;</span><span class="p">)</span>
+    <span class="n">lrdb</span> <span class="o">=</span> <span class="n">lrdb</span><span class="p">[</span><span class="s2">&quot;loss_key&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">func</span><span class="p">():</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return unique &quot;loss_key&quot; entries from the CAS Loss Reserving</span>
+<span class="sd">        Database.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list</span>
+<span class="sd">            List containing unique &quot;loss_key&quot; entries.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">lrdb</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+
+
+
+<span class="k">def</span> <span class="nf">_get_lrdb_groups</span><span class="p">(</span><span class="n">lrdb_path</span><span class="p">:</span><span class="nb">str</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return &quot;grcode&quot;-&quot;grname&quot; mapping present in the CAS Loss</span>
+<span class="sd">    Reserving Database (lrdb).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;grcode&quot;</span><span class="p">,</span> <span class="s2">&quot;grname&quot;</span><span class="p">]</span>
+    <span class="n">lrdb</span>   <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">lrdb_path</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;,&quot;</span><span class="p">)</span>
+    <span class="n">lrdb</span>   <span class="o">=</span> <span class="n">lrdb</span><span class="p">[</span><span class="n">fields</span><span class="p">]</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">func</span><span class="p">(</span><span class="n">returnas</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return lrdb groups mapping in accordance with object class</span>
+<span class="sd">        specified in ``returnas`` argument.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        returnas: type</span>
+<span class="sd">            The object class used to represent the lrdb &quot;grcode&quot;-&quot;grname&quot;</span>
+<span class="sd">            mapping. Valid types include pd.DataFrame, list or dict.</span>
+<span class="sd">            Any other object passed to ``returnas`` raises TypeError. Default</span>
+<span class="sd">            type is pd.DataFrame.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list, dict, pd.DataFrame</span>
+<span class="sd">            Unique combinations of &quot;grcode&quot;-&quot;grname&quot; as present in the CAS</span>
+<span class="sd">            Loss Reserving Database.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">returnas</span><span class="o">==</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+            <span class="n">groups</span> <span class="o">=</span> <span class="n">lrdb</span>
+        <span class="k">elif</span> <span class="n">returnas</span><span class="o">==</span><span class="nb">list</span><span class="p">:</span>
+            <span class="n">groups_init</span> <span class="o">=</span> <span class="p">{</span><span class="n">j</span><span class="p">:</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">lrdb</span><span class="o">.</span><span class="n">grname</span><span class="p">,</span> <span class="n">lrdb</span><span class="o">.</span><span class="n">grcode</span><span class="p">))}</span>
+            <span class="n">groups</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">groups_init</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+        <span class="k">elif</span> <span class="n">returnas</span><span class="o">==</span><span class="nb">dict</span><span class="p">:</span>
+            <span class="n">groups</span> <span class="o">=</span> <span class="p">{</span><span class="n">j</span><span class="p">:</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">lrdb</span><span class="o">.</span><span class="n">grname</span><span class="p">,</span> <span class="n">lrdb</span><span class="o">.</span><span class="n">grcode</span><span class="p">))}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Invalid returnas object class: `</span><span class="si">{}</span><span class="s2">`&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">returnas</span><span class="p">))</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+
+
+
+<span class="k">def</span> <span class="nf">_get_lrdb_specs</span><span class="p">(</span><span class="n">lrdb_path</span><span class="p">:</span><span class="nb">str</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return a DataFrame containing the unique combinations of &quot;loss_key&quot;,</span>
+<span class="sd">    &quot;grname&quot; and &quot;grcode&quot; from the CAS Loss Reserving Database (lrdb).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;loss_key&quot;</span><span class="p">,</span> <span class="s2">&quot;grcode&quot;</span><span class="p">,</span> <span class="s2">&quot;grname&quot;</span><span class="p">]</span>
+    <span class="n">lrdb</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">lrdb_path</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;,&quot;</span><span class="p">)</span>
+    <span class="n">lrdb</span> <span class="o">=</span> <span class="n">lrdb</span><span class="p">[</span><span class="n">fields</span><span class="p">]</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">lrdb</span> <span class="o">=</span> <span class="n">lrdb</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;loss_key&quot;</span><span class="p">,</span><span class="s2">&quot;grcode&quot;</span><span class="p">])</span>
+    <span class="k">def</span> <span class="nf">func</span><span class="p">():</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a DataFrame containing the unique combinations of &quot;loss_key&quot;,</span>
+<span class="sd">        &quot;grname&quot; and &quot;grcode&quot; from the CAS Loss Reserving Database (lrdb).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">            Unique combinations of &quot;loss_key&quot;, &quot;grname&quot; and &quot;grcode&quot;</span>
+<span class="sd">            from the CAS Loss Reserving Database.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">lrdb</span><span class="p">)</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+
+
+
+
+<div class="viewcode-block" id="totri"><a class="viewcode-back" href="../../autogen/trikit.utils.html#trikit.utils.totri">[docs]</a><span class="k">def</span> <span class="nf">totri</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">type_</span><span class="o">=</span><span class="s2">&quot;cumulative&quot;</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+          <span class="n">trifmt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">datafmt</span><span class="o">=</span><span class="s2">&quot;incremental&quot;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Transform ``data`` to a Triangle object. ``type_`` can be one of</span>
+<span class="sd">    &quot;incremental&quot; or &quot;cumulative&quot;. If ``trifmt``==None, it is assumed</span>
+<span class="sd">    ``data`` is tabular loss data (e.g., pd.DataFrame) containing at</span>
+<span class="sd">    minimum the fields &quot;origin&quot;, &quot;dev&quot; and &quot;value&quot;. If ``trifmt`` is set</span>
+<span class="sd">    to &quot;incremental&quot; or &quot;cumulative&quot;, ``data`` is assumed to be formatted</span>
+<span class="sd">    as a loss triangle, but hasn&#39;t yet been transformed into a CumTriangle</span>
+<span class="sd">    or IncrTriangle instance. Returns either a CumTriangle or IncrTriangle</span>
+<span class="sd">    instance, depending on the value passed to ``type_``.</span>
+
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data: pd.DataFrame</span>
+<span class="sd">        The dataset to be coerced into a *Triangle instance. ``data`` can be</span>
+<span class="sd">        tabular loss data or a pandas DataFrame formatted as a triangle but</span>
+<span class="sd">        not typed as such. In the latter case, ``trifmt`` must be specified to</span>
+<span class="sd">        indicate the representation of ``data`` (either &quot;cumulative&quot; or</span>
+<span class="sd">        &quot;incremental&quot;).</span>
+
+<span class="sd">    type_: str</span>
+<span class="sd">        Either &quot;cumulative&quot; or &quot;incremental&quot;. Alternatively, ``type_`` can be</span>
+<span class="sd">        specified as &quot;i&quot; for &quot;incremental&quot; or &quot;c&quot; for &quot;cumulative&quot;. Dictates</span>
+<span class="sd">        the type of triangle returned. Default value is &quot;cumulative&quot;.</span>
+
+<span class="sd">    trifmt: str</span>
+<span class="sd">        One of &quot;cumulative&quot;, &quot;incremental&quot; or None (None by default).</span>
+<span class="sd">        ``trifmt`` should only be set to something other than None if ``data``</span>
+<span class="sd">        is a DataFrame formatted as a loss triangle, but hasn&#39;t yet been</span>
+<span class="sd">        converted to a ``CumTriangle`` or ``IncrTriangle`` instance. When</span>
+<span class="sd">        ``datafmt`` is not None, ``trifmt`` is ignored.</span>
+
+<span class="sd">    datafmt: str</span>
+<span class="sd">        When ``data`` is in tabular form, ``datafmt`` indicates whether the</span>
+<span class="sd">        records comprising ``data`` represent cumulative or incremental</span>
+<span class="sd">        losses.  When ``trifmt`` is not None, ``datafmt`` is ignored. Default</span>
+<span class="sd">        value is &quot;incremental&quot;.</span>
+
+<span class="sd">    origin: str</span>
+<span class="sd">        The field in ``data`` representing the origin year. When</span>
+<span class="sd">        ``trifmt`` is not None, ``origin`` is ignored. Defaults to None.</span>
+
+<span class="sd">    dev: str</span>
+<span class="sd">        The field in ``data`` representing the development period. When</span>
+<span class="sd">        ``trifmt`` is not None, ``dev`` is ignored. Defaults to None.</span>
+
+<span class="sd">    value: str</span>
+<span class="sd">        The field in ``data`` representing loss amounts. When ``trifmt`` is</span>
+<span class="sd">        not None, ``value`` is ignored. Defaults to None.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        An instance of ``cumulative. CumTriangle`` or</span>
+<span class="sd">        ``incremental.IncrTriangle``, depending on how ``type_`` is specified.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">trikwds</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;origin&quot;</span><span class="p">:</span><span class="n">origin</span><span class="p">,</span> <span class="s2">&quot;dev&quot;</span><span class="p">:</span><span class="n">dev</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span><span class="n">value</span><span class="p">,</span> <span class="s2">&quot;trifmt&quot;</span><span class="p">:</span><span class="n">trifmt</span><span class="p">,</span>
+        <span class="s2">&quot;datafmt&quot;</span><span class="p">:</span><span class="n">datafmt</span>
+        <span class="p">}</span>
+
+    <span class="k">if</span> <span class="n">trifmt</span> <span class="ow">and</span> <span class="n">trifmt</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;i&quot;</span><span class="p">):</span>
+        <span class="c1"># `data` is in incremental triangle format (but not typed as such).</span>
+        <span class="k">if</span> <span class="n">type_</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;i&quot;</span><span class="p">):</span>
+            <span class="n">tri</span> <span class="o">=</span> <span class="n">incremental</span><span class="o">.</span><span class="n">IncrTriangle</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">trikwds</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">type_</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;c&quot;</span><span class="p">):</span>
+            <span class="n">tri</span> <span class="o">=</span> <span class="n">cumulative</span><span class="o">.</span><span class="n">CumTriangle</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">trikwds</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NameError</span><span class="p">(</span><span class="s2">&quot;Invalid type_ argument: `</span><span class="si">{}</span><span class="s2">`.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">type_</span><span class="p">))</span>
+
+    <span class="k">elif</span> <span class="n">trifmt</span> <span class="ow">and</span> <span class="n">trifmt</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;c&quot;</span><span class="p">):</span>
+        <span class="c1"># `data` is in cumulative triangle format (but not typed as such).</span>
+        <span class="k">if</span> <span class="n">type_</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;i&quot;</span><span class="p">):</span>
+            <span class="n">tri</span> <span class="o">=</span> <span class="n">incremental</span><span class="o">.</span><span class="n">IncrTriangle</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">trikwds</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">type_</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;c&quot;</span><span class="p">):</span>
+            <span class="n">tri</span> <span class="o">=</span> <span class="n">cumulative</span><span class="o">.</span><span class="n">CumTriangle</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">trikwds</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NameError</span><span class="p">(</span><span class="s2">&quot;Invalid type_ argument: `</span><span class="si">{}</span><span class="s2">`.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">type_</span><span class="p">))</span>
+
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">trifmt</span> <span class="ow">and</span> <span class="n">type_</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;i&quot;</span><span class="p">):</span>
+        <span class="n">tri</span> <span class="o">=</span> <span class="n">incremental</span><span class="o">.</span><span class="n">IncrTriangle</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">trikwds</span><span class="p">)</span>
+
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">trifmt</span> <span class="ow">and</span> <span class="n">type_</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;c&quot;</span><span class="p">):</span>
+        <span class="n">tri</span> <span class="o">=</span> <span class="n">cumulative</span><span class="o">.</span><span class="n">CumTriangle</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">trikwds</span><span class="p">)</span>
+
+    <span class="k">return</span><span class="p">(</span><span class="n">tri</span><span class="p">)</span></div>
+
+
+
+
+
+
+
+<span class="k">def</span> <span class="nf">_cumtoincr</span><span class="p">(</span><span class="n">cumtri</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert a cumulative triangle to incremental representation.</span>
+<span class="sd">        Not intended for public use.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cumtri: cumulative.CumTriangle</span>
+<span class="sd">            An instance of cumulative.CumTriangle.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">            Cumulative triangle instance transformed to an incremental</span>
+<span class="sd">            representation and returned as pd.DataFrame.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tri</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span><span class="o">.</span><span class="n">reindex_like</span><span class="p">(</span><span class="n">cumtri</span><span class="p">)</span>
+        <span class="n">tri</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">cumtri</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tri</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">indx</span><span class="p">,</span> <span class="n">col</span> <span class="o">=</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">tri</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span><span class="n">indx</span><span class="p">]</span> <span class="o">=</span> <span class="n">cumtri</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span><span class="n">indx</span><span class="p">]</span> <span class="o">-</span> <span class="n">cumtri</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,(</span><span class="n">indx</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)]</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">tri</span><span class="p">)</span>
+
+
+
+<span class="k">def</span> <span class="nf">_incrtocum</span><span class="p">(</span><span class="n">incrtri</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert incremental triangle to cumulative representation. Not</span>
+<span class="sd">    intended for public use.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    incrtri: incremental.IncrTriangle</span>
+<span class="sd">        An instance of incremental.IncrTriangle.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        Incremental triangle instance transformed to an cumulative</span>
+<span class="sd">        representation and returned as pd.DataFrame.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">incrtri</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+
+
+
+<span class="k">def</span> <span class="nf">_tritotbl</span><span class="p">(</span><span class="n">tri</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert data formatted as triangle to tabular representation. Fields</span>
+<span class="sd">    will be identified as &quot;origin&quot;, &quot;dev&quot; and &quot;value&quot;. Not intended for</span>
+<span class="sd">    public use.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    tri: pd.DataFrame</span>
+<span class="sd">        The Triangle object or DataFrame to transform to tabular data.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        Transformed DataFrame object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ltri</span> <span class="o">=</span> <span class="p">[</span><span class="n">tri</span><span class="p">[[</span><span class="n">i</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">tri</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ltri</span><span class="p">)):</span>
+        <span class="n">iterdf</span> <span class="o">=</span> <span class="n">ltri</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">iterdf</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">devp</span> <span class="o">=</span> <span class="n">iterdf</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">iterdf</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">iterdf</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;index&quot;</span><span class="p">:</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="n">devp</span><span class="p">:</span><span class="s2">&quot;value&quot;</span><span class="p">},</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">iterdf</span><span class="p">[</span><span class="s2">&quot;dev&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">devp</span>
+        <span class="n">ltri</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">iterdf</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">ltri</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">])]</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="s2">&quot;dev&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">df</span><span class="p">[[</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">]])</span>
+
+
+
+<div class="viewcode-block" id="plot_devp"><a class="viewcode-back" href="../../autogen/trikit.utils.html#trikit.utils.plot_devp">[docs]</a><span class="k">def</span> <span class="nf">plot_devp</span><span class="p">(</span><span class="n">cumtri</span><span class="p">,</span> <span class="n">facets</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Visualize triangle development patterns. If file is given, save plot</span>
+<span class="sd">    to that location.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cumtri: cumulative.CumTriangle</span>
+<span class="sd">        An instance of cumulative.CumTriangle.</span>
+
+<span class="sd">    facets: bool</span>
+<span class="sd">        If True, loss development plots for each origin year are faceted,</span>
+<span class="sd">        otherwise development patterns are plotted together on a single set</span>
+<span class="sd">        of axes.</span>
+
+<span class="sd">    file: str</span>
+<span class="sd">        Location to save generated plot. Defualts value is None.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    matplotlib.pyplot.plot</span>
+<span class="sd">        Rendering of each origin year&#39;s cumulative losses as a function of</span>
+<span class="sd">        development period.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">context</span>    <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;context&quot;</span><span class="p">,</span> <span class="s2">&quot;notebook&quot;</span><span class="p">)</span>
+    <span class="n">axes_style</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;axes_style&quot;</span><span class="p">,</span> <span class="s2">&quot;darkgrid&quot;</span><span class="p">)</span>
+    <span class="n">palette</span>    <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;palette&quot;</span><span class="p">,</span> <span class="s2">&quot;Accent&quot;</span><span class="p">)</span>
+    <span class="n">dat</span>        <span class="o">=</span> <span class="n">_tritotbl</span><span class="p">(</span><span class="n">cumtri</span><span class="p">)</span>
+
+    <span class="n">sns</span><span class="o">.</span><span class="n">set_context</span><span class="p">(</span><span class="n">context</span><span class="p">)</span> <span class="c1"># talk poster paper notebook</span>
+    <span class="k">if</span> <span class="n">facets</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">sns</span><span class="o">.</span><span class="n">axes_style</span><span class="p">(</span><span class="n">axes_style</span><span class="p">):</span>
+            <span class="n">g</span> <span class="o">=</span> <span class="n">sns</span><span class="o">.</span><span class="n">FacetGrid</span><span class="p">(</span>
+                <span class="n">dat</span><span class="p">,</span><span class="n">col</span><span class="o">=</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span><span class="n">col_wrap</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span><span class="n">margin_titles</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">ylim</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dat</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+                <span class="p">)</span>
+        <span class="n">g</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">,</span><span class="s2">&quot;dev&quot;</span><span class="p">,</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#334488&quot;</span><span class="p">,</span><span class="n">alpha</span><span class="o">=.</span><span class="mi">7</span><span class="p">)</span>
+        <span class="n">g</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">,</span><span class="s2">&quot;dev&quot;</span><span class="p">,</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;#334488&quot;</span><span class="p">,</span><span class="n">alpha</span><span class="o">=.</span><span class="mi">7</span><span class="p">)</span>
+        <span class="n">g</span><span class="o">.</span><span class="n">set_axis_labels</span><span class="p">(</span><span class="s2">&quot;dev_period&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">g</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">xticks</span><span class="o">=</span><span class="n">dat</span><span class="o">.</span><span class="n">dev</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+        <span class="n">g</span><span class="o">.</span><span class="n">fig</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">wspace</span><span class="o">=.</span><span class="mi">025</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">sns</span><span class="o">.</span><span class="n">axes_style</span><span class="p">(</span><span class="n">axes_style</span><span class="p">,{</span><span class="s1">&#39;legend.frameon&#39;</span><span class="p">:</span><span class="kc">True</span><span class="p">}):</span>
+            <span class="n">g</span> <span class="o">=</span> <span class="n">sns</span><span class="o">.</span><span class="n">pointplot</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="n">hue</span><span class="o">=</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span>
+                <span class="n">data</span><span class="o">=</span><span class="n">dat</span><span class="p">,</span> <span class="n">palette</span><span class="o">=</span><span class="n">sns</span><span class="o">.</span><span class="n">color_palette</span><span class="p">(</span><span class="n">palette</span><span class="p">,</span> <span class="n">dat</span><span class="o">.</span><span class="n">dev</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">size</span><span class="p">),</span>
+                <span class="n">legend</span><span class="o">=</span><span class="kc">False</span>
+                <span class="p">)</span>
+        <span class="n">g</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Loss Development by Origin Year&quot;</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">)</span>
+        <span class="n">legend</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">frameon</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;lower right&#39;</span><span class="p">)</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">legend</span><span class="o">.</span><span class="n">get_frame</span><span class="p">()</span>
+        <span class="n">frame</span><span class="o">.</span><span class="n">set_color</span><span class="p">(</span><span class="s1">&#39;white&#39;</span><span class="p">)</span>
+
+    <span class="c1"># fig = g.get_figure()</span>
+    <span class="c1"># fig.savefig(&quot;devps.pdf&quot;) # this does not work in Seaborn 0.7.1</span>
+
+    <span class="c1"># matplotlib way:</span>
+    <span class="c1"># plt.savefig(&#39;yourTitle.png&#39;)</span>
+
+    <span class="c1"># ax = sns.violinplot(x=&quot;Gender&quot;, y=&quot;Salary&quot;, hue=&quot;Degree&quot;, data=job_data)</span>
+    <span class="c1"># #Returns the :class:~matplotlib.figure.Figure instance the artist belongs to</span>
+    <span class="c1"># fig = ax.get_figure()</span>
+    <span class="c1"># fig.savefig(&#39;gender_salary.png&#39;)</span>
+
+    <span class="c1"># fig = plt.Figure(). Then you can save the figure with fig.savefig()</span>
+    <span class="k">return</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, James D. Triveri
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../../',
+              VERSION:'0.1',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

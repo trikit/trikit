@@ -1,0 +1,9 @@
+Module foo
+==========
+
+.. automodule:: foo
+  :members:
+  :show-inheritance:
+  
+  
+https://romanvm.pythonanywhere.com/post/autodocumenting-your-python-code-sphinx-part-ii-6/

@@ -1,0 +1,52 @@
+Compile claims into triangle
+Volume Weighted Link Ratios/A2A Factors
+Age2Ultimate Factors
+
+Keep latest diagonal, and recursively populate upper-left
+side of triangle for all periods
+
+    * Multiply each period by the latest diagonal * the vol-wt-avg factor for 
+      that period recursively until dev period 1
+      
+    * Take differences to obtain incremental triangle
+      
+
+* Calculate unscaled residuals: (original_inc - new_inc)/sqrt(new_inc)
+    * first cell is blank
+    First column: =IF(B65=0,0,((B18)-(B65))/SQRT(B65))
+      =IF(ABS(M56-L56)<0.001,0,((M9-L9)-(M56-L56))/SQRT(M56-L56))
+
+* Scale Factor =>
+    * Calculate sum of squares of unscaled residuals
+    * Number of Triangle Points
+    * Scale Factor = SoS/(N - p)
+    * Bias Adj = N^.5/(N - p)
+
+
+* Normalize Pearson Residuals (to origin year - 1, to AY -1
+  DEV_PERIODS 12-24, 24-36, 36-48, ... =>
+  Unscaled Residual * BIAS_ADJUSTMENT
+  First cell is average of 7-8 rows below => =AVERAGE(B111:B117)
+
+
+* Sample from Normalized Residuals (create triangle of sampled results
+  containing sampled residuals)
+
+* Pseudo Incremental Paid Loss 
+Incremental Paid Loss + Randomly Drawn Residual * SQRT(Recursive Incremental Triangle)
+
+* Pseudo Cumulative Loss
+ Cumulate Pseudo Incremental Paid Loss
+
+* Pseudo Incurred Development Factors (Link Ratios)
+
+* Vol Weighted Average
+
+
+"Pseudo" Cumulative Paid Loss Square w/ Process Variance
+
+
+    
+  
+
+    

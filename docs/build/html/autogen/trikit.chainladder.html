@@ -1,0 +1,262 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>trikit.chainladder package &mdash; trikit 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link href="../_static/style.css" rel="stylesheet" type="text/css">
+
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> trikit
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Project Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../triangle.html">Triangle Implementation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chainladder.html">The Chain Ladder Method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../range.html">Reserve Variability Estimates</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../datasets.html">Sample Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lrdb.html">The CAS Loss Reserving Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../questions.html">Frequently Asked Questions</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">trikit</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>trikit.chainladder package</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/autogen/trikit.chainladder.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="trikit-chainladder-package">
+<h1>trikit.chainladder package<a class="headerlink" href="#trikit-chainladder-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="trikit-chainladder-base-module">
+<h2>trikit.chainladder.base module<a class="headerlink" href="#trikit-chainladder-base-module" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-trikit.chainladder.bootstrap">
+<span id="trikit-chainladder-bootstrap-module"></span><h2>trikit.chainladder.bootstrap module<a class="headerlink" href="#module-trikit.chainladder.bootstrap" title="Permalink to this headline">¶</a></h2>
+<p>BootChainLadder Implementation</p>
+<p>Generates predicitive distribtuion of reserve estimates for all origin
+years.</p>
+<div class="section" id="future-state-enhancements">
+<h3>FUTURE STATE ENHANCEMENTS            |<a class="headerlink" href="#future-state-enhancements" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li><p class="first">Allow for residuals other than Pearson (Anscombe, Deviance, etc.)</p>
+</li>
+<li><p class="first">Enable other distributions for process variance.</p>
+</li>
+<li><p class="first">Add staticmethod for neg_handler==2 (needed in bs_samples).</p>
+<p>From scipy nbinom parameterization:</p>
+<blockquote>
+<div><p>Mean     = n * p / (1 - p)
+Variance = n * p / (1 - p)^2
+Variance = Mean / (1 - p)</p>
+</div></blockquote>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="module-trikit.chainladder.mack">
+<span id="trikit-chainladder-mack-module"></span><h2>trikit.chainladder.mack module<a class="headerlink" href="#module-trikit.chainladder.mack" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-trikit.chainladder">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-trikit.chainladder" title="Permalink to this headline">¶</a></h2>
+<p>This module contains the class definitions for <code class="docutils literal notranslate"><span class="pre">_BaseChainLadder</span></code>,
+<code class="docutils literal notranslate"><span class="pre">_MackChainLadder</span></code> and <code class="docutils literal notranslate"><span class="pre">_BootstrapChainLadder</span></code>. Users should avoid
+calling any <code class="docutils literal notranslate"><span class="pre">*ChainLadder</span></code> class constructors directly; rather the dataset
+and triangle arguments should be passed to <code class="docutils literal notranslate"><span class="pre">chladder</span></code>, which will return
+the initialized ChainLadder instance, from which estimates of outstanding
+liabilities can be obtained.</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, James D. Triveri
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../',
+              VERSION:'0.1',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

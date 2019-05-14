@@ -1,0 +1,478 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>trikit.chainladder &mdash; trikit 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link href="../../_static/style.css" rel="stylesheet" type="text/css">
+
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> trikit
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.html">Project Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../triangle.html">Triangle Implementation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../chainladder.html">The Chain Ladder Method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../range.html">Reserve Variability Estimates</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../datasets.html">Sample Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../lrdb.html">The CAS Loss Reserving Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../questions.html">Frequently Asked Questions</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">trikit</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+          <li><a href="../trikit.html">trikit</a> &raquo;</li>
+        
+      <li>trikit.chainladder</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for trikit.chainladder</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module contains the class definitions for ``_BaseChainLadder``,</span>
+<span class="sd">``_MackChainLadder`` and ``_BootstrapChainLadder``. Users should avoid</span>
+<span class="sd">calling any ``*ChainLadder`` class constructors directly; rather the dataset</span>
+<span class="sd">and triangle arguments should be passed to ``chladder``, which will return</span>
+<span class="sd">the initialized ChainLadder instance, from which estimates of outstanding</span>
+<span class="sd">liabilities can be obtained.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+
+<div class="viewcode-block" id="_BaseChainLadder"><a class="viewcode-back" href="../../chainladder.html#trikit.chainladder._BaseChainLadder">[docs]</a><span class="k">class</span> <span class="nc">_BaseChainLadder</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    From the Casualty Actuarial Society&#39;s &quot;Estimating Unpaid Claims Using</span>
+<span class="sd">    Basic Techniques&quot; Version 3 (Friedland, Jacqueline - 2010), the</span>
+<span class="sd">    development method (&#39;Chain Ladder&#39;) consists of seven basic steps:</span>
+
+<span class="sd">    1. Compile claims data in a development triangle</span>
+<span class="sd">    2. Calculate age-to-age factors</span>
+<span class="sd">    3. Calculate averages of the age-to-age factors</span>
+<span class="sd">    4. Select claim development factors</span>
+<span class="sd">    5. Select tail factor</span>
+<span class="sd">    6. Calculate cumulative claims</span>
+<span class="sd">    7. Project ultimate claims</span>
+
+<span class="sd">    Once an instance of ``_BaseChainLadder`` has been initialized, ``sel``</span>
+<span class="sd">    and ``tail`` are specified via the instance&#39;s __call__ method, which</span>
+<span class="sd">    squares the triangle and generates ultimate loss projection point</span>
+<span class="sd">     estimates by origin year and in aggregate.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cumtri</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate point estimates for outstanding claim liabilities at</span>
+<span class="sd">        ultimate for each origin year and in aggregate. The</span>
+<span class="sd">        ``BaseChainLadder`` class exposes no functionality to estimate</span>
+<span class="sd">        variability around the point estimates at ultimate.</span>
+
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cumtri: cumulative.CumTriangle</span>
+<span class="sd">            A cumulative.CumTriangle instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tri</span> <span class="o">=</span> <span class="n">cumtri</span>
+
+
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sel</span><span class="o">=</span><span class="s2">&quot;all-weighted&quot;</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a summary of ultimate and reserve estimates resulting from</span>
+<span class="sd">        the application of the development technique over self.tri. Summary</span>
+<span class="sd">        DataFrame is comprised of origin year, maturity of origin year, loss</span>
+<span class="sd">        amount at latest evaluation, cumulative loss development factors,</span>
+<span class="sd">        projected ultimates and the reserve estimate, by origin year and in</span>
+<span class="sd">        aggregate.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        sel: str</span>
+<span class="sd">            Specifies which set of age-to-age averages should be specified as</span>
+<span class="sd">            the chain ladder loss development factors (LDFs). All available</span>
+<span class="sd">            age-to-age averages can be obtained by calling</span>
+<span class="sd">            ``self.tri.a2a_avgs``. Default value is &quot;all-weighted&quot;.</span>
+
+<span class="sd">        tail: float</span>
+<span class="sd">            The Chain Ladder tail factor, which accounts for development</span>
+<span class="sd">            beyond the last development period. Default value is 1.0.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">            Summary with values by origin year for maturity, latest cumulative</span>
+<span class="sd">            loss amount, cumulative loss development factor, projected</span>
+<span class="sd">            ultimate loss and the reserve amount.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Bind reference to class method return values.</span>
+        <span class="n">ldfs</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ldfs</span><span class="p">(</span><span class="n">sel</span><span class="o">=</span><span class="n">sel</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="n">tail</span><span class="p">)</span>
+        <span class="n">cldfs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cldfs</span><span class="p">(</span><span class="n">sel</span><span class="o">=</span><span class="n">sel</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="n">tail</span><span class="p">)</span>
+        <span class="n">ults</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ultimates</span><span class="p">(</span><span class="n">cldfs</span><span class="o">=</span><span class="n">cldfs</span><span class="p">)</span>
+        <span class="n">ibnr</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reserves</span><span class="p">(</span><span class="n">ultimates</span><span class="o">=</span><span class="n">ults</span><span class="p">)</span>
+
+        <span class="n">summcols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;maturity&quot;</span><span class="p">,</span> <span class="s2">&quot;latest&quot;</span><span class="p">,</span> <span class="s2">&quot;cldf&quot;</span><span class="p">,</span> <span class="s2">&quot;ultimate&quot;</span><span class="p">,</span> <span class="s2">&quot;reserve&quot;</span><span class="p">]</span>
+        <span class="n">summDF</span>   <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="n">summcols</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        <span class="n">summDF</span><span class="p">[</span><span class="s2">&quot;maturity&quot;</span><span class="p">]</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">maturity</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">str</span><span class="p">)</span>
+        <span class="n">summDF</span><span class="p">[</span><span class="s2">&quot;latest&quot;</span><span class="p">]</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">latest_by_origin</span>
+        <span class="n">summDF</span><span class="p">[</span><span class="s2">&quot;cldf&quot;</span><span class="p">]</span>      <span class="o">=</span> <span class="n">cldfs</span><span class="o">.</span><span class="n">values</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">summDF</span><span class="p">[</span><span class="s2">&quot;ultimate&quot;</span><span class="p">]</span>  <span class="o">=</span> <span class="n">ults</span>
+        <span class="n">summDF</span><span class="p">[</span><span class="s2">&quot;reserve&quot;</span><span class="p">]</span>   <span class="o">=</span> <span class="n">ibnr</span>
+        <span class="n">summDF</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s2">&quot;total&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">summDF</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+        <span class="c1"># Set to NaN columns that shouldn&#39;t be summed.</span>
+        <span class="n">summDF</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s2">&quot;total&quot;</span><span class="p">,</span> <span class="s2">&quot;maturity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">summDF</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s2">&quot;total&quot;</span><span class="p">,</span> <span class="s2">&quot;cldf&quot;</span><span class="p">]</span>     <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span>
+        <span class="n">summDF</span> <span class="o">=</span> <span class="n">summDF</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="s2">&quot;index&quot;</span><span class="p">:</span><span class="s2">&quot;origin&quot;</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="s2">&quot;columns&quot;</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">summDF</span><span class="p">)</span>
+
+
+
+    <span class="k">def</span> <span class="nf">_ldfs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sel</span><span class="o">=</span><span class="s2">&quot;all-weighted&quot;</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the selected loss development factors.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        sel: str</span>
+<span class="sd">            Specifies which set of age-to-age averages should be specified as</span>
+<span class="sd">            the chain ladder loss development factors (LDFs). All available</span>
+<span class="sd">            age-to-age averages can be obtained by calling</span>
+<span class="sd">            ``self.tri.a2a_avgs``. Default value is &quot;all-weighted&quot;.</span>
+
+<span class="sd">        tail: float</span>
+<span class="sd">            The Chain Ladder tail factor, which accounts for development</span>
+<span class="sd">            beyond the last development period. Default value is 1.0.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Loss development factors.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">ldfsinit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">a2a_avgs</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">sel</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float_</span><span class="p">)</span>
+            <span class="n">ldfs</span> <span class="o">=</span> <span class="n">ldfsinit</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">[</span><span class="n">tail</span><span class="p">],</span> <span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;tail&quot;</span><span class="p">]))</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Invalid age-to-age average selected: `</span><span class="si">{}</span><span class="s2">`&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sel</span><span class="p">))</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">ldfs</span><span class="o">.</span><span class="n">sort_index</span><span class="p">())</span>
+
+
+
+    <span class="k">def</span> <span class="nf">_cldfs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sel</span><span class="o">=</span><span class="s2">&quot;all-weighted&quot;</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate cumulative loss development factors factors (cldfs) by</span>
+<span class="sd">        successive multiplication beginning with the tail factor and the</span>
+<span class="sd">        oldest age-to-age factor. The cumulative claim development factor</span>
+<span class="sd">        projects the total growth over the remaining valuations. Cumulative</span>
+<span class="sd">        claim development factors are also known as &quot;Age-to-Ultimate Factors&quot;</span>
+<span class="sd">        or &quot;Claim Development Factors to Ultimate&quot;.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        sel: str</span>
+<span class="sd">            Specifies which set of age-to-age averages should be specified as</span>
+<span class="sd">            the chain ladder loss development factors (LDFs). All available</span>
+<span class="sd">            age-to-age averages can be obtained by calling</span>
+<span class="sd">            ``self.tri.a2a_avgs``. Default value is &quot;all-weighted&quot;.</span>
+
+<span class="sd">        tail: float</span>
+<span class="sd">            The Chain Ladder tail factor, which accounts for development</span>
+<span class="sd">            beyond the last development period. Default value is 1.0.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Cumulative loss development factors.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ldfs</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ldfs</span><span class="p">(</span><span class="n">sel</span><span class="o">=</span><span class="n">sel</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="n">tail</span><span class="p">)</span>
+        <span class="n">cldfs_index</span> <span class="o">=</span> <span class="n">ldfs</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">cldfs_vals</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumprod</span><span class="p">(</span><span class="n">ldfs</span><span class="o">.</span><span class="n">values</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">cldfs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">cldfs_vals</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">cldfs_index</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;cldfs&quot;</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">cldfs</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float_</span><span class="p">)</span><span class="o">.</span><span class="n">sort_index</span><span class="p">())</span>
+
+
+
+    <span class="k">def</span> <span class="nf">_ultimates</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cldfs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Ultimate claims are equal to the product of the latest valuation of</span>
+<span class="sd">        losses (the amount along latest diagonal of any ``CumTriangle``</span>
+<span class="sd">        instance) and the appropriate cldf/age-to-ultimate factor. We</span>
+<span class="sd">        determine the appropriate age-to-ultimate factor based on the age</span>
+<span class="sd">        of each origin year relative to the evaluation date. Not intended</span>
+<span class="sd">        for public use. To obtain the ultimate projection, access the</span>
+<span class="sd">        ``self.__call__()``.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cldfs: np.ndarray</span>
+<span class="sd">            Cumulative loss development factors.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Ultimate loss projections by origin year.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ultimates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span>
+            <span class="n">data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">latest_by_origin</span><span class="o">.</span><span class="n">values</span> <span class="o">*</span> <span class="n">cldfs</span><span class="o">.</span><span class="n">values</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+            <span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;ultimates&quot;</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">ultimates</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float_</span><span class="p">)</span><span class="o">.</span><span class="n">sort_index</span><span class="p">())</span>
+
+
+
+    <span class="k">def</span> <span class="nf">_reserves</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ultimates</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return IBNR/unpaid claim estimates. Represents the difference</span>
+<span class="sd">        between ultimate loss projections for each origin year and the latest</span>
+<span class="sd">        cumulative loss amount.</span>
+<span class="sd">        Note that because outstanding claim liabilities are different based</span>
+<span class="sd">        on the type of losses represented in the triangle (&quot;ibnr&quot; if losses</span>
+<span class="sd">        are reported/incurred, &quot;unpaid&quot; if data represents paid losses), we</span>
+<span class="sd">        use the generic term &quot;reserves&quot; to represent either. In any case,</span>
+<span class="sd">        what is referred to as &quot;reserves&quot; will always equate to the</span>
+<span class="sd">        difference between the ultimate loss projections and cumulative</span>
+<span class="sd">        loss amounts at the latest evaluation period for each origin year.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        ultimates: np.ndarray</span>
+<span class="sd">            Chain Ladder ultimate loss projections.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            The difference between the ultimate loss projections and</span>
+<span class="sd">            cumulative loss amounts at the latest evaluation period for each</span>
+<span class="sd">            origin year.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">reserves</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">ultimates</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">latest_by_origin</span><span class="p">,</span>
+            <span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;reserves&#39;</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">reserves</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float_</span><span class="p">)</span><span class="o">.</span><span class="n">sort_index</span><span class="p">())</span>
+
+
+
+<div class="viewcode-block" id="_BaseChainLadder.trisqrd"><a class="viewcode-back" href="../../chainladder.html#trikit.chainladder._BaseChainLadder.trisqrd">[docs]</a>    <span class="k">def</span> <span class="nf">trisqrd</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sel</span><span class="o">=</span><span class="s2">&quot;all-weighted&quot;</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Project claims growth for each future development period. Returns a</span>
+<span class="sd">        DataFrame of loss projections for each subsequent development period</span>
+<span class="sd">        for each accident year. Populates the triangle&#39;s lower-right or</span>
+<span class="sd">        southeast portion (i.e., &quot;squaring the triangle&quot;).</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        sel: str</span>
+<span class="sd">            Specifies which set of age-to-age averages should be specified as</span>
+<span class="sd">            the chain ladder loss development factors (LDFs). All available</span>
+<span class="sd">            age-to-age averages can be obtained by calling</span>
+<span class="sd">            ``self.tri.a2a_avgs``. Default value is &quot;all-weighted&quot;.</span>
+
+<span class="sd">        tail: float</span>
+<span class="sd">            The Chain Ladder tail factor, which accounts for development</span>
+<span class="sd">            beyond the last development period. Default value is 1.0.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">            DataFrame of &quot;squared&quot; triangle.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ldfs</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ldfs</span><span class="p">(</span><span class="n">sel</span><span class="o">=</span><span class="n">sel</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="n">tail</span><span class="p">)</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">trisqrd</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">rposf</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">size</span>
+        <span class="n">clvi</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">clvi</span><span class="p">[</span><span class="s2">&quot;row_offset&quot;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">trisqrd</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">ii</span>  <span class="p">,</span> <span class="n">devp</span>  <span class="o">=</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">ildf</span><span class="p">,</span> <span class="n">rposi</span> <span class="o">=</span> <span class="n">ldfs</span><span class="p">[</span><span class="n">ii</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="n">clvi</span><span class="p">[</span><span class="n">devp</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">trisqrd</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">rposi</span><span class="p">:</span><span class="n">rposf</span><span class="p">,</span> <span class="n">ii</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">trisqrd</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">rposi</span><span class="p">:</span><span class="n">rposf</span><span class="p">,</span> <span class="n">ii</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">ildf</span>
+        <span class="c1"># Multiply right-most column by tail factor.</span>
+        <span class="n">max_devp</span> <span class="o">=</span> <span class="n">trisqrd</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">trisqrd</span><span class="p">[</span><span class="s2">&quot;ultimate&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">trisqrd</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span><span class="n">max_devp</span><span class="p">]</span><span class="o">.</span><span class="n">values</span> <span class="o">*</span> <span class="n">tail</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">trisqrd</span><span class="o">.</span><span class="n">sort_index</span><span class="p">())</span></div></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, James D. Triveri
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../../',
+              VERSION:'0.1',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,319 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>trikit.triangle package &mdash; trikit 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link href="../_static/style.css" rel="stylesheet" type="text/css">
+
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> trikit
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Project Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../triangle.html">Triangle Implementation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chainladder.html">The Chain Ladder Method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../range.html">Reserve Variability Estimates</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../datasets.html">Sample Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lrdb.html">The CAS Loss Reserving Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../questions.html">Frequently Asked Questions</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">trikit</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>trikit.triangle package</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/autogen/trikit.triangle.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="trikit-triangle-package">
+<h1>trikit.triangle package<a class="headerlink" href="#trikit-triangle-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="trikit-triangle-base-module">
+<h2>trikit.triangle.base module<a class="headerlink" href="#trikit-triangle-base-module" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-trikit.triangle.cumulative">
+<span id="trikit-triangle-cumulative-module"></span><h2>trikit.triangle.cumulative module<a class="headerlink" href="#module-trikit.triangle.cumulative" title="Permalink to this headline">¶</a></h2>
+<p>This is the cumulative triangle class definition. <code class="docutils literal notranslate"><span class="pre">CumTriangle</span></code>
+inherits from _BaseTriangle.</p>
+<dl class="class">
+<dt id="trikit.triangle.cumulative.CumTriangle">
+<em class="property">class </em><code class="descname">CumTriangle</code><span class="sig-paren">(</span><em>data=None</em>, <em>origin=None</em>, <em>dev=None</em>, <em>value=None</em>, <em>datafmt='incremental'</em>, <em>trisize=None</em>, <em>trifmt=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/trikit/triangle/cumulative.html#CumTriangle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle.cumulative.CumTriangle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../triangle.html#trikit.triangle._BaseTriangle" title="trikit.triangle._BaseTriangle"><code class="xref py py-class docutils literal notranslate"><span class="pre">trikit.triangle._BaseTriangle</span></code></a></p>
+<p>Cumulative triangle specification.</p>
+<dl class="attribute">
+<dt id="trikit.triangle.cumulative.CumTriangle.a2a">
+<code class="descname">a2a</code><a class="headerlink" href="#trikit.triangle.cumulative.CumTriangle.a2a" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute adjacent proportions, a.k.a. link ratios.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A DataFrame containing computed link ratos.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">np.array</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="trikit.triangle.cumulative.CumTriangle.a2a_avgs">
+<code class="descname">a2a_avgs</code><a class="headerlink" href="#trikit.triangle.cumulative.CumTriangle.a2a_avgs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute age-to-age factors based on self.a2a triangle of adjacent
+proportions. Averages computed include “simple”, “geometric”, “medial”,
+“weighted” and “mack”, where “mack” represent LDFs calculated in
+accordance with “Mack’s alpha”, set to 0, 1 or 2.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A DataFrame with each row containing a different set of loss
+development factors.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">np.ndarray</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="trikit.triangle.cumulative.CumTriangle.a2a_indicator">
+<code class="descname">a2a_indicator</code><a class="headerlink" href="#trikit.triangle.cumulative.CumTriangle.a2a_indicator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine which cells should be included when
+computing age-to-age averages.
+:return:</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="trikit.triangle.cumulative.CumTriangle.mack_ldfs">
+<code class="descname">mack_ldfs</code><span class="sig-paren">(</span><em>alpha</em><span class="sig-paren">)</span> &#x2192; numpy.ndarray<a class="reference internal" href="../_modules/trikit/triangle/cumulative.html#CumTriangle.mack_ldfs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle.cumulative.CumTriangle.mack_ldfs" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>alpha</strong> – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-trikit.triangle.incremental">
+<span id="trikit-triangle-incremental-module"></span><h2>trikit.triangle.incremental module<a class="headerlink" href="#module-trikit.triangle.incremental" title="Permalink to this headline">¶</a></h2>
+<p>This is the incremental triangle class definition. <code class="docutils literal notranslate"><span class="pre">IncrTriangle</span></code>
+inherits from _BaseTriangle.</p>
+<dl class="class">
+<dt id="trikit.triangle.incremental.IncrTriangle">
+<em class="property">class </em><code class="descname">IncrTriangle</code><span class="sig-paren">(</span><em>data=None</em>, <em>origin=None</em>, <em>dev=None</em>, <em>value=None</em>, <em>datafmt='incremental'</em>, <em>trisize=None</em>, <em>trifmt=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/trikit/triangle/incremental.html#IncrTriangle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle.incremental.IncrTriangle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../triangle.html#trikit.triangle._BaseTriangle" title="trikit.triangle._BaseTriangle"><code class="xref py py-class docutils literal notranslate"><span class="pre">trikit.triangle._BaseTriangle</span></code></a></p>
+<p>Incremental triangle specification.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-trikit.triangle">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-trikit.triangle" title="Permalink to this headline">¶</a></h2>
+<p>This module contains the definitions of both the <code class="docutils literal notranslate"><span class="pre">IncrTriangle</span></code> and
+<code class="docutils literal notranslate"><span class="pre">CumTriangle</span></code> classes. Users should avoid instantiating <code class="docutils literal notranslate"><span class="pre">IncrTriangle</span></code>
+or <code class="docutils literal notranslate"><span class="pre">CumTriangle</span></code> instances directly; rather the dataset and triangle
+arguments should be passed to <code class="docutils literal notranslate"><span class="pre">totri</span></code>, which will return either an
+instance of <code class="docutils literal notranslate"><span class="pre">CumTriangle</span></code> or <code class="docutils literal notranslate"><span class="pre">IncrTriangle</span></code>, depending on the argument
+specified for <code class="docutils literal notranslate"><span class="pre">type_</span></code>.</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, James D. Triveri
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../',
+              VERSION:'0.1',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
