@@ -55,12 +55,12 @@ from .utils import (
     )
 
 # Initialize `_load` closure using dataref mapping.
-lrdb_path       = dataref["lrdb"]
-load            = _load(dataref=dataref)
-get_datasets    = _get_datasets(dataref=dataref)
-get_lrdb_lobs   = _get_lrdb_lobs(lrdb_path=lrdb_path)
+lrdb_path = dataref["lrdb"]
+load = _load(dataref=dataref)
+get_datasets = _get_datasets(dataref=dataref)
+get_lrdb_lobs = _get_lrdb_lobs(lrdb_path=lrdb_path)
 get_lrdb_groups = _get_lrdb_groups(lrdb_path=lrdb_path)
-get_lrdb_specs  = _get_lrdb_specs(lrdb_path=lrdb_path)
+get_lrdb_specs = _get_lrdb_specs(lrdb_path=lrdb_path)
 
 pd.options.mode.chained_assignment = None # 'warn'
 #pd.options.display.float_format = '{:.2f}'.format

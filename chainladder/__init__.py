@@ -24,7 +24,7 @@ class _BaseChainLadder:
     6. Calculate cumulative claims
     7. Project ultimate claims
     """
-    def __init__(self, cumtri, sel="all-weighted", tail=1.0):
+    def __init__(self, cumtri):
         """
         Generate point estimates for outstanding claim liabilities at
         ultimate for each origin year and in aggregate. The
@@ -59,7 +59,7 @@ class _BaseChainLadder:
 
 
 
-    def __call__(self):
+    def __call__(self, sel="all-weighted", tail=1.0):
         """
         Return a summary of ultimate and reserve estimates resulting from
         the application of the development technique over self.tri. Summary

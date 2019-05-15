@@ -546,8 +546,6 @@ class _BootstrapChainLadder(_BaseChainLadder):
         Returns
         -------
         pd.DataFrame
-            DataFrame of bootstrapped loss development factors with fields
-            "sim", "dev" and "ldf".
         """
         keepcols = ["sim", "origin", "dev", "samp_cum", "last_origin"]
         lvi = self.tri.clvi.reset_index(drop=False)
@@ -610,10 +608,9 @@ class _BootstrapChainLadder(_BaseChainLadder):
         sqrddf["sign"] = np.where(sqrddf["samp_incr"].values > 0, 1, -1)
         sqrddf.drop(labels=[i for i in sqrddf.columns if i.startswith("_")], axis=1, inplace=True)
 
-        colorder = [
-            "sim", "origin", "dev", "incr", "incr_sqrt", "rectype", "resid", "samp_incr",
-            "samp_cum", "ldf", "var", "sign", "l_act_dev", "l_act_cum"
-            ]
+        colorder = ["sim", "origin", "dev", "incr", "incr_sqrt", "rectype", "resid",
+                    "samp_incr", "samp_cum", "ldf", "var", "sign", "l_act_dev",
+                    "l_act_cum"]
 
         return(sqrddf[colorder].sort_values(by=["sim", "origin", "dev"]).reset_index(drop=True))
 

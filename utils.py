@@ -324,17 +324,17 @@ def _get_lrdb_specs(lrdb_path:str):
 
 
 
-def totri(data=None, type_="cumulative", origin=None, dev=None,
-          value=None, trifmt=None, datafmt="incremental", trisize=None):
+def totri(data=None, type_="cumulative", origin="origin", dev="dev",
+          value="value", trifmt=None, datafmt="incremental"):
     """
-    Transform ``data`` to a Triangle object. ``type_`` can be one of
+    Transform ``data`` to a triangle object. ``type_`` can be one of
     "incremental" or "cumulative". If ``trifmt``==None, it is assumed
     ``data`` is tabular loss data (e.g., pd.DataFrame) containing at
     minimum the fields "origin", "dev" and "value". If ``trifmt`` is set
     to "incremental" or "cumulative", ``data`` is assumed to be formatted
-    as a loss triangle, but hasn't yet been transformed into a CumTriangle
-    or IncrTriangle instance. Returns either a CumTriangle or IncrTriangle
-    instance, depending on the value passed to ``type_``.
+    as a loss triangle, but hasn't yet been transformed into a ``_CumTriangle``
+    or _IncrTriangle instance. Returns either a ``_CumTriangle`` or
+    ``_IncrTriangle`` instance, depending on the value passed to ``type_``.
 
     Parameters
     ----------
@@ -375,13 +375,6 @@ def totri(data=None, type_="cumulative", origin=None, dev=None,
         The field in ``data`` representing loss amounts. When ``trifmt`` is
         not None, ``value`` is ignored. Defaults to None.
 
-    trisize: tuple
-        If ``data`` =None, specifies the dimensions (rows x columns)
-        of the empty ``_IncrTriangle`` instance. If the value provided
-        is an integer or a tuple or list of length one, a symmetric empty
-        triangle is created. Triangle cells are filled with NaNs. If
-        ``data`` is not None, parameter is ignored. Defaults to None.
-
     Returns
     -------
     pd.DataFrame
@@ -389,10 +382,6 @@ def totri(data=None, type_="cumulative", origin=None, dev=None,
         ``incremental._IncrTriangle``, depending on how ``type_`` is
         specified.
     """
-    trikwds = {
-        "origin":origin, "dev":dev, "value":value, "trisize":trisize,
-        }
-
     if trifmt:
         if trifmt.lower().startswith("i"):
             # `data` is in incremental triangle format (but not typed as such).
@@ -404,18 +393,26 @@ def totri(data=None, type_="cumulative", origin=None, dev=None,
             raise NameError("Invalid type_ argument: `{}`.".format(type_))
 
     else:
-        data2 = data
+        if datafmt.lower().startswith("c"):
+            # `data` is in cumulative tabular format.
+            data2 = data.copy(deep=True)
+            data2["incr"] = data2.groupby([origin])[value].diff(periods=1)
+            data2["incr"] = np.where(np.isnan(data2["incr"]), data2[value], data2["incr"])
+            data2 = data2.drop(value, axis=1).rename({"incr":value}, axis=1)
+        else:
+            # `data` is in incremental tabular format.
+            data2 = data
 
     if type_.lower().startswith("i"):
-        tri = _IncrTriangle(data=data2, **trikwds)
+        tri = _IncrTriangle(data=data2, origin=origin, dev=dev, value=value)
     elif type_.lower().startswith("c"):
-        tri = _CumTriangle(data=data2, **trikwds)
+        tri = _CumTriangle(data=data2, origin=origin, dev=dev, value=value)
 
     return(tri)
 
 
 
-def _cumtoincr(cumtri) -> np.ndarray:
+def _cumtoincr(cumtri):
         """
         Convert a cumulative triangle to incremental representation.
         Not intended for public use.
@@ -428,8 +425,6 @@ def _cumtoincr(cumtri) -> np.ndarray:
         Returns
         -------
         pd.DataFrame
-            Cumulative triangle instance transformed to an incremental
-            representation and returned as pd.DataFrame.
         """
         tri = pd.DataFrame().reindex_like(cumtri)
         tri.iloc[:,0] = cumtri.iloc[:,0]
@@ -440,7 +435,7 @@ def _cumtoincr(cumtri) -> np.ndarray:
 
 
 
-def _incrtocum(incrtri) -> np.ndarray:
+def _incrtocum(incrtri):
     """
     Convert incremental triangle to cumulative representation. Not
     intended for public use.
@@ -453,14 +448,12 @@ def _incrtocum(incrtri) -> np.ndarray:
     Returns
     -------
     pd.DataFrame
-        Incremental triangle instance transformed to an cumulative
-        representation and returned as pd.DataFrame.
     """
     return(incrtri.cumsum(axis=1))
 
 
 
-def _tritotbl(tri) -> np.ndarray:
+def _tritotbl(tri):
     """
     Convert data formatted as triangle to tabular representation. Fields
     will be identified as "origin", "dev" and "value". Not intended for
@@ -474,26 +467,6 @@ def _tritotbl(tri) -> np.ndarray:
     Returns
     -------
     pd.DataFrame
-        Transformed DataFrame object.
-
-    ltri = [tri[[i]].copy() for i in tri.columns]
-    for i in range(len(ltri)):
-        iterdf = ltri[i]
-        iterdf.columns.name = None
-        devp = iterdf.columns[0]
-        iterdf.reset_index(drop=False, inplace=True)
-        iterdf.rename(columns={"index":"origin", devp:"value"}, inplace=True)
-        iterdf["dev"] = devp
-        ltri[i] = iterdf
-    df = pd.concat(ltri, ignore_index=True)
-    df = df[~np.isnan(df["value"])]
-    df = df.sort_values(by=["origin", "dev"]).reset_index(drop=True)
-    return(df[["origin", "dev", "value"]])
-
-    tri = tri.reset_index(drop=False).rename({"index":"origin"}, axis=1)
-    df = pd.melt(tri, id_vars=["origin"], var_name="dev", value_name="value")
-    df = df[~np.isnan(df["value"])]
-    return(df.sort_values(by=["origin", "dev"]).reset_index(drop=True))
     """
     tri = tri.reset_index(drop=False).rename({"index":"origin"}, axis=1)
     df = pd.melt(tri, id_vars=["origin"], var_name="dev", value_name="value")

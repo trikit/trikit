@@ -1,4 +1,4 @@
-import sys; sys.path.append("E:\\Repos\\")
+import sys; sys.path.append("G:\\Repos\\")
 import unittest
 import pandas as pd
 import numpy as np
@@ -19,7 +19,7 @@ import trikit
 from numpy.random import RandomState
 
 
-TRIANGLE_TEST = False
+TRIANGLE_TEST = True
 DATASETS_TEST = False
 BASE_CL_TEST  = False
 BOOT_CL_TEST  = False
@@ -64,7 +64,6 @@ if DATASETS_TEST:
     lrdb = pd.read_csv("E:/Repos/trikit/datasets/lrdb.csv", sep=",")
     raa  = trikit.load(dataset="raa")
     ta83 = trikit.load(dataset="ta83")
-    nstd = trikit.load(dataset="nonstd")
     datasets = trikit.get_datasets()
 
 
@@ -72,7 +71,7 @@ if DATASETS_TEST:
     grps0 = trikit.get_lrdb_groups(returnas=pd.DataFrame)
     grps1 = trikit.get_lrdb_groups(returnas=dict)
     grps2 = trikit.get_lrdb_groups(returnas=list)
-    lobs  = trikit.get_lrdb_lobs()
+    lobs = trikit.get_lrdb_lobs()
     specs = trikit.get_lrdb_specs()
 
 
@@ -115,12 +114,6 @@ if DATASETS_TEST:
     ld4 = trikit.load(dataset="lrdb", loss_type="paid", action="rand", allcols=False)
 
 
-
-
-
-
-
-
 # Verify other parameters are ignored when dataset!="lrdb"
 
 
@@ -132,6 +125,11 @@ if DATASETS_TEST:
 # ============================================================================]
 raa  = trikit.load(dataset="raa")
 DATA = raa
+
+
+tri = trikit.triangle._IncrTriangle(data=DATA)
+tri1 = trikit.triangle._CumTriangle(data=DATA)
+
 
 
 if TRIANGLE_TEST:
@@ -191,11 +189,10 @@ if TRIANGLE_TEST:
     # value  :None
     # trifmt :None
     # datafmt:cum
+    # tri2 = tri1.cumsum(axis=1)
+
     raacum = trikit._tritotbl(tri1)
-    tri2 = trikit.totri(
-        data=raacum, type_="cumulative", origin=None, dev=None, value=None,
-        datafmt="cumulative"
-        )
+    tri2 = trikit.totri(data=raacum, type_="cumulative", datafmt="cumulative")
 
     rlvi    = tri2.rlvi
     clvi    = tri2.clvi

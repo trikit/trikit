@@ -1,17 +1,14 @@
 """
-This module contains the definitions of both the ``IncrTriangle`` and
-``CumTriangle`` classes. Users should avoid instantiating ``IncrTriangle``
-or ``CumTriangle`` instances directly; rather the dataset and triangle
+This module contains the definitions of both the ``_IncrTriangle`` and
+``_CumTriangle`` classes. Users should avoid instantiating ``_IncrTriangle``
+or ``_CumTriangle`` instances directly; rather the dataset and triangle
 arguments should be passed to ``totri``, which will return either an
-instance of ``CumTriangle`` or ``IncrTriangle``, depending on the argument
+instance of ``_CumTriangle`` or ``_IncrTriangle``, depending on the argument
 specified for ``type_``.
 """
 import itertools
 import numpy as np
 import pandas as pd
-#from .utils import _tritotbl
-
-
 
 
 class _IncrTriangle(pd.DataFrame):
@@ -22,8 +19,7 @@ class _IncrTriangle(pd.DataFrame):
     instantiate ``_IncrTriangle`` instances directly. To obtain an
     incremental triangle object, use ``utils.totri``.
     """
-    def __init__(self, data=None, origin=None, dev=None, value=None,
-                 trisize=None):
+    def __init__(self, data, origin=None, dev=None, value=None):
         """
         Attempts to convert ``data`` to an incremental triangle instance.
         Checks for ``origin``, ``dev`` and ``value`` arguments for fieldnames
@@ -52,61 +48,34 @@ class _IncrTriangle(pd.DataFrame):
             The field in ``data`` representing loss amounts. When ``trifmt``
             is not None, ``value`` is ignored. Defaults to None.
 
-        trisize: tuple
-            If ``data`` =None, specifies the dimensions (rows x columns)
-            of the empty ``_IncrTriangle`` instance. If the value provided
-            is an integer or a tuple or list of length one, a symmetric empty
-            triangle is created. Triangle cells are filled with NaNs. If
-            ``data`` is not None, parameter is ignored. Defaults to None.
-
         Returns
         -------
         pd.DataFrame
-            An ``_IncrTriangle`` instance.
         """
-        if data is None:
-            try:
-                if isinstance(trisize, (list,tuple)):
-                    if len(trisize)==2:
-                        rows, columns = trisize
-                    elif len(trisize)==1:
-                        rows, columns = trisize[0], trisize[0]
-                else:
-                    rows, columns = int(trisize), int(trisize)
+        try:
+            if all(i is None for i in (origin, dev, value)):
+                origin, dev, value = "origin", "dev", "value"
+            dat_init = data[[origin, dev, value]]
+            dat_init = dat_init.groupby([origin, dev], as_index=False).sum()
+            tri = dat_init.pivot(index=origin, columns=dev).rename_axis(None)
+            tri.columns = tri.columns.droplevel(0)
 
-                tri = pd.DataFrame(
-                    columns=range(1, columns + 1), index=range(rows)
-                    )
+        except KeyError:
+            print("One or more fields not present in data.")
 
-            except (AttributeError, TypeError, ValueError) as e:
-                tri = pd.DataFrame(columns=[], index=[])
+        # Force all triangle cells to be of type np.float_.
+        for i in tri:
+            tri[i] = tri[i].astype(np.float_)
 
-        else:
-            try:
-                if all(i is None for i in (origin, dev, value)):
-                    origin, dev, value = "origin", "dev", "value"
-                dat_init = data[[origin, dev, value]]
-                dat_init = dat_init.groupby([origin, dev], as_index=False).sum()
-                tri      = dat_init.pivot(index=origin, columns=dev).rename_axis(None)
-                tri.columns = tri.columns.droplevel(0)
-
-            except KeyError:
-                print("One or more fields not present in data.")
-
-            # Coerce all columns to float64 type.
-            for i in tri:
-                tri[i] = tri[i].astype(np.float_)
-
-            tri.columns.name = None
+        tri.columns.name = None
 
         super().__init__(tri)
 
-        # attributes
         self.origin = origin
         self.value = value
         self.dev = dev
 
-        # properties
+        # Properties.
         self._latest_by_origin = None
         self._latest_by_devp = None
         self._maturity = None
@@ -120,21 +89,27 @@ class _IncrTriangle(pd.DataFrame):
 
 
     @property
-    def triind(self) -> np.ndarray:
+    def triind(self):
         """
-        Indicate forecast cells with 1, actuals with 0.
+        Table indicating forecast cells with 1, actual data with 0.
+
+        Returns
+        -------
+        pd.DataFrame
         """
         if self._triind is None:
-            self._triind = \
-                self.applymap(lambda x: 1 if np.isnan(x) else 0)
+            self._triind = self.applymap(lambda x: 1 if np.isnan(x) else 0)
         return(self._triind)
 
 
-
     @property
-    def rlvi(self) -> np.ndarray:
+    def rlvi(self):
         """
-        Return the last valid index by row/origin period as pd.Series.
+        Determine the last valid index by row/origin period.
+
+        Returns
+        -------
+        pd.DataFrame
         """
         if self._rlvi is None:
             self._rlvi = pd.DataFrame({
@@ -146,53 +121,53 @@ class _IncrTriangle(pd.DataFrame):
         return(self._rlvi)
 
 
-
     @property
-    def clvi(self) -> np.ndarray:
+    def clvi(self):
         """
-        Return the last valid index by column/development period as
-        pd.Series.
+        Determine the last valid index by development period.
+
+        Returns
+        -------
+        pd.DataFrame
         """
         if self._clvi is None:
             self._clvi = pd.DataFrame({
-                "origin":self.apply(lambda x: x.last_valid_index(),axis=0).values
+                "origin":self.apply(lambda x: x.last_valid_index(), axis=0).values
                 },index=self.columns)
             self._clvi["row_offset"] = \
                 self._clvi["origin"].map(lambda x: self.index.get_loc(x))
         return(self._clvi)
 
 
-
     @property
-    def latest(self) -> np.ndarray:
+    def latest(self):
         """
-        Return value on the latest diagonal of the triangle instance.
-        Loss amounts are given, along with the associated origin year and
-        development period. The latest loss amount by origin year alone
-        can be  obtained by calling ``self.latest_by_origin``, and by
-        development period by calling by ``self.latest_by_devp``.
+        Determine the value on the triangle's latest diagonal. Loss amounts
+        are given, along with the associated origin year and development
+        period. The latest loss amount by origin year alone can be  obtained
+        by calling ``self.latest_by_origin``, or by development period by
+        calling by ``self.latest_by_devp``.
+
+        Returns
+        -------
+        pd.DataFrame
         """
         if self._latest is None:
-            ll = list()
-            for i in enumerate(self.columns):
-                ii, devp = i[0], i[1]
-                lvorigin = self[devp].last_valid_index()
-                lvindx   = self[devp].index.get_loc(lvorigin)
-                lval     = self.iloc[lvindx, ii]
-                ll.append((devp, lval, lvorigin))
-            indx, vals, origin = zip(*ll)
-            self._latest = \
-                pd.DataFrame({"dev":indx, "origin":origin, "latest":vals})
-            self._latest = \
-                self._latest[["origin", "dev", "latest"]]
-        return(self._latest)
-
+            lindx = self.apply(lambda dev_: dev_.last_valid_index(), axis=1)
+            self._latest = pd.DataFrame(
+                {"latest":self.lookup(lindx.index, lindx.values),
+                 "origin":lindx.index, "dev":lindx.values})
+        return(self._latest[["origin", "dev", "latest"]].sort_index())
 
 
     @property
-    def latest_by_origin(self) -> np.ndarray:
+    def latest_by_origin(self):
         """
-        Return the latest loss amounts by origin as pd.Series.
+        Determine the latest loss amounts by origin year.
+
+        Returns
+        -------
+        pd.Series
         """
         if self._latest_by_origin is None:
             self._latest_by_origin = pd.Series(
@@ -201,11 +176,14 @@ class _IncrTriangle(pd.DataFrame):
         return(self._latest_by_origin.sort_index())
 
 
-
     @property
-    def latest_by_devp(self) -> np.ndarray:
+    def latest_by_devp(self):
         """
-        Return the latest loss amounts by development period as pd.Series.
+        Determine the latest loss amounts by development period.
+
+        Returns
+        -------
+        pd.Series
         """
         if self._latest_by_devp is None:
             self._latest_by_devp = pd.Series(
@@ -214,22 +192,28 @@ class _IncrTriangle(pd.DataFrame):
         return(self._latest_by_devp.sort_index())
 
 
-
     @property
-    def devp(self) -> np.ndarray:
+    def devp(self):
         """
-        Return triangle instance development periods as pd.Series.
+        Determine triangle's development periods.
+
+        Returns
+        -------
+        pd.Series
         """
         if self._devp is None:
             self._devp = pd.Series(self.columns,name="dev")
         return(self._devp.sort_index())
 
 
-
     @property
-    def origins(self) -> np.ndarray:
+    def origins(self):
         """
-        Return triangle instance origin years as pd.Series.
+        Determine triangle's origin periods.
+
+        Returns
+        -------
+        pd.Series
         """
         if self._origins is None:
             self._origins = pd.Series(self.index, name="origin")
@@ -237,23 +221,62 @@ class _IncrTriangle(pd.DataFrame):
 
 
     @property
-    def maturity(self) -> np.ndarray:
+    def maturity(self):
         """
-        Return maturity for each origin year as pd.Series.
+        Determine maturity for each origin period.
+
+        Returns
+        -------
+        ps.Series
         """
         if self._maturity is None:
-            indDF, matlist  = (1 - self.triind), list()
-            for i in range(indDF.index.size):
-                lossyear  = indDF.index[i]
-                maxindex  = indDF.loc[lossyear].nonzero()[0].max()
-                itermatur = indDF.columns[maxindex]
+            dfind, matlist  = (1 - self.triind), list()
+            for i in range(dfind.index.size):
+                lossyear = dfind.index[i]
+                maxindex = dfind.loc[lossyear].to_numpy().nonzero()[0].max()
+                itermatur = dfind.columns[maxindex]
                 matlist.append(itermatur)
-            self._maturity = pd.Series(
-                data=matlist, index=self.index, name="maturity")
+            self._maturity = pd.Series(data=matlist, index=self.index, name="maturity")
         return(self._maturity.sort_index())
 
 
+    def as_tbl(self):
+        """
+        Transform triangle instance into a tabular representation.
 
+        Returns
+        -------
+        pd.DataFrame
+        """
+        tri_ = self.reset_index(drop=False).rename({"index":"origin"}, axis=1)
+        df_ = pd.melt(tri_, id_vars=[self.origin], var_name=self.dev, value_name=self.value)
+        df_ = df_[~np.isnan(df_[self.value])]
+        df_ = df_.astype({self.origin:np.int_, self.dev:np.int_, self.value:np.float_})
+        return(df_.sort_values(by=[self.origin, self.dev]).reset_index(drop=True))
+
+
+    def as_cum(self):
+        """
+        Transform incremental triangle instance into a cumulative
+        representation. Note that returned object will be a DataFrame,
+        not an instance of ``triangle._CumTriangle``.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        return(self.cumsum(axis=1))
+
+
+    def as_incr(self):
+        """
+        Transform ``triangle._IncrTriangle`` instance to pd.DataFrame.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        return(pd.DataFrame(self))
 
 
 
@@ -262,34 +285,37 @@ class _CumTriangle(_IncrTriangle):
     """
     Cumulative triangle class definition.
     """
-    def __init__(self, data=None, origin=None, dev=None, value=None,
-                 trisize=None):
+    def __init__(self, data, origin=None, dev=None, value=None):
         """
-        Attempts to represent ``data`` as a cumulative triangle instance. If
-        Checks ``origin``, ``dev`` and ``value`` arguments for fieldnames
+        Attempts to represent ``data`` as a cumulative triangle instance.
+        ``origin``, ``dev`` and ``value`` arguments represent fieldnames
         corresponding to loss year, development period and loss amount
-        respectively. If ``origin``, ``dev`` and ``value`` are unspecified,
-        fieldnames are assumed to be "origin", "dev" and "value".
+        respectively.
+
+        Parameters
+        ----------
+        origin: str
+            The field in ``data`` representing the origin year.
+
+        dev: str
+            The field in ``data`` representing the development period.
+
+        value: str
+            The field in ``data`` representing loss amount.
+
+        Returns
+        -------
+        trikit.triangle._CumTriangle
         """
-        if data is None:
-            data2 = data
-        else:
-            try:
-                if all(i is None for i in (origin, dev, value)):
-                    origin, dev, value = "origin", "dev", "value"
-                data2 = data[[origin, dev, value]]
-                data2 = data2.groupby([origin, dev], as_index=False).sum()
-                data2.sort_values(by=[origin, dev], inplace=True)
-                data2["cumval"] = \
-                    data2.groupby([origin], as_index=False)[value].cumsum()
-                data2.drop(labels=value, axis=1, inplace=True)
-                data2.rename(columns={"cumval":"value"}, inplace=True)
-
-            except KeyError:
-                print("One or more fields not present in data.")
-
-        super().__init__(data=data2, origin=origin, dev=dev, value=value,
-                         trisize=trisize)
+        if all(i is None for i in (origin, dev, value)):
+            origin, dev, value = "origin", "dev", "value"
+        data2 = data[[origin, dev, value]]
+        data2 = data2.groupby([origin, dev], as_index=False).sum()
+        data2 = data2.sort_values(by=[origin, dev])
+        data2["cumval"] = data2.groupby([origin], as_index=False)[value].cumsum()
+        data2 = data2.drop(value, axis=1)
+        data2 = data2.rename(columns={"cumval":value})
+        super().__init__(data=data2, origin=origin, dev=dev, value=value)
 
         # Properties
         self._a2a_avgs = None
@@ -297,32 +323,74 @@ class _CumTriangle(_IncrTriangle):
         self._a2a = None
 
 
-
     @staticmethod
-    def _geometric(vals, weights=None) -> float:
+    def _geometric(vals, weights=None):
         """
-        Return the geometric average of the elements of vals.
+        Compute the geometric average of the elements of vals.
+
+        Parameters
+        ----------
+        vals: np.ndarray
+            An array of values, typically representing link ratios from a
+            single development period.
+
+        weights: np.ndarray
+            Weights to assign specific values in the average computation.
+            If None, each value is given equal weight.
+
+        Returns
+        -------
+        float
         """
-        if len(vals)==0: return (None)
+        if len(vals)==0:
+            return(None)
         vals = list(vals)
         return(np.prod(vals) ** (1 / len(vals)))
 
 
     @staticmethod
-    def _simple(vals, weights=None) -> float:
+    def _simple(vals, weights=None):
         """
-        Return the simple average of elements of vals.
+        Compute the simple average of elements of ``vals``.
+
+        Parameters
+        ----------
+        vals: np.ndarray
+            An array of values, typically representing link ratios from a
+            single development period.
+
+        weights: np.ndarray
+            Weights to assign specific values in the average computation.
+            If None, each value is given equal weight.
+
+        Returns
+        -------
+        float
         """
         if len(vals) == 0: return (None)
         return(sum(i for i in vals) / len(vals))
 
 
     @staticmethod
-    def _medial(vals, weights=None) -> float:
+    def _medial(vals, weights=None):
         """
-        Return the medial average of elements in vals. Medial
-        average eliminates the min and max values, then returns
-        the arithmetic average of the remaining items.
+        Compute the medial average of elements in vals. Medial average
+        eliminates the min and max values, then returns the arithmetic
+        average of the remaining items.
+
+        Parameters
+        ----------
+        vals: np.ndarray
+            An array of values, typically representing link ratios from a
+            single development period.
+
+        weights: np.ndarray
+            Weights to assign specific values in the average computation.
+            If None, each value is given equal weight.
+
+        Returns
+        -------
+        float
         """
         vals = list(vals)
         if len(vals) == 0: avg = None
@@ -339,31 +407,19 @@ class _CumTriangle(_IncrTriangle):
         return(avg)
 
 
-
-
     @property
-    def a2a(self) -> np.ndarray:
+    def a2a(self):
         """
         Compute adjacent proportions, a.k.a. link ratios.
 
         Returns
         -------
         pd.DataFrame
-            DataFrame containing computed link ratos.
         """
         if self._a2a is None:
-            if self.isnull().values.all(): return(None)
-            self._a2a = _IncrTriangle(trisize=len(self.columns) - 1)
-            self._a2a.index = self.index[:-1]
-            cols0, cols1 = self.columns[:-1], self.columns[1:]
-            a2ahdrs = [str(i) + "-" + str(j) for i, j in zip(cols0, cols1)]
-            for i in range(len(self._a2a.columns)):
-                self._a2a.iloc[:,i] = self.iloc[:, i + 1]/self.iloc[:, i]
-            # Set column headers.
-            self._a2a.columns = a2ahdrs
-        return(self._a2a)
-
-
+            self._a2a = self.shift(periods=-1, axis=1) / self
+            self._a2a = self._a2a.dropna(axis=1, how="all").dropna(axis=0, how="all")
+        return(self._a2a.sort_index())
 
 
     @property
@@ -375,14 +431,10 @@ class _CumTriangle(_IncrTriangle):
         Returns
         -------
         pd.DataFrame
-            DataFrame that indicates which cells to keep for average
-            calculations.
         """
         if self._a2aind is None:
-            self._a2aind = \
-                self.a2a.applymap(lambda v: 0 if np.isnan(v) else 1)
+            self._a2aind = self.a2a.applymap(lambda v: 0 if np.isnan(v) else 1)
         return(self._a2aind)
-
 
 
     @a2aind.setter
@@ -394,34 +446,76 @@ class _CumTriangle(_IncrTriangle):
         ----------
         update_spec: tuple
             3-tuple consisting of ``(index, column, value)``, representing
-            the intersection point of the self.a2a target cell, and the value
-            used to update it.
+            the intersection point of the ``self.a2a`` target cell, and the
+            value used to update it.
+
+        Examples
+        --------
+        Load raa sample dataset, and remove a highly-leveraged age-to-age
+        factor from influencing the LDF calculation.
+
+        >>> import trikit
+        >>> raa = trikit.load(dataset="raa")
+        >>> tri = trikit.totri(data=raa)
+        >>> tri.a2a.iloc[:, :1]
+                      1
+        1981   1.649840
+        1982  40.424528
+        1983   2.636950
+        1984   2.043324
+        1985   8.759158
+        1986   4.259749
+        1987   7.217235
+        1988   5.142117
+        1989   1.721992
+
+        To remove the link ratio at origin year 1982 and development
+        period 1, run the following:
+
+        >>> tri.a2aind = (1982, 1, 0)
+        >>> tri.a2aind
+              1  2  3  4  5  6  7  8  9
+        1981  1  1  1  1  1  1  1  1  1
+        1982  0  1  1  1  1  1  1  1  0
+        1983  1  1  1  1  1  1  1  0  0
+        1984  1  1  1  1  1  1  0  0  0
+        1985  1  1  1  1  1  0  0  0  0
+        1986  1  1  1  1  0  0  0  0  0
+        1987  1  1  1  0  0  0  0  0  0
+        1988  1  1  0  0  0  0  0  0  0
+        1989  1  0  0  0  0  0  0  0  0
+
+        Notice that the value at (1982, 1) is 0. To change it back
+        to 1, simply run:
+
+        >>> tri.a2aind = (1982, 1, 1)
+        >>> tri.a2aind
+              1  2  3  4  5  6  7  8  9
+        1981  1  1  1  1  1  1  1  1  1
+        1982  1  1  1  1  1  1  1  1  0
+        1983  1  1  1  1  1  1  1  0  0
+        1984  1  1  1  1  1  1  0  0  0
+        1985  1  1  1  1  1  0  0  0  0
+        1986  1  1  1  1  0  0  0  0  0
+        1987  1  1  1  0  0  0  0  0  0
+        1988  1  1  0  0  0  0  0  0  0
+        1989  1  0  0  0  0  0  0  0  0
         """
         indx, column, value = update_spec
         self._a2aind.at[indx, column] = value
 
 
-
     @property
-    def a2a_avgs(self, max_link_ratio=None) -> np.ndarray:
+    def a2a_avgs(self):
         """
         Compute age-to-age factors based on self.a2a triangle of adjacent
         proportions. Averages computed include "simple", "geometric", "medial",
         "weighted" and "mack", where "mack" represent LDFs calculated in
         accordance with "Mack's alpha", set to 0, 1 or 2.
 
-        Parameters
-        ----------
-        max_link_ratio: int
-            An upper limit for computed link ratios present in self.a2a.
-            If None, a2a remains unmodified. Otherwise, any values exceeding
-            max_link_ratio will be set to max_link_ratio.
-
         Returns
         -------
         pd.DataFrame
-            A DataFrame with each row containing a different set of loss
-            development factors.
         """
         if self._a2a_avgs is None:
 
@@ -507,8 +601,6 @@ class _CumTriangle(_IncrTriangle):
 
                     self._a2a_avgs.loc[indxstr, colstr] = iteravg
 
-            # Vertically bind mack_ldfs  LDFs (for alpha 0, 1, 2)
-
         return(self._a2a_avgs)
 
 
@@ -584,23 +676,21 @@ class _CumTriangle(_IncrTriangle):
         return(None)
 
 
+    def as_incr(self):
+        """
+        Convert cumulative triangle instance into an incremental
+        representation. Note that returned object will not be of type
+        ``triangle._IncrTriangle``, but will instead be a DataFrame.
 
-#     def mack_ldfs(self, alpha) -> np.ndarray:
-#         """
-#         Compute Mack LDFs as specified by aplha.
-#
-#         Returns
-#         -------
-#         pd.Series
-#             Series object containing computed LDFs.
-#         """
-#         a2aind = a2a.applymap(lambda v: 0 if np.isnan(v) else 1)
-#
-#         a2a = tri1.a2a
-#         t = tri1
-#
-# adj = a2a.applymap(lambda v: 3 if v>3 else v)
-# a2a[(a2a <= 2).any(axis=1)]
+        Returns
+        -------
+        ps.DataFrame
+        """
+        tri_ = self.diff(axis=1)
+        tri_.iloc[:, 0] = self.iloc[:, 0]
+        return(tri_)
+
+
 
 
 
