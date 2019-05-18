@@ -28,33 +28,23 @@ class _BaseChainLadder:
         """
         Generate point estimates for outstanding claim liabilities at
         ultimate for each origin year and in aggregate. The
-        ``BaseChainLadder`` class exposes no functionality to estimate
-        variability around the point estimates at ultimate.
+        ``_BaseChainLadder`` class exposes no functionality to estimate
+        variability around the point estimates.
 
         Parameters
         ----------
         cumtri: triangle._CumTriangle
             A cumulative.CumTriangle instance.
-
-        sel: str
-            Specifies which set of age-to-age averages should be specified as
-            the chain ladder loss development factors (LDFs). All available
-            age-to-age averages can be obtained by calling
-            ``self.tri.a2a_avgs``. Default value is "all-weighted".
-
-        tail: float
-            The Chain Ladder tail factor, which accounts for development
-            beyond the last development period. Defaults to 1.0.
         """
         self.tri  = cumtri
-        self.sel  = sel
-        self.tail = tail
 
         # Properties
-        self._ldfs = None
-        self._cldfs = None
         self._ultimates = None
         self._reserves = None
+
+
+
+
 
 
 
@@ -91,82 +81,58 @@ class _BaseChainLadder:
         return(summDF)
 
 
-    @property
-    def ldfs(self):
+    def _ldfs(sel="all-weighted", tail=1.0):
         """
-        Lookup the loss development factors associated with ``self.sel``.
+        Lookup the loss development factors corresponding to sel.
 
         Returns
         -------
         pd.Series
-            Loss development factors as pd.Series.
         """
-        if self._ldfs is None:
-            try:
-                ldfsinit   = self.tri.a2a_avgs.loc[self.sel].astype(np.float_)
-                self._ldfs = ldfsinit.append(pd.Series(data=[self.tail], index=["tail"]))
-            except KeyError:
-                print("Invalid age-to-age average selected: `{}`".format(self.sel))
-        return(self._ldfs.astype(np.float_).sort_index())
+        try:
+            ldfs_ = self.tri.a2a_avgs.loc[sel]
+            ldfs_ = ldfs_.append(pd.Series(data=[tail], index=["tail"]))
+        except KeyError:
+                print("Invalid age-to-age selection: `{}`".format(sel))
+        return(ldfs_.astype(np.float_))
 
 
-
-    @ldfs.setter
-    def ldfs(self, update_spec):
+    def _cldfs(ldfs):
         """
-        Update/override default Chaion Ladder loss development factors.
-
-        Parameters
-        ----------
-        update_spec: tuple
-            2-tuple consisting of ``(index, value)``, representing
-            the index of the target cell in self.ldfs , and the value
-            used to update it.
-        """
-        indx, value = update_spec
-        if indx in self._ldfs.index:
-            self._ldfs[indx] = value
-
-
-
-    @property
-    def cldfs(self):
-        """
-        Calculate cumulative loss development factors factors (cldfs) by
-        successive multiplication beginning with the tail factor and the
-        oldest age-to-age factor. The cumulative claim development factor
-        projects the total growth over the remaining valuations. Cumulative
-        claim development factors are also known as "Age-to-Ultimate Factors"
+        Calculate cumulative loss development factors factors by successive
+        multiplication beginning with the tail factor and the oldest
+        age-to-age factor. The cumulative claim development factor projects
+        the total growth over the remaining valuations. Cumulative claim
+        development factors are also known as "Age-to-Ultimate Factors"
         or "Claim Development Factors to Ultimate".
 
         Returns
         -------
         pd.Series
-            Cumulative loss development factors as pd.Series.
         """
-        cldfs_index = self.ldfs.index.values
-        cldfs_vals  = np.cumprod(self.ldfs.values[::-1])[::-1]
-        self._cldfs = pd.Series(data=cldfs_vals, index=cldfs_index, name="cldfs")
+        cldfs_indx = ldfs.index.values
+        cldfs_ = np.cumprod(ldfs.values[::-1])[::-1]
+        cldfs_ = pd.Series(data=cldfs_, index=cldfs.index.values, name="cldfs")
         return(self._cldfs.astype(np.float_).sort_index())
 
 
 
-    @cldfs.setter
-    def cldfs(self, update_spec):
-        """
-        Update/override default Chaion Ladder cumulative loss development
-        factors.
-
-        Parameters
-        ----------
-        update_spec: tuple
-            2-tuple consisting of ``(index, value)``, representing
-            the index of the target value in self.cldfs , and
-            the value used to update it.
-        """
-        indx, value = update_spec
-        if indx in self._cldfs.index:
-            self._cldfs[indx] = value
+    # @cldfs.setter
+    # def cldfs(self, update_spec):
+    #     """
+    #     Update/override default Chaion Ladder cumulative loss development
+    #     factors.
+    #
+    #     Parameters
+    #     ----------
+    #     update_spec: tuple
+    #         2-tuple consisting of ``(index, value)``, representing
+    #         the index of the target value in self.cldfs , and
+    #         the value used to update it.
+    #     """
+    #     indx, value = update_spec
+    #     if indx in self._cldfs.index:
+    #         self._cldfs[indx] = value
 
 
 

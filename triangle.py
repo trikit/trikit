@@ -5,10 +5,16 @@ or ``_CumTriangle`` instances directly; rather the dataset and triangle
 arguments should be passed to ``totri``, which will return either an
 instance of ``_CumTriangle`` or ``_IncrTriangle``, depending on the argument
 specified for ``type_``.
+
+##### TODO #####
+[0] Refactor a2a_avgs
 """
 import itertools
 import numpy as np
 import pandas as pd
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 class _IncrTriangle(pd.DataFrame):
@@ -17,7 +23,7 @@ class _IncrTriangle(pd.DataFrame):
     trikit's public interface, as is used  primarily as a base class for
     ``_CumTriangle`` object definitions. As such, users shouldn't
     instantiate ``_IncrTriangle`` instances directly. To obtain an
-    incremental triangle object, use ``utils.totri``.
+    incremental triangle object, use ``trikit.totri``.
     """
     def __init__(self, data, origin=None, dev=None, value=None):
         """
@@ -37,27 +43,27 @@ class _IncrTriangle(pd.DataFrame):
             and ``value`` arguments.
 
         origin: str
-            The field in ``data`` representing the origin year. When
-            ``trifmt`` is not None, ``origin`` is ignored. Defaults to None.
+            The fieldname in ``data`` representing the origin year.
+            Defaults to None.
 
         dev: str
-            The field in ``data`` representing the development period. When
-            ``trifmt`` is not None, ``dev`` is ignored. Defaults to None.
+            The fieldname in ``data`` representing the development period.
+            Defaults to None.
 
         value: str
-            The field in ``data`` representing loss amounts. When ``trifmt``
-            is not None, ``value`` is ignored. Defaults to None.
+            The fieldname in ``data`` representing loss amounts.
+            Defaults to None.
 
         Returns
         -------
-        pd.DataFrame
+        trikit.triangle._IncrTriangle
         """
         try:
             if all(i is None for i in (origin, dev, value)):
                 origin, dev, value = "origin", "dev", "value"
-            dat_init = data[[origin, dev, value]]
-            dat_init = dat_init.groupby([origin, dev], as_index=False).sum()
-            tri = dat_init.pivot(index=origin, columns=dev).rename_axis(None)
+            data2 = data[[origin, dev, value]]
+            data2 = data2.groupby([origin, dev], as_index=False).sum()
+            tri = data2.pivot(index=origin, columns=dev).rename_axis(None)
             tri.columns = tri.columns.droplevel(0)
 
         except KeyError:
@@ -142,7 +148,7 @@ class _IncrTriangle(pd.DataFrame):
     @property
     def latest(self):
         """
-        Determine the value on the triangle's latest diagonal. Loss amounts
+        Return the values on the triangle's latest diagonal. Loss amounts
         are given, along with the associated origin year and development
         period. The latest loss amount by origin year alone can be  obtained
         by calling ``self.latest_by_origin``, or by development period by
@@ -163,7 +169,7 @@ class _IncrTriangle(pd.DataFrame):
     @property
     def latest_by_origin(self):
         """
-        Determine the latest loss amounts by origin year.
+        Return the latest loss amounts by origin year.
 
         Returns
         -------
@@ -179,7 +185,7 @@ class _IncrTriangle(pd.DataFrame):
     @property
     def latest_by_devp(self):
         """
-        Determine the latest loss amounts by development period.
+        Return the latest loss amounts by development period.
 
         Returns
         -------
@@ -195,7 +201,7 @@ class _IncrTriangle(pd.DataFrame):
     @property
     def devp(self):
         """
-        Determine triangle's development periods.
+        Return triangle's development periods.
 
         Returns
         -------
@@ -209,7 +215,7 @@ class _IncrTriangle(pd.DataFrame):
     @property
     def origins(self):
         """
-        Determine triangle's origin periods.
+        Return triangle's origin periods.
 
         Returns
         -------
@@ -223,7 +229,7 @@ class _IncrTriangle(pd.DataFrame):
     @property
     def maturity(self):
         """
-        Determine maturity for each origin period.
+        Return the maturity for each origin period.
 
         Returns
         -------
@@ -281,6 +287,7 @@ class _IncrTriangle(pd.DataFrame):
 
 
 
+
 class _CumTriangle(_IncrTriangle):
     """
     Cumulative triangle class definition.
@@ -290,18 +297,22 @@ class _CumTriangle(_IncrTriangle):
         Attempts to represent ``data`` as a cumulative triangle instance.
         ``origin``, ``dev`` and ``value`` arguments represent fieldnames
         corresponding to loss year, development period and loss amount
-        respectively.
+        respectively. If ``origin``, ``dev`` and ``value`` are unspecified,
+        fieldnames are assumed to be "origin", "dev" and "value".
 
         Parameters
         ----------
         origin: str
-            The field in ``data`` representing the origin year.
+            The fieldname in ``data`` representing the origin year.
+            Defaults to None.
 
         dev: str
-            The field in ``data`` representing the development period.
+            The fieldname in ``data`` representing the development period.
+            Defaults to None.
 
         value: str
-            The field in ``data`` representing loss amount.
+            The fieldname in ``data`` representing loss amounts.
+            Defaults to None.
 
         Returns
         -------
@@ -326,7 +337,7 @@ class _CumTriangle(_IncrTriangle):
     @staticmethod
     def _geometric(vals, weights=None):
         """
-        Compute the geometric average of the elements of vals.
+        Compute the geometric average of the elements of ``vals``.
 
         Parameters
         ----------
@@ -336,16 +347,17 @@ class _CumTriangle(_IncrTriangle):
 
         weights: np.ndarray
             Weights to assign specific values in the average computation.
-            If None, each value is given equal weight.
+            If None, each value is assigned equal weight.
 
         Returns
         -------
         float
         """
         if len(vals)==0:
-            return(None)
-        vals = list(vals)
-        return(np.prod(vals) ** (1 / len(vals)))
+            avg_ = None
+        else:
+            avg_ = np.prod(vals) ** (1 / len(vals))
+        return(avg_)
 
 
     @staticmethod
@@ -361,20 +373,23 @@ class _CumTriangle(_IncrTriangle):
 
         weights: np.ndarray
             Weights to assign specific values in the average computation.
-            If None, each value is given equal weight.
+            If None, each value is assigned equal weight.
 
         Returns
         -------
         float
         """
-        if len(vals) == 0: return (None)
-        return(sum(i for i in vals) / len(vals))
+        if len(vals) < 1:
+            avg_ = None
+        else:
+            avg_ = sum(vals) / len(vals)
+        return(avg_)
 
 
     @staticmethod
     def _medial(vals, weights=None):
         """
-        Compute the medial average of elements in vals. Medial average
+        Compute the medial average of elements in ``vals``. Medial average
         eliminates the min and max values, then returns the arithmetic
         average of the remaining items.
 
@@ -386,25 +401,23 @@ class _CumTriangle(_IncrTriangle):
 
         weights: np.ndarray
             Weights to assign specific values in the average computation.
-            If None, each value is given equal weight.
+            If None, each value is assigned equal weight.
 
         Returns
         -------
         float
         """
         vals = list(vals)
-        if len(vals) == 0: avg = None
-        if len(vals) == 1:
-            avg = vals[0]
-        elif len(vals) == 2:
-            avg = sum(vals) / len(vals)
+        if len(vals)==0:
+            avg_ = None
+        elif len(vals)==1:
+            avg_ = vals[0]
+        elif len(vals)==2:
+            avg_ = sum(vals) / len(vals)
         else:
-            max_indx = vals.index(max(vals))
-            vals.remove(vals[max_indx])
-            min_indx = vals.index(min(vals))
-            vals.remove(vals[min_indx])
-            avg = sum(vals)/len(vals)
-        return(avg)
+            keep_ = [i for i in vals if i<max(vals) and i>min(vals)]
+            avg_ = sum(keep_) / len(keep_)
+        return(avg_)
 
 
     @property
@@ -440,7 +453,8 @@ class _CumTriangle(_IncrTriangle):
     @a2aind.setter
     def a2aind(self, update_spec):
         """
-        Update self.a2aind for use in calculating Mack ldfs.
+        Update ``self.a2aind`` in order to down-weight ldfs in Chain Ladder
+        calculation.
 
         Parameters
         ----------
@@ -452,7 +466,7 @@ class _CumTriangle(_IncrTriangle):
         Examples
         --------
         Load raa sample dataset, and remove a highly-leveraged age-to-age
-        factor from influencing the LDF calculation.
+        factor from influencing the ldf calculation.
 
         >>> import trikit
         >>> raa = trikit.load(dataset="raa")
@@ -500,6 +514,22 @@ class _CumTriangle(_IncrTriangle):
         1987  1  1  1  0  0  0  0  0  0
         1988  1  1  0  0  0  0  0  0  0
         1989  1  0  0  0  0  0  0  0  0
+
+        Note also that ``self.a2aind`` may be updated using DataFrame
+        methods directly:
+
+        >>> tri.a2aind.at[1982, 1] = 0
+        >>> tri.a2aind
+              1  2  3  4  5  6  7  8  9
+        1981  1  1  1  1  1  1  1  1  1
+        1982  0  1  1  1  1  1  1  1  0
+        1983  1  1  1  1  1  1  1  0  0
+        1984  1  1  1  1  1  1  0  0  0
+        1985  1  1  1  1  1  0  0  0  0
+        1986  1  1  1  1  0  0  0  0  0
+        1987  1  1  1  0  0  0  0  0  0
+        1988  1  1  0  0  0  0  0  0  0
+        1989  1  0  0  0  0  0  0  0  0
         """
         indx, column, value = update_spec
         self._a2aind.at[indx, column] = value
@@ -508,10 +538,9 @@ class _CumTriangle(_IncrTriangle):
     @property
     def a2a_avgs(self):
         """
-        Compute age-to-age factors based on self.a2a triangle of adjacent
-        proportions. Averages computed include "simple", "geometric", "medial",
-        "weighted" and "mack", where "mack" represent LDFs calculated in
-        accordance with "Mack's alpha", set to 0, 1 or 2.
+        Compute age-to-age factors based on ``self.a2a`` table of adjacent
+        proportions. Averages computed include "simple", "geometric", "medial"
+        and "weighted".
 
         Returns
         -------
@@ -519,8 +548,7 @@ class _CumTriangle(_IncrTriangle):
         """
         if self._a2a_avgs is None:
 
-            _nbr_periods = list(range(1, self.a2a.shape[0]))
-            _nbr_periods.append(0)
+            _nbr_periods = list(range(1, self.a2a.shape[0])) + [0]
             indxstrs = list()
 
             # Create lookup table for average functions.
@@ -532,20 +560,21 @@ class _CumTriangle(_IncrTriangle):
                 }
 
             # Remove `0` entry, and add as last element of list.
-            ldf_avg_lst = list(
-                itertools.product(avgfuncs.keys(), _nbr_periods)
-                )
+            ldf_avg_lst = list(itertools.product(avgfuncs.keys(), _nbr_periods))
 
-            for i in ldf_avg_lst:
-                iteravg, iterdur = i[0], i[1]
-                iterstr = "all-" + str(iteravg) if iterdur==0 \
-                              else str(iterdur) + "-" + str(iteravg)
-                indxstrs.append(iterstr)
+            indxstrs = [
+                "all-" + str(i[0]) if i[1]==0 else "{}-{}".format(i[0], i[1])
+                    for i in ldf_avg_lst
+                ]
+
+            # for i in ldf_avg_lst:
+            #     iteravg, iterdur = i[0], i[1]
+            #     iterstr = "all-" + str(iteravg) if iterdur==0 \
+            #               else str(iterdur) + "-" + str(iteravg)
+            #     indxstrs.append(iterstr)
 
             indx = sorted(ldf_avg_lst, key=lambda x: x[1])
-
-            self._a2a_avgs = \
-                pd.DataFrame(index=indxstrs, columns=self.a2a.columns)
+            self._a2a_avgs = pd.DataFrame(index=indxstrs, columns=self.a2a.columns)
 
             for a in enumerate(ldf_avg_lst):
                 duration, avgtype, indxpos = a[1][1], a[1][0], a[0]
@@ -556,8 +585,8 @@ class _CumTriangle(_IncrTriangle):
                     if avgtype=='weighted':
                         t_ic_1, t_ic_2 = self.iloc[:, col], self.iloc[:, (col + 1)]
                         # Find first NaN value in t_ic_2.
-                        first_nan_year  = t_ic_2.index[t_ic_2.count():][0]
-                        first_nan_indx  = t_ic_2.index.searchsorted(first_nan_year)
+                        first_nan_year = t_ic_2.index[t_ic_2.count():][0]
+                        first_nan_indx = t_ic_2.index.searchsorted(first_nan_year)
                         final_cell_indx = first_nan_indx
                         if duration==0:
                             first_cell_indx = 0
@@ -566,8 +595,8 @@ class _CumTriangle(_IncrTriangle):
                                               (final_cell_indx-duration)>=0 else 0
 
                         # Divide sum of t_ic_2 by t_ic_1.
-                        ic_2     = t_ic_2[first_cell_indx:final_cell_indx]
-                        ic_1     = t_ic_1[first_cell_indx:final_cell_indx]
+                        ic_2 = t_ic_2[first_cell_indx:final_cell_indx]
+                        ic_1 = t_ic_1[first_cell_indx:final_cell_indx]
                         sum_ic_2 = t_ic_2[first_cell_indx:final_cell_indx].sum()
                         sum_ic_1 = t_ic_1[first_cell_indx:final_cell_indx].sum()
 
@@ -604,76 +633,47 @@ class _CumTriangle(_IncrTriangle):
         return(self._a2a_avgs)
 
 
-    def plot_devp(self, facets=False, file=None, **kwargs):
+    def plot(self, facets=False, axes_style="darkgrid", context="notebook",
+             palette="Accent", **kwargs):
         """
         Visualize triangle development patterns. If file is given, save plot
         to that location.
 
         Parameters
         ----------
-        cumtri: cumulative._CumTriangle
-            An instance of cumulative._CumTriangle.
-
         facets: bool
             If True, loss development plots for each origin year are faceted,
             otherwise development patterns are plotted together on a single set
             of axes.
 
-        file: str
-            Location to save generated plot. Defualts value is None.
-
         Returns
         -------
         matplotlib.pyplot.plot
-            Rendering of each origin year's cumulative losses as a function of
-            development period.
         """
-        context    = kwargs.get("context", "notebook")
-        axes_style = kwargs.get("axes_style", "darkgrid")
-        palette    = kwargs.get("palette", "Accent")
-        dat        = _tritotbl(self)
-
-        sns.set_context(context) # talk poster paper notebook
-
+        sns.set_context(context)
+        data = self.as_tbl()
         if facets:
-
             with sns.axes_style(axes_style):
-                g = sns.FacetGrid(
-                    dat,col="origin",col_wrap=5,margin_titles=False,
-                    ylim=(0, dat.value.max())
-                    )
-            g.map(plt.plot,"dev","value", color="#334488",alpha=.7)
-            g.map(plt.scatter,"dev","value", s=20,color="#334488",alpha=.7)
-            g.set_axis_labels("dev_period", "")
-            g.set(xticks=dat.dev.unique().tolist())
-            g.fig.subplots_adjust(wspace=.025)
+                g = sns.FacetGrid(data, col="origin", col_wrap=5, margin_titles=False,
+                                  ylim=(0, data.value.max()))
+                g.map(plt.plot, "dev", "value", color="#334488", alpha=.7)
+                g.map(plt.scatter, "dev", "value", s=20, color="#334488", alpha=.7)
+                g.set_axis_labels("dev", "")
+                g.set(xticks=data.dev.unique().tolist())
+                g.fig.subplots_adjust(wspace=.025)
 
         else:
-
             with sns.axes_style(axes_style,{'legend.frameon':True}):
-                g = sns.pointplot(
-                    x="dev", y="value", hue="origin",
-                    data=dat, palette=sns.color_palette(palette, dat.dev.unique().size),
-                    legend=False
-                    )
-            g.set_title("Loss Development by Origin Year", loc="left")
-            legend = plt.legend(frameon=1, loc='lower right')
-            frame = legend.get_frame()
-            frame.set_color('white')
+                g = sns.pointplot(x="dev", y="value", hue="origin", data=data,
+                                  palette=sns.color_palette(palette, data[self.dev].nunique()),
+                                  legend=False)
+                g.set_title("Loss Development by Origin Year", loc="left")
+                legend = plt.legend(frameon=1, loc='lower right')
+                frame = legend.get_frame()
+                frame.set_color('white')
+        plt.tight_layout()
 
-        # fig = g.get_figure()
-        # fig.savefig("devps.pdf") # this does not work in Seaborn 0.7.1
 
-        # matplotlib way:
-        # plt.savefig('yourTitle.png')
-
-        # ax = sns.violinplot(x="Gender", y="Salary", hue="Degree", data=job_data)
-        # #Returns the :class:~matplotlib.figure.Figure instance the artist belongs to
-        # fig = ax.get_figure()
-        # fig.savefig('gender_salary.png')
-
-        # fig = plt.Figure(). Then you can save the figure with fig.savefig()
-        return(None)
 
 
     def as_incr(self):
@@ -691,29 +691,12 @@ class _CumTriangle(_IncrTriangle):
         return(tri_)
 
 
+    def as_cum(self):
+        """
+        Transform ``triangle._CumTriangle`` instance to pd.DataFrame.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        Returns
+        -------
+        pd.DataFrame
+        """
+        return(pd.DataFrame(self))

@@ -127,8 +127,9 @@ raa  = trikit.load(dataset="raa")
 DATA = raa
 
 
-tri = trikit.triangle._IncrTriangle(data=DATA)
-tri1 = trikit.triangle._CumTriangle(data=DATA)
+# ti = trikit.triangle._IncrTriangle(data=DATA)
+# tc = trikit.triangle._CumTriangle(data=DATA)
+# tc.plot(facets=True)
 
 
 
@@ -214,11 +215,8 @@ if TRIANGLE_TEST:
     # value  :None
     # trifmt :None
     # datafmt:incr
-    raacum = trikit._tritotbl(tri1)
-    tri3 = trikit.totri(
-        data=raacum, type_="incremental", origin=None, dev=None, value=None,
-        datafmt="cumulative"
-        )
+    raacum = tri1.as_tbl()
+    tri3 = trikit.totri(data=raacum, type_="incremental", datafmt="cumulative")
 
     rlvi    = tri3.rlvi
     clvi    = tri3.clvi
@@ -239,10 +237,7 @@ if TRIANGLE_TEST:
     # trifmt :None
     # datafmt:""
     cumtri = pd.DataFrame(tri1)
-    tri4 = trikit.totri(
-        data=cumtri, type_="cumulative", origin=None, dev=None, value=None,
-        trifmt="cumulative"
-        )
+    tri4 = trikit.totri(data=cumtri, type_="cumulative", trifmt="cumulative")
 
     rlvi    = tri4.rlvi
     clvi    = tri4.clvi
@@ -266,8 +261,7 @@ if TRIANGLE_TEST:
     # datafmt:""
     cumtri = pd.DataFrame(tri1)
     tri5 = trikit.totri(
-        data=cumtri, type_="incremental", origin=None, dev=None, value=None,
-        trifmt="cumulative"
+        data=cumtri, type_="incremental", trifmt="cumulative"
         )
 
     rlvi    = tri5.rlvi
@@ -290,8 +284,7 @@ if TRIANGLE_TEST:
     # datafmt:""
     incrtri = pd.DataFrame(tri0)
     tri6 = trikit.totri(
-        data=incrtri, type_="incremental", origin=None, dev=None, value=None,
-        trifmt="incremental"
+        data=incrtri, type_="incremental", trifmt="incremental"
         )
 
     rlvi    = tri6.rlvi
@@ -314,8 +307,7 @@ if TRIANGLE_TEST:
     # datafmt:""
     incrtri = pd.DataFrame(tri0)
     tri7 = trikit.totri(
-        data=incrtri, type_="cumulative", origin=None, dev=None, value=None,
-        trifmt="incremental"
+        data=incrtri, type_="cumulative", trifmt="incremental"
         )
 
     rlvi    = tri7.rlvi
@@ -329,26 +321,6 @@ if TRIANGLE_TEST:
     linkra  = tri7.a2a_avgs
     matur   = tri1.maturity
 
-
-    ##### Case 8 (Empty Triangles) ############################################
-    # data   :raa
-    # type_  :incr
-    # origin :None
-    # dev    :None
-    # value  :None
-    # trifmt :None
-    # datafmt:""
-    tri8  = trikit.totri(trisize=(10,))
-    tri9  = trikit.totri(trisize=[10,10])
-    tri10 = trikit.totri(trisize=(10,20))
-    tri11 = trikit.totri(trisize=6)
-    tri12 = trikit.totri(trisize=(10,10))
-    tri13 = trikit.totri(trisize=20)
-    tri14 = trikit.totri(trisize="15")
-
-
-    trilist = [tri0, tri1, tri2, tri3, tri4, tri5, tri6, tri7,
-               tri8, tri9, tri10, tri11, tri12, tri13, tri14]
 
 
 

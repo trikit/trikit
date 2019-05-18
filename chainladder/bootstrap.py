@@ -839,7 +839,7 @@ class _BootstrapChainLadder(_BaseChainLadder):
 
 class _BootstrapResult:
     """
-    Curated output generated from _BootstrapChainLadder __call__ method.
+    Curated output generated from ``_BootstrapChainLadder``'s __call__ method.
     """
     def __init__(self, summary_df, reserves_df, process_error_df, **kwargs):
 
@@ -876,8 +876,8 @@ class _BootstrapResult:
         """
         dat = np.array(data, dtype=np.float_)
         IQR = stats.iqr(dat, rng=(25, 75), scale="raw", nan_policy="omit")
-        N   = dat.size
-        bw  = (2 * IQR) / np.power(N, 1/3)
+        N = dat.size
+        bw = (2 * IQR) / np.power(N, 1/3)
         datmin, datmax = dat.min(), dat.max()
         datrng = datmax - datmin
         return(int((datrng / bw) + 1))
@@ -906,7 +906,6 @@ class _BootstrapResult:
             self._origindist = self.reserves.groupby(
                 ["sim", "origin"], as_index=False)[["latest", "ultimate", "reserve"]].sum()
         return(self._origindist)
-
 
 
 
@@ -946,8 +945,8 @@ class _BootstrapResult:
             # Update plt_params with any optional keyword arguments.
             plt_params.update(kwargs)
 
-            # Setup
-            fig, ax = plt.subplots(nrows=1, ncols=1)
+            # Setup.
+            fig, ax = plt.subplots(nrows=1, ncols=1, tight_layout=True)
             ax.set_facecolor("#1f77b4")
             ax.set_title(
                 "Distribution of Bootstrap Reserve Estimates (Aggregate)",
@@ -956,7 +955,6 @@ class _BootstrapResult:
                 mpl.ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
             ax.set_xlabel("Reserves"); ax.set_ylabel("Frequency")
             ax.hist(dat, **plt_params)
-            plt.tight_layout()
 
         elif level.lower().strip().startswith(("orig", "year")):
             dat = self.origindist[["origin", "reserve"]]

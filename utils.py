@@ -328,7 +328,7 @@ def totri(data=None, type_="cumulative", origin="origin", dev="dev",
           value="value", trifmt=None, datafmt="incremental"):
     """
     Transform ``data`` to a triangle object. ``type_`` can be one of
-    "incremental" or "cumulative". If ``trifmt``==None, it is assumed
+    "incremental" or "cumulative". If ``trifmt==None``, it is assumed
     ``data`` is tabular loss data (e.g., pd.DataFrame) containing at
     minimum the fields "origin", "dev" and "value". If ``trifmt`` is set
     to "incremental" or "cumulative", ``data`` is assumed to be formatted
@@ -377,10 +377,7 @@ def totri(data=None, type_="cumulative", origin="origin", dev="dev",
 
     Returns
     -------
-    pd.DataFrame
-        An instance of ``cumulative._CumTriangle`` or
-        ``incremental._IncrTriangle``, depending on how ``type_`` is
-        specified.
+    {trikit.triangle._IncrTriangle, trikit.triangle._CumTriangle}
     """
     if trifmt:
         if trifmt.lower().startswith("i"):
@@ -393,21 +390,19 @@ def totri(data=None, type_="cumulative", origin="origin", dev="dev",
             raise NameError("Invalid type_ argument: `{}`.".format(type_))
 
     else:
-        if datafmt.lower().startswith("c"):
-            # `data` is in cumulative tabular format.
+        if datafmt.lower().startswith("c"): # `data` is in cumulative tabular format.
             data2 = data.copy(deep=True)
             data2["incr"] = data2.groupby([origin])[value].diff(periods=1)
             data2["incr"] = np.where(np.isnan(data2["incr"]), data2[value], data2["incr"])
             data2 = data2.drop(value, axis=1).rename({"incr":value}, axis=1)
-        else:
-            # `data` is in incremental tabular format.
+
+        else: # `data` is in incremental tabular format.
             data2 = data
 
     if type_.lower().startswith("i"):
         tri = _IncrTriangle(data=data2, origin=origin, dev=dev, value=value)
     elif type_.lower().startswith("c"):
         tri = _CumTriangle(data=data2, origin=origin, dev=dev, value=value)
-
     return(tri)
 
 
