@@ -324,6 +324,35 @@ if TRIANGLE_TEST:
 
 
 
+
+SEL  = "all-weighted"
+TAIL = 1.0
+
+
+
+
+cl = trikit.chladder(data=DATA)
+r = cl(sel=SEL, tail=TAIL)
+r.plot()
+
+
+
+ldfs = cl._ldfs(sel=SEL, tail=TAIL)
+cldfs = cl._cldfs(ldfs=ldfs)
+ults = cl._ultimates(cldfs=cldfs)
+res = cl._reserves(ultimates=ults)
+r = cl()
+
+cldfs0a = cl0.cldfs
+ults0a  = cl0.ultimates
+ibnr0a  = cl0.reserves
+tsqr0a  = cl0.trisqrd
+
+
+
+
+
+
 # Testing _BaseChainLadder  ==================================================]
 #
 # def chladder(data, origin=None, dev=None, value=None, trifmt=None,
@@ -334,7 +363,7 @@ if TRIANGLE_TEST:
 
 if BASE_CL_TEST:
     # Passing tabular dataset with fields "origin", "dev", "value"
-    cl0     = trikit.chladder(data=DATA, sel="all-weighted", tail=1.0)
+    cl0     = trikit.chladder(data=DATA)
     ldfs0a  = cl0.ldfs
     cldfs0a = cl0.cldfs
     ults0a  = cl0.ultimates

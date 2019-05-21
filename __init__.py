@@ -29,8 +29,9 @@ Outstanding Tasks =>
 
 [*] Create trikit matplotlib stylesheet: https://matplotlib.org/users/style_sheets.html
 
-[*]
+[*] Accept additional styling arguments in triangler and chanladder plot method.
 
+https://sphinxcontrib-napoleon.readthedocs.io/en/latest/index.html
 """
 import os
 import sys
@@ -76,9 +77,9 @@ np.set_printoptions(
 from .__pkginfo__ import version as __version__
 
 
+
 def chladder(data, origin=None, dev=None, value=None, trifmt=None,
-             datafmt="incremental", sel="all-weighted", tail=1.0,
-             range_method=None, **kwargs):
+             datafmt="incremental", range_method=None):
     """
     Return *ChainLadder initializer with optional reserve range method
     specification.
@@ -117,16 +118,6 @@ def chladder(data, origin=None, dev=None, value=None, trifmt=None,
         losses.  When ``trifmt`` is not None, ``datafmt`` is ignored. Default
         value is "incremental".
 
-    sel: str
-        Specifies which set of age-to-age averages should be specified as
-        the chain ladder loss development factors (LDFs). All available
-        age-to-age averages can be obtained by calling ``self.tri.a2a_avgs``.
-        Default value is "all-weighted".
-
-    tail: float
-        The Chain Ladder tail factor, which accounts for development
-        beyond the last development period. Default value is 1.0.
-
     range_method: str
         One of "mack", "bootstrap" or None. Additional methods will
         be available in future releases. Defaults to None.
@@ -151,9 +142,9 @@ def chladder(data, origin=None, dev=None, value=None, trifmt=None,
     or ``tail`` should be varied.
 
     >>> import trikit
-    >>> dat = trikit.load("ta83")
-    >>> cl_init = trikit.chladder(data=dat, sel="all-weighted", tail=1.005)
-    >>> cl_init()
+    >>> data = trikit.load("ta83")
+    >>> cl_init = trikit.chladder(data=data)
+    >>> cl_init(sel="all-weighted", tail=1.005)
        origin maturity    latest      cldf       ultimate       reserve
     0    1981       10   18834.0  1.005000   18928.170000     94.170000
     1    1982        9   16704.0  1.014263   16942.243687    238.243687
@@ -171,12 +162,9 @@ def chladder(data, origin=None, dev=None, value=None, trifmt=None,
     tri = totri(data=data, type_="cumulative", origin=origin, dev=dev,
                 value=value, trifmt=trifmt, datafmt=datafmt)
 
-    clkwargs = {"cumtri":tri, "sel":sel, "tail":tail}
-    clkwargs.update(kwargs)
-
     if range_method is None:
         # Instantiate BaseChainLadder instance.
-        cl_init = _BaseChainLadder(**clkwargs)
+        cl_init = _BaseChainLadder(cumtri=tri)
 
     elif range_method and range_method.lower().startswith("mack"):
         # Instantiate _MackChainLadder instance.

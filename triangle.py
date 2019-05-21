@@ -8,6 +8,8 @@ specified for ``type_``.
 
 ##### TODO #####
 [0] Refactor a2a_avgs
+[1] Integrate a2aind into a2a_avgs
+[2] Make a2a_avgs a function rather than a property.
 """
 import itertools
 import numpy as np
@@ -633,11 +635,10 @@ class _CumTriangle(_IncrTriangle):
         return(self._a2a_avgs)
 
 
-    def plot(self, facets=False, axes_style="darkgrid", context="notebook",
-             palette="Accent", **kwargs):
+    def plot(self, color="#334488", axes_style="darkgrid",
+             context="notebook", col_wrap=5, **kwargs):
         """
-        Visualize triangle development patterns. If file is given, save plot
-        to that location.
+        Visualize triangle development patterns.
 
         Parameters
         ----------
@@ -646,34 +647,75 @@ class _CumTriangle(_IncrTriangle):
             otherwise development patterns are plotted together on a single set
             of axes.
 
+        axes_style: str
+            Aesthetic style of plots. Defaults to "darkgrid". Other options
+            include: {whitegrid, dark, white, ticks}.
+
+        context: str
+            Set the plotting context parameters. According to the seaborn
+            documentation, This affects things like the size of the labels,
+            lines, and other elements of the plot, but not the overall style.
+            Defaults to ``"notebook"``. Additional options include
+            {paper, talk, poster}.
+
+        palette: str
+            Selected matplotlib color map. For additional options, visit:
+            https://matplotlib.org/tutorials/colors/colormaps.html.
+
+        kwargs: dict
+            Additional plot styling options.
+
         Returns
         -------
         matplotlib.pyplot.plot
         """
         sns.set_context(context)
         data = self.as_tbl()
-        if facets:
-            with sns.axes_style(axes_style):
-                g = sns.FacetGrid(data, col="origin", col_wrap=5, margin_titles=False,
-                                  ylim=(0, data.value.max()))
-                g.map(plt.plot, "dev", "value", color="#334488", alpha=.7)
-                g.map(plt.scatter, "dev", "value", s=20, color="#334488", alpha=.7)
-                g.set_axis_labels("dev", "")
-                g.set(xticks=data.dev.unique().tolist())
-                g.fig.subplots_adjust(wspace=.025)
 
-        else:
-            with sns.axes_style(axes_style,{'legend.frameon':True}):
-                g = sns.pointplot(x="dev", y="value", hue="origin", data=data,
-                                  palette=sns.color_palette(palette, data[self.dev].nunique()),
-                                  legend=False)
-                g.set_title("Loss Development by Origin Year", loc="left")
-                legend = plt.legend(frameon=1, loc='lower right')
-                frame = legend.get_frame()
-                frame.set_color('white')
-        plt.tight_layout()
+        with sns.axes_style(axes_style):
 
+            pltkwargs = dict(
+                marker="o", markersize=7, alpha=1, markeredgecolor="#000000",
+                markeredgewidth=.50, linestyle="--", linewidth=.75,
+                fillstyle="full", color=color,
+                )
 
+            if kwargs:
+                pltkwargs.update(kwargs)
+
+            titlestr_ = "Actual Loss Development by Origin"
+
+            g = sns.FacetGrid(
+                data, col="origin", col_wrap=col_wrap, margin_titles=False,
+                despine=True, sharex=True, sharey=True,
+                )
+
+            g.map(plt.plot, "dev", "value", **pltkwargs)
+            g.set_axis_labels("", "")
+            g.set(xticks=data.dev.unique().tolist())
+            g.set_titles("{col_name}", size=9)
+            g.set_xticklabels(data.dev.unique().tolist(), size=8)
+
+            # Change ticklabel font size and place legend on each facet.
+            for i, _ in enumerate(g.axes):
+                ax_ = g.axes[i]
+                ylabelss_ = [i.get_text() for i in list(ax_.get_yticklabels())]
+                ylabelsn_ = [float(i.replace(u"\u2212", "-")) for i in ylabelss_]
+                ylabelsn_ = [i for i in ylabelsn_ if i>=0]
+                ylabels_ = ["{:,.0f}".format(i) for i in ylabelsn_]
+                ax_.set_yticklabels(ylabels_, size=8)
+
+                # Draw border around each facet.
+                for _, spine_ in ax_.spines.items():
+                    spine_.set_visible(True)
+                    spine_.set_color("#000000")
+                    spine_.set_linewidth(.50)
+
+        # Adjust facets downward and and left-align figure title.
+        plt.subplots_adjust(top=0.9)
+        g.fig.suptitle(
+            titlestr_, x=0.065, y=.975, fontsize=11, color="#404040", ha="left"
+            )
 
 
     def as_incr(self):

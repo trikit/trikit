@@ -15,9 +15,9 @@ from .triangle import _IncrTriangle, _CumTriangle
 
 
 
-def _load(dataref:dict):
+def _load(dataref):
     """
-    Sample dataset loading utility.
+    trikit's sample dataset loading utility.
     """
     def func(dataset, loss_type="paid", lob=None, grcode=None,
              grname=None, upper_left_ind=True, lower_right_ind=False,
@@ -33,7 +33,6 @@ def _load(dataref:dict):
         can be obtained by calling ``get_lrdb_specs``.
         If ``dataset`` is something other than "lrdb", then only the name of
         the target dataset as a string is required.
-
 
         Parameters
         ----------
@@ -168,8 +167,7 @@ def _load(dataref:dict):
             # loss_key-grname/grcode combination. If more than one spec
             # remains, look to `action` parameter.
             fields = ["loss_key", "grcode"]
-            remaining_specs = \
-                dat_init[fields].drop_duplicates().reset_index(drop=True)
+            remaining_specs = dat_init[fields].drop_duplicates().reset_index(drop=True)
 
             if remaining_specs.shape[0] > 1:
 
@@ -211,7 +209,7 @@ def _load(dataref:dict):
             dat      = dat_init
 
         if not allcols:
-            dat.rename(columns={loss_field:"value"}, inplace=True)
+            dat = dat.rename({loss_field:"value"}, axis=1)
         return(dat.reset_index(drop=True))
     return(func)
 
