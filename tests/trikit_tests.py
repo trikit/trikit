@@ -336,6 +336,9 @@ r = cl(sel=SEL, tail=TAIL)
 r.plot()
 
 
+cl_init = trikit.chladder(data=DATA)
+cl_summ = cl_init(sel="all-weighted", tail=1.0)
+
 
 ldfs = cl._ldfs(sel=SEL, tail=TAIL)
 cldfs = cl._cldfs(ldfs=ldfs)

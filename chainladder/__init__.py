@@ -51,13 +51,21 @@ class _BaseChainLadder:
         factors, projected ultimates and the reserve estimate, by origin
         year and in aggregate.
 
+        Parameters
+        ----------
+        sel: str
+            The ldf average to select from ``triangle._CumTriangle.a2a_avgs``.
+            Defaults to "all-weighted".
+
+        tail: float
+            Tail factor. Defaults to 1.0.
+
         Returns
         -------
         trikit.chainladder._ChainLadderResult
         """
         # sel = "all-weighted"
         # tail = 1.0
-
         # ldfs_ = cl._ldfs(sel=sel, tail=tail)
         # cldfs_ = cl._cldfs(ldfs=ldfs_)
         # ultimates_ = cl._ultimates(cldfs=cldfs_)
@@ -313,13 +321,10 @@ class _ChainLadderResult:
             The maximum number of origin period axes to have on a single row
             of the resulting FacetGrid. Defaults to 5.
 
-        pltkwargs: dict
+        kwargs: dict
             Additional styling options for scatter points. This can override
-            default values for attributes such as scatter size, scatter
-            linewidth, alpha and many others. For a full list of modifable
-            attributes, consult matplotlib's matplotlib.pyplot.scatter
-            documentation at:
-                https://matplotlib.org/api/_as_gen/matplotlib.pyplot.scatter.html
+            default values for ``plt.plot`` objects. For a demonstration,
+            See the Examples section.
 
         Returns
         -------
@@ -327,9 +332,8 @@ class _ChainLadderResult:
 
         Examples
         --------
-        The following example demonstrates how to pass a dictionary
-        of scatter plot properties, specifically the scatter size
-        and marker:
+        Demonstration of how to pass a dictionary of plot properties in order
+        to update the scatter size and marker:
 
         >>> import trikit
         >>> raa = trikit.load(dataset="raa")
@@ -387,10 +391,8 @@ class _ChainLadderResult:
         # "description".
         sns.set_context(context)
         with sns.axes_style(axes_style):
-
             titlestr_ = "Chain Ladder Projections with Actuals by Origin"
             palette_ = dict(actual=actuals_color, forecast=forecasts_color)
-
             pltkwargs = dict(
                 marker="o", markersize=7, alpha=1, markeredgecolor="#000000",
                 markeredgewidth=.50, linestyle="--", linewidth=.75,
@@ -440,159 +442,12 @@ class _ChainLadderResult:
 
 
     def __str__(self):
-        formats_ = {"ultimate":"{:,.0f}".format, "reserve":"{:,.0f}".format,
-                    "latest":"{:,.0f}".format, "cldf":"{:.5f}".format,}
+        formats_ = {"ultimate":"{:.0f}".format, "reserve":"{:.0f}".format,
+                    "latest":"{:.0f}".format, "cldf":"{:.5f}".format,}
         return(self.summary.to_string(formatters=formats_))
 
 
     def __repr__(self):
-        """
-        Return ``self.summary`` as unformatted string object.
-        """
-        return(self.summary.to_string())
-
-
-
-
-
-
-# data = tri1.as_tbl()
-#
-#
-# # Identify actual and projected loss amounts.
-# r = cl()
-# tsqd = r.trisqrd
-# triind = r.tri.triind
-#
-# # Transform tsqd and trind to tabular format.
-# df0 = tsqd.reset_index(drop=False).rename({"index":r.tri.origin}, axis=1)
-# df0 = pd.melt(df0, id_vars=[r.tri.origin], var_name=r.tri.dev, value_name=r.tri.value)
-# df0 = df0[~np.isnan(df0[r.tri.value])].reset_index(drop=True)
-#
-# df1 = r.tri.triind.reset_index(drop=False).rename({"index":r.tri.origin}, axis=1)
-# df1 = pd.melt(df1, id_vars=[r.tri.origin], var_name=r.tri.dev, value_name=r.tri.value)
-# df1[r.tri.value] = df1[r.tri.value].map(lambda v: 1 if v==0 else 0)
-# df1 = df1[~np.isnan(df1[r.tri.value])].rename({r.tri.value:"actual_ind"}, axis=1)
-# df1 = df1.reset_index(drop=True)
-#
-# if r.tail!=1:
-#     df0[r.tri.dev] = df0[r.tri.dev].map(
-#         lambda v: (r.tri.devp.max() + 1) if v=="ultimate" else v
-#         )
-# else:
-#     df0 = df0[df0["dev"]!="ultimate"]
-#
-# # Combine df0 and df1 into a single DataFrame, then perform cleanup
-# # actions for cases in which df0 has more records than df1.
-# df = pd.merge(df0, df1, on=["origin", "dev"], how="left", sort=False)
-# df["actual_ind"] = df["actual_ind"].map(lambda v: 0 if np.isnan(v) else v)
-# df["actual_ind"] = df["actual_ind"].astype(np.int_)
-#
-# df = df.sort_values(["origin", "dev"]).reset_index(drop=True)
-# dfma = df[df["actual_ind"]==1].groupby(["origin"])["dev"].max().to_frame()
-# dfma = dfma.reset_index(drop=False).rename({"index":"origin", "dev":"max_actual"}, axis=1)
-#
-# # Merge dfma onto df.
-# df = pd.merge(df, dfma, on="origin", how="outer", sort=False)
-# df = df.sort_values(["origin", "dev"]).reset_index(drop=True)
-# df["incl_actual"] = df["actual_ind"].map(lambda v: 1 if v==1 else 0)
-# df["incl_pred"] = df.apply(
-#     lambda rec: 1 if (rec.actual_ind==0 or rec.dev==rec.max_actual) else 0,
-#     axis=1
-#     )
-#
-#
-#
-# dfact_ = df[df["incl_actual"]==1][["origin", "dev", "value"]]
-# dfact_["description"] = "actual"
-#
-# dfpred_ = df[df["incl_pred"]==1][["origin", "dev", "value"]]
-# dfpred_["description"] = "forecast"
-#
-# data = pd.concat([dfact_, dfpred_]).reset_index(drop=True)
-
-
-
-
-
-
-
-
-# with sns.axes_style("darkgrid"): # {whitegrid, dark, white, ticks}.
-#
-#     # Eventual function arguments.
-#     actual_color   = "#00264C" # navy
-#     forecast_color = "#FFFFFF"#"#ff37b3"#ff4977"#ff7595" #"#E60074" # pinkish
-#
-#     palette_ = dict(actual=actual_color, forecast=forecast_color)
-#
-#     # pltkwargs = dict(
-#     #     linewidth=0.5, linestyle="--", color="#000000", alpha=.35,
-#     #     )
-#
-#     sctkwargs = dict(
-#         marker="o", s=45, edgecolors="#000000", linewidths=.55, alpha=1
-#         )
-#
-#
-#     g = sns.FacetGrid(
-#         data, col="origin", hue="description", palette=palette_, col_wrap=5,
-#         margin_titles=False, despine=True, sharex=True, sharey=True,
-#         hue_order=["forecast", "actual",])
-#         # xlim=(0, data.dev.max()), ylim=(0, data.value.max()),
-#         # )
-#
-#     scp_ = g.map(plt.scatter, "dev", "value", **sctkwargs)
-#     # lnp_ = g.map(plt.plot, "dev", "value", **pltkwargs)
-#
-#
-#     # vmax = data.value.max() * 1.1
-#     g.set_axis_labels("", "")
-#     g.set(xticks=data.dev.unique().tolist())
-#     g.set_titles("{col_name}", size=9)
-#     g.set_xticklabels(data.dev.unique().tolist(), size=8)
-#
-#     for i, _ in enumerate(g.axes):
-#
-#         ax_ = g.axes[i]
-#         legend_ = ax_.legend(loc="lower right", fontsize="x-small", frameon=True,
-#                              fancybox=True, shadow=False, edgecolor="#909090",
-#                              framealpha=1, markerfirst=True,
-#                              )
-#         legend_.get_frame().set_facecolor("#FFFFFF")
-#         ylabels_ = [i.get_text() for i in list(ax_.get_yticklabels())]
-#         ylabelsn = [float(i.replace(u"\u2212", "-")) for i in ylabels_]
-#         ylabelsn = [i for i in ylabelsn if i>=0]
-#         ylabels = ["{:,.0f}".format(i) for i in ylabelsn]
-#         ax_.set_yticklabels(ylabels, size=8)
-#     plt.subplots_adjust(top=0.9)
-#     g.fig.suptitle("Chain Ladder Projections with Actuals", x=0.065, y=.975, fontsize=11, color="#404040", ha="left")
-#
-#
-# plt.tight_layout()
-#
-#
-#         # ax_ = g.axes[i]
-#         # ylabels_ = [i.get_text() for i in list(ax_.get_yticklabels())]
-#         # ylabels = [float(i.replace(u"\u2212", "-")) for i in ylabels]
-#         # ylabels = [i for i in ylabels if i>= 0]
-#         # print(ylabels)
-#         # ylabels = ["{:,.0f}".format(i) for i in ylabels]
-#         # g.set_yticklabels(ylabels, size=8)
-#
-#
-#
-#
-#
-#
-#     g.axes[0][0].legend()
-#     # g.fig.subplots_adjust(wspace=.05, hspace=.05)
-#     #g.fig.subplots_adjust(wspace=.025)
-#     # g.add_legend()
-#     plt.subplots_adjust(top=0.9)
-#     g.fig.suptitle('THIS IS A TITLE, YOU BET', fontsize=10, color="red")
-#
-
-
-
-#plt.tight_layout()
+        formats_ = {"ultimate":"{:.0f}".format, "reserve":"{:.0f}".format,
+                    "latest":"{:.0f}".format, "cldf":"{:.5f}".format,}
+        return(self.summary.to_string(formatters=formats_))

@@ -417,7 +417,7 @@ class _CumTriangle(_IncrTriangle):
         elif len(vals)==2:
             avg_ = sum(vals) / len(vals)
         else:
-            keep_ = [i for i in vals if i<max(vals) and i>min(vals)]
+            keep_ = sorted(vals)[1:-1]
             avg_ = sum(keep_) / len(keep_)
         return(avg_)
 
@@ -635,8 +635,8 @@ class _CumTriangle(_IncrTriangle):
         return(self._a2a_avgs)
 
 
-    def plot(self, color="#334488", axes_style="darkgrid",
-             context="notebook", col_wrap=5, **kwargs):
+    def plot(self, color="#334488", axes_style="darkgrid", context="notebook",
+             col_wrap=5, **kwargs):
         """
         Visualize triangle development patterns.
 

@@ -29,8 +29,6 @@ from ..utils import totri, _cumtoincr, _incrtocum, _tritotbl
 
 
 
-
-
 class _BootstrapChainLadder(_BaseChainLadder):
     """
     The purpose of the bootstrap technique is to estimate the predicition
@@ -69,7 +67,6 @@ class _BootstrapChainLadder(_BaseChainLadder):
     9.  Estimate unpaid losses using the Chain Ladder technique.
     10. Repeat for the number of cycles specified.
 
-
     The collection of projected ultimates for each origin year over all
     bootstrap cycles comprises the predictive distribtuion of reserve
     estimates.
@@ -77,8 +74,13 @@ class _BootstrapChainLadder(_BaseChainLadder):
     Note that the estimate of the distribution of losses assumes
     development is complete by the final development period. This is
     to avoid the complication in modeling a tail factor.
+
+    References
+    ----------
+    - Shapland, Mark R - CAS Monograph Series Number 4: *Using the ODP Bootstrap
+    Model: A Practicioner's Guide*, Casualty Actuarial Society, 2016.
     """
-    def __init__(self, cumtri, sel="all-weighted", tail=1.0, neg_handler=1):
+    def __init__(self, cumtri):
         """
         The _BootstrapChainLadder class definition.
 
@@ -87,15 +89,7 @@ class _BootstrapChainLadder(_BaseChainLadder):
         cumtri: triangle._CumTriangle
             A cumulative.CumTriangle instance.
 
-        sel: str
-            Specifies which set of age-to-age averages should be specified as
-            the chain ladder loss development factors (LDFs). All available
-            age-to-age averages can be obtained by calling
-            ``self.tri.a2a_avgs``. Default value is "all-weighted".
 
-        tail: float
-            The Chain Ladder tail factor, which accounts for development
-            beyond the last development period. Defaults to 1.0.
 
         neg_handler: int
             If ``neg_handler=1``, then any first development period negative
@@ -106,9 +100,7 @@ class _BootstrapChainLadder(_BaseChainLadder):
             other cell in the triangle, resulting in all triangle cells having
             a value strictly greater than 0.
         """
-        super().__init__(cumtri=cumtri, sel=sel, tail=tail)
-
-        self.neg_handler = neg_handler
+        super().__init__(cumtri=cumtri)
 
         # Properties
         self._residuals_detail = None
@@ -124,8 +116,8 @@ class _BootstrapChainLadder(_BaseChainLadder):
 
 
 
-    def __call__(self, sims=1000, procdist="gamma", parametric=False,
-                 percentiles=[.75, .95], interpolation="linear",
+    def __call__(self, sel="all-weighted", tail=1.0, sims=1000, procdist="gamma",
+                 parametric=False, percentiles=[.75, .95], interpolation="linear",
                  random_state=None):
         """
         ``_BootstrapChainLadder`` simulation initializer. Generates predictive
@@ -133,13 +125,22 @@ class _BootstrapChainLadder(_BaseChainLadder):
 
         Parameters
         ----------
+        sel: str
+            Specifies which set of age-to-age averages should be specified as
+            the chain ladder loss development factors (LDFs). All available
+            age-to-age averages can be obtained by calling
+            ``self.tri.a2a_avgs``. Default value is "all-weighted".
+
+        tail: float
+            The Chain Ladder tail factor, which accounts for development
+            beyond the last development period. Defaults to 1.0.
+
         sims: int
             The number of bootstrap simulations to perfrom. Defaults to 1000.
 
         procdist: str
             The distribution used to incorporate process variance. Currently,
-            this can only be set to "gamma". Future state will also allow
-            over-dispersed poisson ("odp").
+            this can only be set to "gamma".
 
         percentiles: list
             The percentiles to include along with the Chain Ladder point
@@ -164,20 +165,25 @@ class _BootstrapChainLadder(_BaseChainLadder):
 
         Returns
         -------
-        _BootstrapResult
-            Content varies based on ``returnas`` parameter.
-        """
-        kwdargs    = locals()
-        _samples   = self._bs_samples(sims=sims, parametric=parametric, random_state=random_state)
-        _ldfs      = self._bs_ldfs(samples_df=_samples)
-        _rlvi      = self.tri.rlvi.reset_index().rename({"index":"origin", "dev":"l_act_dev"},axis=1).drop(labels="col_offset", axis=1)
-        _combined  = _samples.merge(_ldfs, how="left", on=["sim", "dev"])
-        _combined  = _combined.merge(_rlvi, how="left", on=["origin"]).reset_index(drop=True).sort_values(by=["sim", "origin", "dev"])
-        _forecasts = self._bs_forecasts(combined_df=_combined)
-        _procerror = self._bs_process_error(forecasts_df=_forecasts, procdist=procdist, random_state=random_state)
-        _reserves  = self._bs_reserves(process_error_df=_procerror)
+        _BootstrapChainLadderResult
 
-        # Compile summary DataFrame.
+        """
+        locals_ = locals()
+        samples_ = self._bs_samples(sims=sims, parametric=parametric, random_state=random_state)
+        ldfs_ = self._bs_ldfs(dfsamples=_samples)
+        rlvi_ = self.tri.rlvi.reset_index().rename({"index":"origin", "dev":"l_act_dev"}, axis=1)
+        rlvi_ = rlvi_.drop("col_offset", axis=1)
+        combined_ = samples_.merge(ldfs_, on=["sim", "dev"], how="left")
+        combined_ = combined_.merge(rlvi_, how="left", on=["origin"])
+        combined_ = combined_.reset_index(drop=True).sort_values(by=["sim", "origin", "dev"])
+        forecasts_ = self._bs_forecasts(dfcombined=combined_)
+        procerror_ = self._bs_process_error(
+            dfforecasts=forecasts_, procdist=procdist, random_state=random_state
+            )
+        
+        reserves_ = self._bs_reserves(dfprocerror=procerror_)
+
+
         pctlarr1 = np.unique(np.array(percentiles))
         if np.all(pctlarr1 <= 1):
             pctlarr1 = 100 * pctlarr1
@@ -210,8 +216,54 @@ class _BootstrapChainLadder(_BaseChainLadder):
         kwdargs.pop("self"); kwdargs.pop("random_state")
         result = _BootstrapResult(
             summary_df=summdf, reserves_df=_reserves,
-            process_error_df=_procerror, **kwdargs
+            process_error_df=_procerror, **locals_
             )
+        
+        # kwdargs = locals()
+        # _samples = self._bs_samples(sims=sims, parametric=parametric, random_state=random_state)
+        # _ldfs = self._bs_ldfs(samples_df=_samples)
+        # _rlvi = self.tri.rlvi.reset_index().rename({"index":"origin", "dev":"l_act_dev"},axis=1).drop(labels="col_offset", axis=1)
+        # _combined  = _samples.merge(_ldfs, how="left", on=["sim", "dev"])
+        # _combined  = _combined.merge(_rlvi, how="left", on=["origin"]).reset_index(drop=True).sort_values(by=["sim", "origin", "dev"])
+        # _forecasts = self._bs_forecasts(combined_df=_combined)
+        # _procerror = self._bs_process_error(forecasts_df=_forecasts, procdist=procdist, random_state=random_state)
+        # _reserves  = self._bs_reserves(process_error_df=_procerror)
+        # 
+        # # Compile summary DataFrame.
+        # pctlarr1 = np.unique(np.array(percentiles))
+        # if np.all(pctlarr1 <= 1):
+        #     pctlarr1 = 100 * pctlarr1
+        # pctlarr2 = 100 - pctlarr1
+        # pctlarr  = np.unique(np.append(pctlarr1, pctlarr2))
+        # pctlarr.sort()
+        # pctllist = [i if i < 10 else int(i) for i in pctlarr]
+        # pctlstrs = [str(i)  + "%" for i in pctllist]
+        # summcols = ["maturity", "cldf", "latest", "ultimate", "reserve"]
+        # summdf   = pd.DataFrame(columns=summcols, index=self.tri.index)
+        # summdf["maturity"] = self.tri.maturity.astype(np.str)
+        # summdf["cldf"]     = self.cldfs.values[::-1].astype(np.float_)
+        # summdf["latest"]   = self.tri.latest_by_origin.astype(np.float_)
+        # summdf["ultimate"] = self.ultimates.astype(np.float_)
+        # summdf["reserve"]  = self.reserves.astype(np.float_)
+        # summdf             = summdf.rename({"index":"origin"}, axis=1)
+        # for pctl, pctlstr in zip(pctllist, pctlstrs):
+        #     summdf[pctlstr] = summdf.index.map(
+        #         lambda v: np.percentile(
+        #             _reserves["reserve"][_reserves["origin"]==v].values, pctl, interpolation=interpolation
+        #             )
+        #         )
+        # 
+        # # Set to NaN columns that shouldn't be aggregated.
+        # summdf.loc["total"] = summdf.sum()
+        # summdf.loc["total", "maturity"] = ""
+        # summdf.loc["total", "cldf"]     = np.NaN
+        # 
+        # # Initialize _BootstrapResult instance.
+        # kwdargs.pop("self"); kwdargs.pop("random_state")
+        # result = _BootstrapResult(
+        #     summary_df=summdf, reserves_df=_reserves,
+        #     process_error_df=_procerror, **kwdargs
+        #     )
 
         # Testing ============================================================]
         # sims          = 100
@@ -533,7 +585,7 @@ class _BootstrapChainLadder(_BaseChainLadder):
 
 
 
-    def _bs_ldfs(self, samples_df):
+    def _bs_ldfs(self, dfsamples):
         """
         Compute and return loss development factors for each set of
         synthetic loss data.
@@ -555,7 +607,7 @@ class _BootstrapChainLadder(_BaseChainLadder):
                 }, inplace=True
             )
 
-        initdf = samples_df.merge(lvi, how="left", on=["dev"])
+        initdf = dfsamples.merge(lvi, how="left", on=["dev"])
         initdf = initdf[keepcols].sort_values(by=["sim", "dev", "origin"])
         df = initdf[~np.isnan(initdf["samp_cum"])].reset_index(drop=True)
         df["_aggdev1"] = df.groupby(["sim", "dev"])["samp_cum"].transform("sum")
@@ -572,26 +624,25 @@ class _BootstrapChainLadder(_BaseChainLadder):
 
 
 
-    def _bs_forecasts(self, combined_df):
+    def _bs_forecasts(self, dfcombined):
         """
         Populate lower-right of each simulated triangle using values from
         ``self._bs_samples`` and development factors from ``self._bs_ldfs``.
 
         Parameters
         ----------
-        df: pd.DataFrame
+        dfcombined: pd.DataFrame
             Combination of ``self._bs_samples``, ``self._bs_ldfs`` and
             ``self.tri.latest_by_origin``.
 
         Returns
         -------
         pd.DataFrame
-            DataFrame of bootstrapped forecasts.
         """
-        min_origin_year = combined_df["origin"].values.min()
-        combined_df["_l_init_indx"] = np.where(combined_df["dev"].values>=combined_df["l_act_dev"].values, combined_df.index.values, -1)
-        actsdf = combined_df[(combined_df["origin"].values==min_origin_year) | (combined_df["_l_init_indx"].values==-1)]
-        fcstdf = combined_df[~combined_df.index.isin(actsdf.index)].sort_values(by=["sim", "origin", "dev"])
+        min_origin_year = dfcombined["origin"].values.min()
+        dfcombined["_l_init_indx"] = np.where(dfcombined["dev"].values>=dfcombined["l_act_dev"].values, dfcombined.index.values, -1)
+        actsdf = dfcombined[(dfcombined["origin"].values==min_origin_year) | (dfcombined["_l_init_indx"].values==-1)]
+        fcstdf = dfcombined[~dfcombined.index.isin(actsdf.index)].sort_values(by=["sim", "origin", "dev"])
         fcstdf["_l_act_indx"] = fcstdf.groupby(["sim", "origin"])["_l_init_indx"].transform("min")
         fcstdf["l_act_cum"]   = fcstdf.lookup(fcstdf["_l_act_indx"].values, ["samp_cum"] * fcstdf.shape[0])
         fcstdf["_cum_ldf"]    = fcstdf.groupby(["sim", "origin"])["ldf"].transform("cumprod").shift(periods=1, axis=0)
@@ -617,7 +668,7 @@ class _BootstrapChainLadder(_BaseChainLadder):
 
 
 
-    def _bs_process_error(self, forecasts_df, procdist="gamma", random_state=None):
+    def _bs_process_error(self, dfforecasts, procdist="gamma", random_state=None):
         """
         Incorporate process variance by simulating each incremental future
         loss from ``procdist``. The mean is set to the forecast incremental
@@ -676,8 +727,8 @@ class _BootstrapChainLadder(_BaseChainLadder):
 
         # Parameterize distribution for process variance incorporation.
         if procdist.strip().lower()=="gamma":
-            forecasts_df["param2"] = self.scale_param
-            forecasts_df["param1"]  = np.abs(forecasts_df["samp_incr"].values / forecasts_df["param2"].values)
+            dfforecasts["param2"] = self.scale_param
+            dfforecasts["param1"]  = np.abs(dfforecasts["samp_incr"].values / dfforecasts["param2"].values)
 
             def fdist(param1, param2):
                 """gamma.rvs(a=param1, scale=param2, size=1, random_state=None)"""
@@ -687,40 +738,39 @@ class _BootstrapChainLadder(_BaseChainLadder):
                 "Invalid procdist specification: `{}`".format(procdist)
                 )
 
-        forecasts_df["final_incr"] = np.where(
-            forecasts_df["rectype"].values=="forecast",
-            fdist(forecasts_df["param1"].values, forecasts_df["param2"].values) * forecasts_df["sign"].values,
-            forecasts_df["samp_incr"].values
+        dfforecasts["final_incr"] = np.where(
+            dfforecasts["rectype"].values=="forecast",
+            fdist(dfforecasts["param1"].values, dfforecasts["param2"].values) * dfforecasts["sign"].values,
+            dfforecasts["samp_incr"].values
             )
 
-        forecasts_df["final_cum"]  = forecasts_df.groupby(["sim", "origin"])["final_incr"].cumsum()
+        dfforecasts["final_cum"]  = dfforecasts.groupby(["sim", "origin"])["final_incr"].cumsum()
 
-        return(forecasts_df.sort_values(by=["sim", "origin", "dev"]).reset_index(drop=True))
+        return(dfforecasts.sort_values(by=["sim", "origin", "dev"]).reset_index(drop=True))
 
 
 
 
     @staticmethod
-    def _bs_reserves(process_error_df):
+    def _bs_reserves(dfprocerror):
         """
         Compute unpaid loss reserve estimate using output from
         ``self._bs_process_error``.
 
         Parameters
         ----------
-        pedf: pd.DataFrame
+        dfprocerror: pd.DataFrame
             Output from ``self._bs_process_error``.
 
         Returns
         -------
         pd.DataFrame
-            DataFrame with unpaid/ibnr estimate.
         """
         keepcols = ["sim", "origin", "latest", "ultimate", "reserve"]
-        max_devp = process_error_df["dev"].values.max()
-        process_error_df = process_error_df.rename(columns={"final_cum":"ultimate", "l_act_cum":"latest"})
-        process_error_df["reserve"] = process_error_df["ultimate"] - process_error_df["latest"]
-        resvdf = process_error_df[process_error_df["dev"].values==max_devp][keepcols].drop_duplicates()
+        max_devp = dfprocerror["dev"].values.max()
+        dfprocerror = dfprocerror.rename(columns={"final_cum":"ultimate", "l_act_cum":"latest"})
+        dfprocerror["reserve"] = dfprocerror["ultimate"] - dfprocerror["latest"]
+        resvdf = dfprocerror[dfprocerror["dev"].values==max_devp][keepcols].drop_duplicates()
         resvdf["latest"]  = np.where(np.isnan(resvdf["latest"].values), resvdf["ultimate"].values, resvdf["latest"].values)
         resvdf["reserve"] = np.nan_to_num(resvdf["reserve"].values, 0)
         return(resvdf.sort_values(by=["origin", "sim"]).reset_index(drop=True))
@@ -837,15 +887,16 @@ class _BootstrapChainLadder(_BaseChainLadder):
 
 
 
-class _BootstrapResult:
+class BootstrapChainLadderResult:
     """
     Curated output generated from ``_BootstrapChainLadder``'s __call__ method.
     """
-    def __init__(self, summary_df, reserves_df, process_error_df, **kwargs):
+    def __init__(self, dfsummary, dfreserves, dfprocerror, **kwargs):
 
+        self.procerror = process_error_df
         self.summary = summary_df
         self.reserves = reserves_df
-        self.prerror = process_error_df
+
 
         if kwargs is not None:
             for key_ in kwargs:
@@ -874,12 +925,11 @@ class _BootstrapResult:
         int
             Number of bins to use for histogram representation.
         """
-        dat = np.array(data, dtype=np.float_)
-        IQR = stats.iqr(dat, rng=(25, 75), scale="raw", nan_policy="omit")
-        N = dat.size
+        data = np.asarray(data, dtype=np.float_)
+        IQR = stats.iqr(data, rng=(25, 75), scale="raw", nan_policy="omit")
+        N = data.size
         bw = (2 * IQR) / np.power(N, 1/3)
-        datmin, datmax = dat.min(), dat.max()
-        datrng = datmax - datmin
+        datrng = data.max() - data.min()
         return(int((datrng / bw) + 1))
 
 
