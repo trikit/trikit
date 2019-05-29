@@ -86,6 +86,7 @@ class _IncrTriangle(pd.DataFrame):
         # Properties.
         self._latest_by_origin = None
         self._latest_by_devp = None
+        self._nbr_cells = None
         self._maturity = None
         self._triind = None
         self._devp = None
@@ -93,7 +94,36 @@ class _IncrTriangle(pd.DataFrame):
         self._origins = None
         self._rlvi = None
         self._clvi = None
+        self._dof = None
 
+
+
+    @property
+    def nbr_cells(self):
+        """
+        Return the number of non-NaN cells.
+
+        Returns
+        -------
+        int
+        """
+        if self._nbr_cells is None:
+            self._nbr_cells = self.count().sum()
+        return(self._nbr_cells)
+
+
+    @property
+    def dof(self):
+        """
+        Return the degress of freedom.
+
+        Returns
+        -------
+        int
+        """
+        if self._dof is None:
+            self._dof = self.nbr_cells - (self.columns.size-1) + self.index.size
+        return(self._dof)
 
 
     @property
@@ -285,6 +315,20 @@ class _IncrTriangle(pd.DataFrame):
         pd.DataFrame
         """
         return(pd.DataFrame(self))
+
+
+    # def __str__(self):
+    #     # Controls when print(self) is called
+    #     formats_ = {dev_:"{:.0f}".format for dev_ in self.columns}
+    #     return(self.to_string(formatters=formats_))
+
+
+    def __repr__(self):
+        """
+        Controls when object is referenced from interpreter.
+        """
+        formats_ = {dev_:"{:.0f}".format for dev_ in self.columns}
+        return(self.to_string(formatters=formats_))
 
 
 

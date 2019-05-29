@@ -115,6 +115,15 @@ class _BaseChainLadder:
         """
         Lookup loss development factors corresponding to ``sel``.
 
+        Parameters
+        ----------
+        sel: str
+            The ldf average to select from ``triangle._CumTriangle.a2a_avgs``.
+            Defaults to "all-weighted".
+
+        tail: float
+            Tail factor. Defaults to 1.0.
+
         Returns
         -------
         pd.Series
@@ -136,6 +145,11 @@ class _BaseChainLadder:
         the total growth over the remaining valuations. Cumulative claim
         development factors are also known as "Age-to-Ultimate Factors"
         or "Claim Development Factors to Ultimate".
+
+        Parameters
+        ----------
+        ldfs: pd.Series
+            Selected ldfs, typically the output of calling ``self._ldfs``.
 
         Returns
         -------

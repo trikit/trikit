@@ -19,7 +19,7 @@ import trikit
 from numpy.random import RandomState
 
 
-TRIANGLE_TEST = True
+TRIANGLE_TEST = False
 DATASETS_TEST = False
 BASE_CL_TEST  = False
 BOOT_CL_TEST  = False
@@ -323,38 +323,53 @@ if TRIANGLE_TEST:
 
 
 
-
-
-SEL  = "all-weighted"
-TAIL = 1.0
-
-
-
-
-cl = trikit.chladder(data=DATA)
-r = cl(sel=SEL, tail=TAIL)
-r.plot()
-
-
 cl_init = trikit.chladder(data=DATA)
-cl_summ = cl_init(sel="all-weighted", tail=1.0)
+ldfs = cl_init._ldfs(sel="all-weighted", tail=1.)
+cldfs = cl_init._cldfs(ldfs=ldfs)
+ults = cl_init._ultimates(cldfs=cldfs)
+res = cl_init._reserves(ultimates=ults)
+r = cl_init(sel="all-weighted", tail=1.0)
+
+cldfs0a = r.cldfs
+ults0a  = r.ultimates
+ibnr0a  = r.reserves
+tsqr0a  = r.trisqrd
+
+# BootstrapChainLadder =======================================================]
+bb = trikit.chladder(data=DATA, range_method="bootstrap")
+# from trikit.chainladder import bootstrap
+# bb = bootstrap._BootstrapChainLadder(cumtri=tri1)
 
 
-ldfs = cl._ldfs(sel=SEL, tail=TAIL)
-cldfs = cl._cldfs(ldfs=ldfs)
-ults = cl._ultimates(cldfs=cldfs)
-res = cl._reserves(ultimates=ults)
-r = cl()
+dof = bb.tri.dof
+tfc = bb._tri_fit_cum(sel="all-weighted", tail=1.0)
+tfi = bb._tri_fit_incr(fitted_tri_cum=tfc)
+r_us = bb._resid_us(tfi)
+r_adj = bb._resid_adj(resid_us=r_us)
+sclp = bb._scale_param(r_us)
+sampling_dist = bb._sampling_dist(r_adj)
 
-cldfs0a = cl0.cldfs
-ults0a  = cl0.ultimates
-ibnr0a  = cl0.reserves
-tsqr0a  = cl0.trisqrd
-
-
+df0 = bb.tri.reset_index(drop=False).rename({"index":"origin"}, axis=1)
+df0 = pd.melt(df0, id_vars=[bb.tri.origin], var_name=bb.tri.dev, value_name=bb.tri.value)
 
 
 
+
+I_ = bb.tri.as_incr()
+m_ = tfi
+
+
+# tri2 = DataFrame
+trikit._IncrTriangle(tri2)
+# Throws error:
+# Traceback (most recent call last):
+#   File "C:\Python37\lib\site-packages\IPython\core\interactiveshell.py", line 3296, in run_code
+#     exec(code_obj, self.user_global_ns, self.user_ns)
+#   File "<ipython-input-75-5ef5b2b85c97>", line 1, in <module>
+#     trikit._IncrTriangle(tri2)
+#   File "G:\Repos\trikit\triangle.py", line 75, in __init__
+#     for i in tri:
+# UnboundLocalError: local variable 'tri' referenced before assignment
 
 # Testing _BaseChainLadder  ==================================================]
 #
@@ -411,9 +426,7 @@ if BASE_CL_TEST:
 #              range_method=None, **kwargs):
 if BOOT_CL_TEST:
 
-    bcl0 = trikit.chladder(
-        data=DATA, range_method="bootstrap", neg_handler=1
-        )
+    bcl0 = trikit.chladder(data=DATA, range_method="bootstrap",)
 
 
     NBR_SIMS    = 10

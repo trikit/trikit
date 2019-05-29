@@ -168,11 +168,11 @@ def chladder(data, origin=None, dev=None, value=None, trifmt=None,
 
     elif range_method and range_method.lower().startswith("mack"):
         # Instantiate _MackChainLadder instance.
-        cl_init = _MackChainLadder(**clkwargs)
+        cl_init = _MackChainLadder(cumtri=tri)
 
     elif range_method and range_method.lower().startswith("boot"):
         # Instantiate _BootstrapChainLadder instance.
-        cl_init = _BootstrapChainLadder(**clkwargs)
+        cl_init = _BootstrapChainLadder(cumtri=tri)
 
     else:
         raise NotImplementedError(
