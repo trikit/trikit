@@ -26,6 +26,8 @@ from ..chainladder import _BaseChainLadder
 from ..triangle import _IncrTriangle, _CumTriangle
 from ..utils import totri, _cumtoincr, _incrtocum, _tritotbl
 
+# Remove before publishing
+from trikit.utils import _tritotbl
 
 
 
@@ -112,10 +114,6 @@ class _BootstrapChainLadder(_BaseChainLadder):
             a value strictly greater than 0.
         """
         super().__init__(cumtri=cumtri)
-
-        self.origin = self.tri.origin
-        self.dev = self.tri.dev
-        self.value = self.tri.value
 
         # Properties.
         self._residuals_detail = None
@@ -468,16 +466,23 @@ class _BootstrapChainLadder(_BaseChainLadder):
 
 
 
-    def _bs_samples(self, fitted_tri_incr, sims=1000, neg_handler=1, parametric=False, random_state=None):
+    def _bs_samples(self, sampling_dist, fitted_tri_incr, sims=1000,
+                    neg_handler=1, parametric=False, random_state=None):
         """
         Return DataFrame containing sims resampled-with-replacement
         incremental loss triangles if ``parametric=False``, otherwise
-        random variates from a normal distribution with mean and variance
-        based on ``resid_adj``. Randomly generated incremental data
-        will be cumulated in preparation for ldf calculation in next step.
+        random variates from a normal distribution with mean zero and
+        variance based on ``resid_adj``. Randomly generated incremental
+        data gets cumulated in preparation for ldf calculation in next
+        step. This method is intended for internal use only.
 
         Parameters
         ----------
+        sampling_dist: np.ndarray
+            The residuals from the fitted incremental triangle coerced
+            into a one-dimensional numpy array. 
+
+
         sims: int
             The number of bootstrap simulations to run. Defaults to 1000.
 
@@ -507,14 +512,15 @@ class _BootstrapChainLadder(_BaseChainLadder):
         else:
             prng = RandomState()
 
+        sampling_dist_ = sampling_dist.ravel()
         dfm = _tritotbl(fitted_tri_incr)
 
         # Handle first period negative cells as specified by `neg_handler`.
-        if np.any(dfm[self.value] < 0):
+        if np.any(dfm["value"] < 0):
             if self.neg_handler==1:
-                dfm[self.value] = np.where(
-                    np.logical_and(dfm[self.dev].values==1, dfm[self.value].values<0),
-                    1., dfm[self.value].values
+                dfm["value"] = np.where(
+                    np.logical_and(dfm["dev"].values==1, dfm["value"].values<0),
+                    1., dfm["value"].values
                     )
 
             elif self.neg_handler==2:
@@ -526,45 +532,39 @@ class _BootstrapChainLadder(_BaseChainLadder):
             else:
                 raise ValueError("`neg_handler` must be in [1, 2].")
 
-        dflist = [
-            pd.DataFrame({"origin":i, "dev":bb.tri.columns})
-                for i in bb.tri.index
-            ]
-
-        # Use this instead of list comp:
-        df0 = bb.tri.reset_index(drop=False).rename({"index":"origin"}, axis=1)
-        df0 = pd.melt(df0, id_vars=[bb.tri.origin], var_name=bb.tri.dev, value_name=bb.tri.value)
-
-
-
-        # Create single DataFrame from dflist.
-        dfi = pd.DataFrame(np.vstack(dflist), columns=["origin", "dev"])
+        # Note that we don't use self.tri's ``as_tbl`` method since we
+        # need to retain records with NaNs.
+        dftri = self.tri.reset_index(drop=False).rename({"index":"origin"}, axis=1)
+        dfi = pd.melt(dftri, id_vars=["origin"], var_name="dev", value_name="value").drop("value", axis=1)
         dfp = dfi.merge(dfm, how="outer", on=["origin", "dev"])
         dfp["rectype"] = np.where(np.isnan(dfp["value"].values), "forecast", "actual")
-        dfp.rename(columns={"value":"incr"}, inplace=True)
+        dfp = dfp.rename({"value":"incr"}, axis=1)
         dfp["incr_sqrt"] = np.sqrt(dfp["incr"].values)
-        pretypes = dfp.dtypes.to_dict()
+        dtypes_ = {"origin":np.int, "dev":np.int_, "incr":np.float_,
+                   "incr_sqrt":np.float_, "rectype":np.str,}
 
-        # Replicate dfp self.sims times, then reset dtypes.
+        # Replicate dfp sims times then redefine datatypes.
         dfr = pd.DataFrame(
             np.tile(dfp, (sims, 1)),
-            columns=["origin", "dev", "incr", "rectype", "incr_sqrt"]
+            columns=["origin", "dev", "incr", "rectype", "incr_sqrt"],
             )
 
-        for col in dfr:
-            dfr[col] = dfr[col].astype(pretypes[col])
+        for hdr_ in dfr.columns:
+            dfr[hdr_] = dfr[hdr_].astype(dtypes_[hdr_])
 
-        # Assign identifier to each record in dfr (`SIM`).
+        # Assign simulation identifier to each record in dfr.
         dfr["sim"] = np.divmod(dfr.index, self.tri.shape[0] * self.tri.shape[1])[0]
+        sample_size_ = dfr.shape[0]
 
         if parametric:
-            # Set random residual on records in which rectype=="actual".
-            _mm_mean, _mm_stdv = 0, self.sampling_dist.std(ddof=1, axis=0)
-            dfr["resid"] = prng.normal(loc=_mm_mean, scale=_mm_stdv, size=dfr.shape[0])
+            # Sample random residual from normal distribution with zero mean.
+            stddev_ = sampling_dist_.std(ddof=1)
+            dfr["resid"] = prng.normal(loc=0, scale=stddev_, size=sample_size_)
         else:
-            dfr["resid"] = prng.choice(self.sampling_dist, dfr.shape[0], replace=True)
+            # Sample random residual from adjusted pearson residuals.
+            dfr["resid"] = prng.choice(sampling_dist_, sample_size_, replace=True)
 
-        # Calcuate resampled incremental and cumulative losses.
+        # Calcuate simulated incremental and cumulative losses.
         dfr["resid"] = np.where(dfr["rectype"].values=="forecast", np.NaN, dfr["resid"].values)
         dfr = dfr.sort_values(by=["sim", "origin", "dev"]).reset_index(drop=True)
         dfr["samp_incr"] = dfr["incr"].values + dfr["resid"].values * dfr["incr_sqrt"].values

@@ -349,8 +349,10 @@ r_adj = bb._resid_adj(resid_us=r_us)
 sclp = bb._scale_param(r_us)
 sampling_dist = bb._sampling_dist(r_adj)
 
-df0 = bb.tri.reset_index(drop=False).rename({"index":"origin"}, axis=1)
-df0 = pd.melt(df0, id_vars=[bb.tri.origin], var_name=bb.tri.dev, value_name=bb.tri.value)
+dfsamps = bb._bs_samples(
+    sampling_dist=sampling_dist, fitted_tri_incr=tfi, sims=10, neg_handler=1,
+    parametric=False, random_state=516
+    )
 
 
 
