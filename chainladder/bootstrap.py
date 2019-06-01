@@ -341,7 +341,7 @@ class _BootstrapChainLadder(_BaseChainLadder):
         return((resid_us**2).sum().sum() / self.tri.dof)
 
 
-    def _tri_fit_cum(self, sel="all-weighted", tail=1.0):
+    def _tri_fit_cum(self, sel="all-weighted"):
         """
         Return the cumulative fitted triangle using backwards recursion,
         starting with the observed cumulative paid/incurred-to-date along the
@@ -353,14 +353,11 @@ class _BootstrapChainLadder(_BaseChainLadder):
             The ldf average to select from ``triangle._CumTriangle.a2a_avgs``.
             Defaults to "all-weighted".
 
-        tail: float
-            Tail factor. Defaults to 1.0.
-
         Returns
         -------
         pd.DataFrame
         """
-        ldfs_ = self._ldfs(sel=sel, tail=tail)
+        ldfs_ = self._ldfs(sel=sel)
         fitted_tri_cum_ = self.tri.copy(deep=True)
         for i in range(fitted_tri_cum_.shape[0]):
             iterrow = fitted_tri_cum_.iloc[i, :]
@@ -480,11 +477,23 @@ class _BootstrapChainLadder(_BaseChainLadder):
         ----------
         sampling_dist: np.ndarray
             The residuals from the fitted incremental triangle coerced
-            into a one-dimensional numpy array. 
+            into a one-dimensional numpy array.
 
+        fitted_tri_incr: pd.DataFrame
+            The incremental triangle fitted using backwards recursion.
+            Typically the output of ``self._tri_fit_incr``.
 
         sims: int
             The number of bootstrap simulations to run. Defaults to 1000.
+
+        neg_handler: int
+            If ``neg_handler=1``, then any first development period negative
+            cells will be coerced to +1. If ``neg_handler=2``, the minimum
+            value in all triangle cells is identified (identified as 'MIN_CELL').
+            If MIN_CELL is less than or equal to 0, the equation
+            (MIN_CELL + X = +1.0) is solved for X. X is then added to every
+            other cell in the triangle, resulting in all triangle cells having
+            a value strictly greater than 0.
 
         parametric: bool
             If True, fit standardized residuals to a normal distribution, and
@@ -502,8 +511,6 @@ class _BootstrapChainLadder(_BaseChainLadder):
         -------
         pd.DataFrame
         """
-        # fitted_tri_incr = bb._tri_fit_incr(fitted_tri_cum=tfc)
-
         if random_state is not None:
             if isinstance(random_state, int):
                 prng = RandomState(random_state)
@@ -532,8 +539,8 @@ class _BootstrapChainLadder(_BaseChainLadder):
             else:
                 raise ValueError("`neg_handler` must be in [1, 2].")
 
-        # Note that we don't use self.tri's ``as_tbl`` method since we
-        # need to retain records with NaNs.
+        # Note that we don't use self.tri's ``as_tbl`` method since we need
+        # to retain records with NaNs.
         dftri = self.tri.reset_index(drop=False).rename({"index":"origin"}, axis=1)
         dfi = pd.melt(dftri, id_vars=["origin"], var_name="dev", value_name="value").drop("value", axis=1)
         dfp = dfi.merge(dfm, how="outer", on=["origin", "dev"])
@@ -572,48 +579,41 @@ class _BootstrapChainLadder(_BaseChainLadder):
         return(dfr.reset_index(drop=True))
 
 
-
-
     def _bs_ldfs(self, dfsamples):
         """
         Compute and return loss development factors for each set of
-        synthetic loss data.
+        synthetic loss data. This method is intended for internal use
+        only.
 
         Parameters
         ----------
-        samples: pd.DataFrame
-            Output from ``self._bs_samples`` method.
+        dfsamples: pd.DataFrame
+            Output from ``self._bs_samples``.
 
         Returns
         -------
         pd.DataFrame
         """
-        keepcols = ["sim", "origin", "dev", "samp_cum", "last_origin"]
-        lvi = self.tri.clvi.reset_index(drop=False)
-        lvi.rename(
-            columns={
-                "index":"dev", "origin":"last_origin", "row_offset":"origin_offset"
-                }, inplace=True
-            )
-
-        initdf = dfsamples.merge(lvi, how="left", on=["dev"])
-        initdf = initdf[keepcols].sort_values(by=["sim", "dev", "origin"])
-        df = initdf[~np.isnan(initdf["samp_cum"])].reset_index(drop=True)
+        keepcols_ = ["sim", "origin", "dev", "samp_cum", "last_origin"]
+        dflvi = self.tri.clvi.reset_index(drop=False)
+        dflvi = dflvi.rename(
+            {"index":"dev", "origin":"last_origin", "row_offset":"origin_offset"}, axis=1)
+        dfinit = dfsamples.merge(dflvi, how="left", on=["dev"])
+        dfinit = dfinit[keepcols_].sort_values(by=["sim", "dev", "origin"])
+        df = dfinit[~np.isnan(dfinit["samp_cum"])].reset_index(drop=True)
         df["_aggdev1"] = df.groupby(["sim", "dev"])["samp_cum"].transform("sum")
         df["_aggdev2"] = np.where(df["origin"].values==df["last_origin"].values, 0, df["samp_cum"].values)
         df["_aggdev2"] = df.groupby(["sim", "dev"])["_aggdev2"].transform("sum")
-        uniqdf = df[["sim", "dev", "_aggdev1", "_aggdev2"]].drop_duplicates().reset_index(drop=True)
-        uniqdf["_aggdev2"] = uniqdf["_aggdev2"].shift(periods=1, axis=0)
-        uniqdf["dev"] = uniqdf["dev"].shift(periods=1, axis=0)
-        ldfsdf        = uniqdf[uniqdf["_aggdev2"]!=0].dropna(how="any")
-        ldfsdf["ldf"] = ldfsdf["_aggdev1"] / ldfsdf["_aggdev2"]
-        ldfsdf["dev"] = ldfsdf["dev"].astype(np.integer)
-        return(ldfsdf[["sim", "dev", "ldf"]].reset_index(drop=True))
+        dfuniq = df[["sim", "dev", "_aggdev1", "_aggdev2"]].drop_duplicates().reset_index(drop=True)
+        dfuniq["_aggdev2"] = dfuniq["_aggdev2"].shift(periods=1)
+        dfuniq["dev"] = dfuniq["dev"].shift(periods=1)
+        dfldfs = dfuniq[dfuniq["_aggdev2"]!=0].dropna(how="any")
+        dfldfs["ldf"] = dfldfs["_aggdev1"] / dfldfs["_aggdev2"]
+        dfldfs["dev"] = dfldfs["dev"].astype(np.int_)
+        return(dfldfs[["sim", "dev", "ldf"]].reset_index(drop=True))
 
 
-
-
-    def _bs_forecasts(self, dfcombined):
+    def _bs_forecasts(self, dfcombined, scale_param):
         """
         Populate lower-right of each simulated triangle using values from
         ``self._bs_samples`` and development factors from ``self._bs_ldfs``.
@@ -624,35 +624,35 @@ class _BootstrapChainLadder(_BaseChainLadder):
             Combination of ``self._bs_samples``, ``self._bs_ldfs`` and
             ``self.tri.latest_by_origin``.
 
+        scale_param: float
+            the sum of the squared unscaled Pearson residuals over the
+            degrees of freedom. Computed within ``self._scale_param``.
+
         Returns
         -------
         pd.DataFrame
         """
-        min_origin_year = dfcombined["origin"].values.min()
-        dfcombined["_l_init_indx"] = np.where(dfcombined["dev"].values>=dfcombined["l_act_dev"].values, dfcombined.index.values, -1)
-        actsdf = dfcombined[(dfcombined["origin"].values==min_origin_year) | (dfcombined["_l_init_indx"].values==-1)]
-        fcstdf = dfcombined[~dfcombined.index.isin(actsdf.index)].sort_values(by=["sim", "origin", "dev"])
-        fcstdf["_l_act_indx"] = fcstdf.groupby(["sim", "origin"])["_l_init_indx"].transform("min")
-        fcstdf["l_act_cum"]   = fcstdf.lookup(fcstdf["_l_act_indx"].values, ["samp_cum"] * fcstdf.shape[0])
-        fcstdf["_cum_ldf"]    = fcstdf.groupby(["sim", "origin"])["ldf"].transform("cumprod").shift(periods=1, axis=0)
-        fcstdf["_samp_cum2"]  = np.nan_to_num((fcstdf["l_act_cum"].values * fcstdf["_cum_ldf"].values), 0)
-        fcstdf["cum_final"]   = np.nan_to_num(fcstdf["samp_cum"].values, 0) + fcstdf["_samp_cum2"].values
+        min_origin_year_ = dfcombined["origin"].values.min()
+        dfcombined["_l_init_indx"] = np.where(
+            dfcombined["dev"].values>=dfcombined["l_act_dev"].values, dfcombined.index.values, -1)
+        dfacts = dfcombined[(dfcombined["origin"].values==min_origin_year_) | (dfcombined["_l_init_indx"].values==-1)]
+        dffcst = dfcombined[~dfcombined.index.isin(dfacts.index)].sort_values(by=["sim", "origin", "dev"])
+        dffcst["_l_act_indx"] = dffcst.groupby(["sim", "origin"])["_l_init_indx"].transform("min")
+        dffcst["l_act_cum"] = dffcst.lookup(dffcst["_l_act_indx"].values, ["samp_cum"] * dffcst.shape[0])
+        dffcst["_cum_ldf"] = dffcst.groupby(["sim", "origin"])["ldf"].transform("cumprod").shift(periods=1, axis=0)
+        dffcst["_samp_cum2"] = np.nan_to_num((dffcst["l_act_cum"].values * dffcst["_cum_ldf"].values), 0)
+        dffcst["cum_final"] = np.nan_to_num(dffcst["samp_cum"].values, 0) + dffcst["_samp_cum2"].values
 
-        # Combine forecasts with actuals; compute incremental losses by sim and origin.
-        fcstdf = fcstdf.drop(labels=["samp_cum", "samp_incr"], axis=1).rename(columns={"cum_final":"samp_cum"})
-        sqrddf = pd.concat([fcstdf, actsdf], sort=True).sort_values(by=["sim", "origin", "dev"])
-        sqrddf["_incr_dev1"] = np.nan_to_num(np.where(sqrddf["dev"].values==1, sqrddf["samp_cum"].values, np.NaN), 0)
-        sqrddf["_incr_dev2"] = np.nan_to_num(sqrddf.groupby(["sim", "origin"])["samp_cum"].diff(periods=1), 0)
-        sqrddf["samp_incr"]  = sqrddf["_incr_dev1"].values + sqrddf["_incr_dev2"].values
-        sqrddf["var"]  = np.abs(sqrddf["samp_incr"].values * self.scale_param)
-        sqrddf["sign"] = np.where(sqrddf["samp_incr"].values > 0, 1, -1)
-        sqrddf.drop(labels=[i for i in sqrddf.columns if i.startswith("_")], axis=1, inplace=True)
-
-        colorder = ["sim", "origin", "dev", "incr", "incr_sqrt", "rectype", "resid",
-                    "samp_incr", "samp_cum", "ldf", "var", "sign", "l_act_dev",
-                    "l_act_cum"]
-
-        return(sqrddf[colorder].sort_values(by=["sim", "origin", "dev"]).reset_index(drop=True))
+        # Combine forecasts with actuals then compute incremental losses by sim and origin.
+        dffcst = dffcst.drop(labels=["samp_cum", "samp_incr"], axis=1).rename(columns={"cum_final":"samp_cum"})
+        dfsqrd = pd.concat([dffcst, dfacts], sort=True).sort_values(by=["sim", "origin", "dev"])
+        dfsqrd["_incr_dev1"] = np.nan_to_num(np.where(dfsqrd["dev"].values==1, dfsqrd["samp_cum"].values, np.NaN), 0)
+        dfsqrd["_incr_dev2"] = np.nan_to_num(dfsqrd.groupby(["sim", "origin"])["samp_cum"].diff(periods=1), 0)
+        dfsqrd["samp_incr"] = dfsqrd["_incr_dev1"].values + dfsqrd["_incr_dev2"].values
+        dfsqrd["var"] = np.abs(dfsqrd["samp_incr"].values * scale_param)
+        dfsqrd["sign"] = np.where(dfsqrd["samp_incr"].values > 0, 1, -1)
+        dfsqrd = dfsqrd.drop(labels=[i for i in dfsqrd.columns if i.startswith("_")], axis=1)
+        return(dfsqrd.sort_values(by=["sim", "origin", "dev"]).reset_index(drop=True))
 
 
 
@@ -876,9 +876,9 @@ class _BootstrapChainLadder(_BaseChainLadder):
 
 
 
-class BootstrapChainLadderResult:
+class _BootstrapChainLadderResult:
     """
-    Curated output generated from ``_BootstrapChainLadder``'s __call__ method.
+    Curated output generated from ``_BootstrapChainLadder``'s ``run`` method.
     """
     def __init__(self, dfsummary, dfreserves, dfprocerror, **kwargs):
 

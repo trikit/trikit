@@ -342,18 +342,27 @@ bb = trikit.chladder(data=DATA, range_method="bootstrap")
 
 
 dof = bb.tri.dof
-tfc = bb._tri_fit_cum(sel="all-weighted", tail=1.0)
+tfc = bb._tri_fit_cum(sel="all-weighted")
 tfi = bb._tri_fit_incr(fitted_tri_cum=tfc)
 r_us = bb._resid_us(tfi)
 r_adj = bb._resid_adj(resid_us=r_us)
 sclp = bb._scale_param(r_us)
 sampling_dist = bb._sampling_dist(r_adj)
 
-dfsamps = bb._bs_samples(
+dfsamples = bb._bs_samples(
     sampling_dist=sampling_dist, fitted_tri_incr=tfi, sims=10, neg_handler=1,
     parametric=False, random_state=516
     )
 
+dfldfs = bb._bs_ldfs(dfsamples=dfsamples)
+
+rlvi_ = bb.tri.rlvi.reset_index(drop=False).rename({"index":"origin", "dev":"l_act_dev"}, axis=1)
+dflvi = rlvi_.drop("col_offset", axis=1)
+dfcombined = dfsamples.merge(dfldfs, on=["sim", "dev"], how="left")
+dfcombined = dfcombined.merge(dflvi, how="left", on=["origin"])
+dfcombined = dfcombined.reset_index(drop=True).sort_values(by=["sim", "origin", "dev"])
+
+dfforecasts = bb._bs_forecasts(dfcombined=dfcombined, scale_param=sclp)
 
 
 
