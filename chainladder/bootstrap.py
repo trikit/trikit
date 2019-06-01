@@ -655,9 +655,7 @@ class _BootstrapChainLadder(_BaseChainLadder):
         return(dfsqrd.sort_values(by=["sim", "origin", "dev"]).reset_index(drop=True))
 
 
-
-
-    def _bs_process_error(self, dfforecasts, procdist="gamma", random_state=None):
+    def _bs_process_error(self, dfforecasts, scale_param, procdist="gamma", random_state=None):
         """
         Incorporate process variance by simulating each incremental future
         loss from ``procdist``. The mean is set to the forecast incremental
@@ -678,6 +676,10 @@ class _BootstrapChainLadder(_BaseChainLadder):
             DateFrame of bootstraps forecasts generated within
             ``self._bs_forecasts``.
 
+        scale_param: float
+            the sum of the squared unscaled Pearson residuals over the
+            degrees of freedom. Computed within ``self._scale_param``.
+
         procdist: str
             Specifies the distribution used to incorporate process error.
             Currently, can only be set to "gamma". Any other distribution
@@ -696,14 +698,6 @@ class _BootstrapChainLadder(_BaseChainLadder):
         Returns
         -------
         pd.DataFrame
-            DataFrame of cumulated, simulated losses after the incorporation
-            of process variance.
-
-        See Also
-        --------
-        ..[1] Shapland, Mark R - CAS Monograph Series Number 4:
-              *Using the ODP Bootstrap Model: A Practicioner's Guide*,
-              Casualty Actuarial Society, 2016.
         """
         # Initialize pseudo random number generator.
         if random_state is not None:
@@ -716,25 +710,18 @@ class _BootstrapChainLadder(_BaseChainLadder):
 
         # Parameterize distribution for process variance incorporation.
         if procdist.strip().lower()=="gamma":
-            dfforecasts["param2"] = self.scale_param
-            dfforecasts["param1"]  = np.abs(dfforecasts["samp_incr"].values / dfforecasts["param2"].values)
-
+            dfforecasts["param2"] = scale_param
+            dfforecasts["param1"] = np.abs(dfforecasts["samp_incr"].values / dfforecasts["param2"].values)
             def fdist(param1, param2):
                 """gamma.rvs(a=param1, scale=param2, size=1, random_state=None)"""
                 return(prng.gamma(param1, param2))
         else:
-            raise ValueError(
-                "Invalid procdist specification: `{}`".format(procdist)
-                )
-
+            raise ValueError("Invalid procdist specification: `{}`".format(procdist))
         dfforecasts["final_incr"] = np.where(
             dfforecasts["rectype"].values=="forecast",
             fdist(dfforecasts["param1"].values, dfforecasts["param2"].values) * dfforecasts["sign"].values,
-            dfforecasts["samp_incr"].values
-            )
-
-        dfforecasts["final_cum"]  = dfforecasts.groupby(["sim", "origin"])["final_incr"].cumsum()
-
+            dfforecasts["samp_incr"].values)
+        dfforecasts["final_cum"] = dfforecasts.groupby(["sim", "origin"])["final_incr"].cumsum()
         return(dfforecasts.sort_values(by=["sim", "origin", "dev"]).reset_index(drop=True))
 
 

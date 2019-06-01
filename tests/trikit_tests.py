@@ -361,10 +361,9 @@ dflvi = rlvi_.drop("col_offset", axis=1)
 dfcombined = dfsamples.merge(dfldfs, on=["sim", "dev"], how="left")
 dfcombined = dfcombined.merge(dflvi, how="left", on=["origin"])
 dfcombined = dfcombined.reset_index(drop=True).sort_values(by=["sim", "origin", "dev"])
-
 dfforecasts = bb._bs_forecasts(dfcombined=dfcombined, scale_param=sclp)
 
-
+dfprocerr = bb._bs_process_error(dfforecasts=dfforecasts, scale_param=sclp, procdist="gamma", random_state=516)
 
 I_ = bb.tri.as_incr()
 m_ = tfi
