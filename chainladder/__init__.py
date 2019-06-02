@@ -42,7 +42,7 @@ class _BaseChainLadder:
 
 
 
-    def __call__(self, sel="all-weighted", tail=1.0):
+    def run(self, sel="all-weighted", tail=1.0):
         """
         Compile a summary of ultimate and reserve estimates resulting from
         the application of the development technique over ``self.tri``.
@@ -79,7 +79,6 @@ class _BaseChainLadder:
         reserves_ = self._reserves(ultimates=ultimates_)
         maturity_ = self.tri.maturity.astype(np.str)
         latest_ = self.tri.latest_by_origin
-
         dfcldfs = cldfs_.to_frame().reset_index(drop=False)
         dfcldfs = dfcldfs.rename({"index":"maturity"}, axis=1)
         dfcldfs["maturity"] = dfcldfs["maturity"].astype(np.str)
@@ -89,8 +88,23 @@ class _BaseChainLadder:
         dfcldfs = dfcldfs.set_index("origin").drop("maturity", axis=1)
         dfcldfs.index.name = None
 
-        # Use join instead of merge so that origin year indicies are
-        # preserved.
+        # Use join instead of merge to preserve origin year indicies.
+
+        # Compile Chain Ladder point estimate summary.
+        # dfmatur_ = maturity_.to_frame().reset_index(drop=False).rename({"index":"origin"}, axis=1)
+        # dfcldfs_ = cldfs_.to_frame().reset_index(drop=False).rename({"index":"maturity"}, axis=1)
+        # dfcldfs_["maturity"] = dfcldfs_["maturity"].astype(np.str)
+        # dfsumm = dfmatur_.merge(dfcldfs_, on=["maturity"], how="left").set_index("origin")
+        # dfsumm.index.name = None
+        # dflatest_ = latest_.to_frame().rename({"latest_by_origin":"latest"}, axis=1)
+        # dfultimates_ = ultimates_.to_frame()
+        # dfreserves_ = reserves_.to_frame()
+        # dfsumm = functools.reduce(
+        #     lambda df1, df2: df1.join(df2),
+        #     (dflatest_, dfultimates_, dfreserves_), dfsumm
+        #     )
+        #
+
         dfsumm = maturity_.to_frame().join(latest_)
         dfsumm = dfsumm.rename({"latest_by_origin":"latest"}, axis=1)
         dfsumm = dfsumm.join(dfcldfs).join(ultimates_).join(reserves_)
@@ -100,13 +114,13 @@ class _BaseChainLadder:
         dfsumm.loc["total", "maturity"] = ""
         dfsumm.loc["total", "cldf"] = np.NaN
         dfsumm = dfsumm.reset_index().rename({"index":"origin"}, axis=1)
+        kwds = {"sel":sel, "tail":tail}
 
         # Initialize and return _ChainLadderResult instance.
         clresult_ = _ChainLadderResult(
-            tri=self.tri, sel=sel, tail=tail, ldfs=ldfs_, cldfs=cldfs_,
-            ultimates=ultimates_, reserves=reserves_, summary=dfsumm
-            )
-
+            summary=dfsumm, tri=self.tri, ldfs=ldfs_, cldfs=cldfs_,
+            latest=latest_, maturity=maturity_, ultimates=ultimates_,
+            reserves=reserves_, **kwds)
         return(clresult_)
 
 
@@ -134,7 +148,8 @@ class _BaseChainLadder:
             ldfs_ = ldfs_.append(pd.Series(data=[tail], index=[tindx_]))
         except KeyError:
                 print("Invalid age-to-age selection: `{}`".format(sel))
-        return(ldfs_.astype(np.float_).sort_index())
+        ldfs_ =pd.Series(data=ldfs_, index=ldfs_.index, dtype=np.float_, name="ldf")
+        return(ldfs_.sort_index())
 
 
     def _cldfs(self, ldfs):
@@ -211,8 +226,7 @@ class _BaseChainLadder:
         """
         reserves_ = pd.Series(
             data=ultimates - self.tri.latest_by_origin,
-            index=self.tri.index, name='reserve'
-            )
+            index=self.tri.index, name='reserve')
         return(reserves_.astype(np.float_).sort_index())
 
 
@@ -225,24 +239,21 @@ class _BaseChainLadder:
 
 
 class _ChainLadderResult:
-
-    def __init__(self, tri, sel, tail, ldfs, cldfs, ultimates, reserves, summary):
+    """
+    Curated output resulting from ``_BaseChainLadder``'s ``run`` method.
+    """
+    def __init__(self, summary, tri, ldfs, cldfs, latest, maturity,
+                 ultimates, reserves, **kwargs):
         """
-        Container class for Chain Ladder output. Instances of
-        ``_ChainLadderResult`` should not be invoked directly.
+        Container object for ``_BaseChainLadder`` output.
 
         Parameters
         ----------
+        summary: pd.DataFrame
+            Chain Ladder summary compilation.
+
         tri: trikit.triangle._CumTriangle
             A cumulative triangle instance.
-
-        sel: str
-            The selected ldf specified upon invocation of
-            ``_BaseChainLadder``'s __call__ method.
-
-        tail: float
-            The tail factor specified upon invocation of
-            ``_BaseChainLadder``'s __call__ method.
 
         ldfs: pd.Series
             Loss development factors.
@@ -250,27 +261,38 @@ class _ChainLadderResult:
         cldfs: pd.Series
             Cumulative loss development factors.
 
+        latest: pd.Series
+            Latest loss amounts by origin.
+
+        maturity: pd.Series
+            Represents ther maturity of each origin relative to development
+            period.
+
         ultimates: pd.Series
-            Chain Ladder ultimate loss projections by origin year.
+            Represents Chain Ladder ultimate projections.
 
         reserves: pd.Series
-            Chain Ladder ibnr/unpaid loss amounts by origin year.
+            Represents the projected reserve amount. For each origin period,
+            this equates to the ultimate loss projection minus the latest
+            loss amount for the origin period (reserve = ultimate - latest).
 
-        summary: pd.DataFrame
-            Chain Ladder summary compilation.
+        kwargs: dict
+            Additional keyword arguments passed into ``_BaseChainLadder``'s
+            ``run`` method.
         """
         self.ultimates = ultimates
         self.reserves = reserves
         self.summary = summary
         self.cldfs = cldfs
-        self.tail = tail
         self.ldfs = ldfs
         self.tri = tri
-        self.sel = sel
+
+        if kwargs is not None:
+            for key_ in kwargs:
+                setattr(self, key_, kwargs[key_])
 
         # Properties.
         self._trisqrd = None
-
 
 
     @property

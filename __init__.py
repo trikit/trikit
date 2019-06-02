@@ -31,6 +31,23 @@ Outstanding Tasks =>
 
 [*] Accept additional styling arguments in triangler and chanladder plot method.
 
+[*] Fix _BaseChainLadder's run method to mirror BootstrapChainLadder's run method.
+
+[*] Update documentation for _ChainLadderResult
+
+[*] Fix this error:
+# tri2 = DataFrame
+trikit._IncrTriangle(tri2)
+# Throws error:
+# Traceback (most recent call last):
+#   File "C:\Python37\lib\site-packages\IPython\core\interactiveshell.py", line 3296, in run_code
+#     exec(code_obj, self.user_global_ns, self.user_ns)
+#   File "<ipython-input-75-5ef5b2b85c97>", line 1, in <module>
+#     trikit._IncrTriangle(tri2)
+#   File "G:\Repos\trikit\triangle.py", line 75, in __init__
+#     for i in tri:
+# UnboundLocalError: local variable 'tri' referenced before assignment
+
 https://sphinxcontrib-napoleon.readthedocs.io/en/latest/index.html
 """
 import os
