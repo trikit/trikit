@@ -1,1 +1,9 @@
+include *.txt
+include *.py
+recursive-include chainladder *.py
+recursive-include tests *.py
 include datasets/*.csv
+include docs/source/*.rst
+include docs/source/*.md
+prune Reference
+prune docs/build

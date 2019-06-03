@@ -90,8 +90,8 @@ np.set_printoptions(
     infstr='Inf', precision=5
     )
 
-
 from .__pkginfo__ import version as __version__
+from .__pkginfo__ import name
 
 
 
