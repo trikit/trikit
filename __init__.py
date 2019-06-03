@@ -59,9 +59,9 @@ import warnings
 import numpy as np
 import pandas as pd
 import scipy
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import seaborn as sns
+# import matplotlib as mpl
+# import matplotlib.pyplot as plt
+# import seaborn as sns
 from .triangle import _IncrTriangle, _CumTriangle
 from .chainladder import _BaseChainLadder
 from .chainladder.mack import _MackChainLadder
@@ -81,10 +81,8 @@ get_lrdb_groups = _get_lrdb_groups(lrdb_path=lrdb_path)
 get_lrdb_specs = _get_lrdb_specs(lrdb_path=lrdb_path)
 
 pd.options.mode.chained_assignment = None # 'warn'
-#pd.options.display.float_format = '{:.2f}'.format
 pd.set_option('display.max_columns', 1000)
 pd.set_option('display.width', 500)
-plt.style.use('ggplot')
 np.set_printoptions(
     edgeitems=3, linewidth=200, suppress=True, nanstr='NaN',
     infstr='Inf', precision=5

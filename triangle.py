@@ -14,14 +14,12 @@ specified for ``type_``.
 import itertools
 import numpy as np
 import pandas as pd
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import seaborn as sns
+
 
 from .chainladder import _BaseChainLadder
 #from .chainladder import bootstrap._BootstrapChainLadder
-# from .chainladder.bootstrap import _BootstrapChainLadder
-# from chainladder.mack import _MackChainLadder
+from .chainladder.bootstrap import _BootstrapChainLadder
+from .chainladder.mack import _MackChainLadder
 # from chainladder.bootstrap import _BootstrapChainLadder
 
 
@@ -719,6 +717,10 @@ class _CumTriangle(_IncrTriangle):
         -------
         matplotlib.pyplot.plot
         """
+        import matplotlib as mpl
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+
         sns.set_context(context)
         data = self.as_tbl()
 
@@ -794,12 +796,14 @@ class _CumTriangle(_IncrTriangle):
         return(pd.DataFrame(self))
 
 
-    def cl(self, sel="all-weighted", tail=1.0, range_method=None):
+    def _chladder(self, sel="all-weighted", tail=1.0, range_method=None, **kwargs):
         """
         trikit's chain ladder implementation.
         """
         if range_method is None:
             cl_ = _BaseChainLadder(self).run(sel="all-weighted", tail=1.0)
+        elif range_method.lower().strip().startswith("boot"):
+            cl_ = _BootstrapChainLadder(self).run(sel="all-weighted", **kwargs)
         return(cl_)
 
 

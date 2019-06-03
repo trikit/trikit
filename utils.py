@@ -465,8 +465,3 @@ def _tritotbl(tri):
     df = pd.melt(tri, id_vars=["origin"], var_name="dev", value_name="value")
     df = df[~np.isnan(df["value"])].astype({"origin":np.int_, "dev":np.int_, "value":np.float_})
     return(df.sort_values(by=["origin", "dev"]).reset_index(drop=True))
-
-
-
-
-
