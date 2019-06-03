@@ -22,7 +22,7 @@ documentation [here](https://github.com/jtrive84/trikit/docs).
 `trikit` can be installed by running:
 
 ```sh
-$ pip install trikit (NOTE: Not yet on PyPI - Coming soon)
+$ pip install trikit
 ```
 
 Alternatively, manual installation can be accomplished by downloading the
