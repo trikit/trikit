@@ -3,9 +3,13 @@ import setuptools
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+with open("VERSION", "r") as fversion:
+    version = fversion.read(fversion).strip()
+
+
 setuptools.setup(
     name="trikit",
-    version="0.2.6",
+    version=version,
     author="James D. Triveri",
     author_email="james.triveri@gmail.com",
     description="Actuarial Reserving Methods in Python",

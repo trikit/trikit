@@ -88,111 +88,118 @@ np.set_printoptions(
     infstr='Inf', precision=5
     )
 
-from .__pkginfo__ import version as __version__
-from .__pkginfo__ import name
+# Bind reference to package version number.
+version_path_ = os.path.dirname(__file__) + os.path.sep + "VERSION"
+with open(version_path_, "r") as fversion:
+    __version__ = fversion.read(fversion).strip()
 
 
 
-def chladder(data, origin=None, dev=None, value=None, trifmt=None,
-             datafmt="incremental", range_method=None):
-    """
-    Return *ChainLadder initializer with optional reserve range method
-    specification.
 
-    Parameters
-    ----------
-    data: pd.DataFrame
-        The dataset to be coerced into a *Triangle instance. ``data`` can be
-        tabular loss data or a pandas DataFrame formatted as a triangle but
-        not typed as such. In the latter case, ``trifmt`` must be specified to
-        indicate the representation of ``data`` (either "cumulative" or
-        "incremental").
 
-    origin: str
-        The field in ``data`` representing the origin year. When
-        ``trifmt`` is not None, ``origin`` is ignored. Defaults to None.
+# def chladder(data, origin=None, dev=None, value=None, trifmt=None,
+#              datafmt="incremental", range_method=None):
+#     """
+#     Return *ChainLadder initializer with optional reserve range method
+#     specification.
+#
+#     Parameters
+#     ----------
+#     data: pd.DataFrame
+#         The dataset to be coerced into a *Triangle instance. ``data`` can be
+#         tabular loss data or a pandas DataFrame formatted as a triangle but
+#         not typed as such. In the latter case, ``trifmt`` must be specified to
+#         indicate the representation of ``data`` (either "cumulative" or
+#         "incremental").
+#
+#     origin: str
+#         The field in ``data`` representing the origin year. When
+#         ``trifmt`` is not None, ``origin`` is ignored. Defaults to None.
+#
+#     dev: str
+#         The field in ``data`` representing the development period. When
+#         ``trifmt`` is not None, ``dev`` is ignored. Defaults to None.
+#
+#     value: str
+#         The field in ``data`` representing loss amounts. When ``trifmt`` is
+#         not None, ``value`` is ignored. Defaults to None.
+#
+#     trifmt: str
+#         One of "cumulative", "incremental" or None (None by default).
+#         ``trifmt`` should only be set to something other than None if ``data``
+#         is a DataFrame formatted as a loss triangle, but hasn't yet been
+#         converted to a ``CumTriangle`` or ``IncrTriangle`` instance. When
+#         ``datafmt`` is not None, ``trifmt`` is ignored.
+#
+#     datafmt: str
+#         When ``data`` is in tabular form, ``datafmt`` indicates whether the
+#         records comprising ``data`` represent cumulative or incremental
+#         losses.  When ``trifmt`` is not None, ``datafmt`` is ignored. Default
+#         value is "incremental".
+#
+#     range_method: str
+#         One of "mack", "bootstrap" or None. Additional methods will
+#         be available in future releases. Defaults to None.
+#
+#     Returns
+#     -------
+#     chainladder.*ChainLadder instance.
+#         An instance of chainladder.*ChainLadder, optionally with ranges
+#         quantifying reserve variability.
+#
+#     Examples
+#     --------
+#     Here we demonstrate how to produce Chain Ladder estimates for the
+#     ``raa`` sample dataset. Note that what is returned by ``chladder``
+#     is callable: In order to obtain the Chain Ladder summary, the
+#     object returned by ``chladder`` must be called, optionally
+#     specifying ``sel`` (defaults to "all-weighted") and ``tail`` (defaults
+#     to 1.0). Implemented this way, the Chain Ladder ultimates resulting
+#     from any number of `loss development factor - tail factor` combinations
+#     can be specified for the same triangle and compared, in preference
+#     to instantiating a new ``_BaseChainLadder`` instance each time ``sel``
+#     or ``tail`` should be varied.
+#
+#     >>> import trikit
+#     >>> data = trikit.load("ta83")
+#     >>> cl_init = trikit.chladder(data=data)
+#     >>> cl_init(sel="all-weighted", tail=1.005)
+#        origin maturity    latest      cldf       ultimate       reserve
+#     0    1981       10   18834.0  1.005000   18928.170000     94.170000
+#     1    1982        9   16704.0  1.014263   16942.243687    238.243687
+#     2    1983        8   23466.0  1.031441   24203.787778    737.787778
+#     3    1984        7   27067.0  1.065750   28846.657874   1779.657874
+#     4    1985        6   26180.0  1.110442   29071.370025   2891.370025
+#     5    1986        5   15852.0  1.236349   19598.608700   3746.608700
+#     6    1987        4   12314.0  1.448599   17838.049103   5524.049103
+#     7    1988        3   13112.0  1.841007   24139.288472  11027.288472
+#     8    1989        2    5395.0  2.988917   16125.209021  10730.209021
+#     9    1990        1    2063.0  8.964835   18494.454742  16431.454742
+#     10  total           160987.0       NaN  214187.839403  53200.839403
+#
+#     """
+#     tri = totri(data=data, type_="cumulative", origin=origin, dev=dev,
+#                 value=value, trifmt=trifmt, datafmt=datafmt)
+#
+#     if range_method is None:
+#         # Instantiate BaseChainLadder instance.
+#         cl_init = _BaseChainLadder(cumtri=tri)
+#
+#     elif range_method and range_method.lower().startswith("mack"):
+#         # Instantiate _MackChainLadder instance.
+#         cl_init = _MackChainLadder(cumtri=tri)
+#
+#     elif range_method and range_method.lower().startswith("boot"):
+#         # Instantiate _BootstrapChainLadder instance.
+#         cl_init = _BootstrapChainLadder(cumtri=tri)
+#
+#     else:
+#         raise NotImplementedError(
+#             "Specified range_method does not exist: `{}`".format(range_method)
+#             )
+#
+#     return(cl_init)
 
-    dev: str
-        The field in ``data`` representing the development period. When
-        ``trifmt`` is not None, ``dev`` is ignored. Defaults to None.
 
-    value: str
-        The field in ``data`` representing loss amounts. When ``trifmt`` is
-        not None, ``value`` is ignored. Defaults to None.
 
-    trifmt: str
-        One of "cumulative", "incremental" or None (None by default).
-        ``trifmt`` should only be set to something other than None if ``data``
-        is a DataFrame formatted as a loss triangle, but hasn't yet been
-        converted to a ``CumTriangle`` or ``IncrTriangle`` instance. When
-        ``datafmt`` is not None, ``trifmt`` is ignored.
-
-    datafmt: str
-        When ``data`` is in tabular form, ``datafmt`` indicates whether the
-        records comprising ``data`` represent cumulative or incremental
-        losses.  When ``trifmt`` is not None, ``datafmt`` is ignored. Default
-        value is "incremental".
-
-    range_method: str
-        One of "mack", "bootstrap" or None. Additional methods will
-        be available in future releases. Defaults to None.
-
-    Returns
-    -------
-    chainladder.*ChainLadder instance.
-        An instance of chainladder.*ChainLadder, optionally with ranges
-        quantifying reserve variability.
-
-    Examples
-    --------
-    Here we demonstrate how to produce Chain Ladder estimates for the
-    ``raa`` sample dataset. Note that what is returned by ``chladder``
-    is callable: In order to obtain the Chain Ladder summary, the
-    object returned by ``chladder`` must be called, optionally
-    specifying ``sel`` (defaults to "all-weighted") and ``tail`` (defaults
-    to 1.0). Implemented this way, the Chain Ladder ultimates resulting
-    from any number of `loss development factor - tail factor` combinations
-    can be specified for the same triangle and compared, in preference
-    to instantiating a new ``_BaseChainLadder`` instance each time ``sel``
-    or ``tail`` should be varied.
-
-    >>> import trikit
-    >>> data = trikit.load("ta83")
-    >>> cl_init = trikit.chladder(data=data)
-    >>> cl_init(sel="all-weighted", tail=1.005)
-       origin maturity    latest      cldf       ultimate       reserve
-    0    1981       10   18834.0  1.005000   18928.170000     94.170000
-    1    1982        9   16704.0  1.014263   16942.243687    238.243687
-    2    1983        8   23466.0  1.031441   24203.787778    737.787778
-    3    1984        7   27067.0  1.065750   28846.657874   1779.657874
-    4    1985        6   26180.0  1.110442   29071.370025   2891.370025
-    5    1986        5   15852.0  1.236349   19598.608700   3746.608700
-    6    1987        4   12314.0  1.448599   17838.049103   5524.049103
-    7    1988        3   13112.0  1.841007   24139.288472  11027.288472
-    8    1989        2    5395.0  2.988917   16125.209021  10730.209021
-    9    1990        1    2063.0  8.964835   18494.454742  16431.454742
-    10  total           160987.0       NaN  214187.839403  53200.839403
-
-    """
-    tri = totri(data=data, type_="cumulative", origin=origin, dev=dev,
-                value=value, trifmt=trifmt, datafmt=datafmt)
-
-    if range_method is None:
-        # Instantiate BaseChainLadder instance.
-        cl_init = _BaseChainLadder(cumtri=tri)
-
-    elif range_method and range_method.lower().startswith("mack"):
-        # Instantiate _MackChainLadder instance.
-        cl_init = _MackChainLadder(cumtri=tri)
-
-    elif range_method and range_method.lower().startswith("boot"):
-        # Instantiate _BootstrapChainLadder instance.
-        cl_init = _BootstrapChainLadder(cumtri=tri)
-
-    else:
-        raise NotImplementedError(
-            "Specified range_method does not exist: `{}`".format(range_method)
-            )
-
-    return(cl_init)
 
