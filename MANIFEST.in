@@ -1,5 +1,6 @@
 include *.txt
 include *.py
+include VERSION
 recursive-include chainladder *.py
 recursive-include tests *.py
 include datasets/*.csv
