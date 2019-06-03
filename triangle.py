@@ -18,6 +18,12 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from .chainladder import _BaseChainLadder
+#from .chainladder import bootstrap._BootstrapChainLadder
+# from .chainladder.bootstrap import _BootstrapChainLadder
+# from chainladder.mack import _MackChainLadder
+# from chainladder.bootstrap import _BootstrapChainLadder
+
 
 class _IncrTriangle(pd.DataFrame):
     """
@@ -786,3 +792,15 @@ class _CumTriangle(_IncrTriangle):
         pd.DataFrame
         """
         return(pd.DataFrame(self))
+
+
+    def cl(self, sel="all-weighted", tail=1.0, range_method=None):
+        """
+        trikit's chain ladder implementation.
+        """
+        if range_method is None:
+            cl_ = _BaseChainLadder(self).run(sel="all-weighted", tail=1.0)
+        return(cl_)
+
+
+

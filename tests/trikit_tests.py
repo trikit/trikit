@@ -12,7 +12,6 @@ import seaborn as sns
 from scipy import stats
 import profile
 import cProfile
-import pstats
 import io
 import pstats
 import trikit

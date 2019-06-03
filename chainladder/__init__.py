@@ -294,6 +294,9 @@ class _ChainLadderResult:
         # Properties.
         self._trisqrd = None
 
+        self.summspecs = {"ultimate":"{:.0f}".format, "reserve":"{:.0f}".format,
+                          "latest":"{:.0f}".format, "cldf":"{:.5f}".format,}
+
 
     @property
     def trisqrd(self):
