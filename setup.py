@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="trikit",
-    version="0.2.1",
+    version="0.2.2",
     author="James D. Triveri",
     author_email="james.triveri@gmail.com",
     description="Actuarial Reserving Methods in Python",
@@ -15,7 +15,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: BSD License",
+        "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         ],
     include_package_data=True,
