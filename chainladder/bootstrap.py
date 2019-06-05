@@ -107,9 +107,9 @@ class _BootstrapChainLadder(_BaseChainLadder):
 
 
 
-    def run(self, sel="all-weighted", sims=1000, neg_handler=1, procdist="gamma",
-            parametric=False, percentiles=[.75, .95], interpolation="linear",
-            random_state=None):
+    def __call__(self, sel="all-weighted", sims=1000, neg_handler=1, procdist="gamma",
+                 parametric=False, percentiles=[.75, .95], interpolation="linear",
+                 random_state=None):
         """
         ``_BootstrapChainLadder`` simulation initializer. Generates predictive
         distribution of ultimate reserve outcomes.

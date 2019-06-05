@@ -51,16 +51,62 @@ class _MackChainLadder(_BaseChainLadder):
 
 
 
+    def __call__(self, alpha=1, tail=1.0):
+        """
+        Compute the reserve risk associated with Chain Ladder estimates.
+        """
+        ldfs_ = self._ldfs(alpha=alpha, tail=tail)
+        cldfs_ = self._cldfs(ldfs=ldfs_)
+        ultimates_ = self._ultimates(cldfs=cldfs_)
+        reserves_ = self._reserves(ultimates=ultimates_)
+        maturity_ = self.tri.maturity.astype(np.str)
+        latest_ = self.tri.latest_by_origin
 
-    def _ldfs(self, sel="all-weighted", tail=1.0):
+
+
+
+
+
+        summcols = ["maturity", "latest", "cldf", "ultimate", "reserve"]
+        summDF   = pd.DataFrame(columns=summcols, index=self.tri.index)
+        summDF["maturity"]  = self.tri.maturity.astype(np.str)
+        summDF["latest"]    = self.tri.latest_by_origin
+        summDF["cldf"]      = cldfs.values[::-1]
+        summDF["ultimate"]  = ults
+        summDF["reserve"]   = ibnr
+        self._summary['RMSEP']        = self.rmsepi
+        self._summary['CV']           = self.rmsepi/self.reserves
+        self._summary["NORM_95%_LB"]  = self.reserves - (1.96 * self.rmsepi)
+        self._summary["NORM_95%_UB"]  = self.reserves + (1.96 * self.rmsepi)
+        self._summary["LNORM_95%_LB"] = np.exp(mu_i - 1.96 * sigma_i)
+        self._summary["LNORM_95%_UB"] = np.exp(mu_i + 1.96 * sigma_i)
+        self._summary.loc['TOTAL']    = self._summary.sum()
+        summDF.loc["total"] = summDF.sum()
+
+        # Set to NaN columns that shouldn't be summed.
+        summDF.loc["total", "maturity"] = ""
+        summDF.loc["total", "cldf"]     = np.NaN
+        summDF = summDF.reset_index().rename({"index":"origin"}, axis="columns")
+        return(None)
+
+
+
+
+
+    def _ldfs(self, alpha=1, tail=1.0):
         """
         Compute Mack LDFs based on provided ``alpha`` and ``tail``.
 
         Parameters
         ----------
         alpha: {0, 1, 2}
-            The parameter specifying the nature of the LDF patterns used in
-            the Mack Chain Ladder. From Mack (1999),
+            The parameter specifying the approach used to compute the LDF
+            patterns used in the Mack Chain Ladder. ``alpha=1`` gives the
+            historical chain ladder age-to-age factors, ``alpha=0`` gives the
+            straight average of the observed individual development factors
+            and ``alpha=2`` is the result of an ordinary
+            regression of $C_{i, k + 1}$ against $C_{i, k}$ with intercept
+            0.
 
         tail: float
             Tail factor. Defaults to 1.0.
@@ -69,86 +115,21 @@ class _MackChainLadder(_BaseChainLadder):
         -------
         pd.Series
         """
-        try:
-            ldfs_ = self.tri.a2a_avgs.loc[sel]
-            tindx_ = ldfs_.index.max() + 1
-            ldfs_ = ldfs_.append(pd.Series(data=[tail], index=[tindx_]))
-        except KeyError:
-                print("Invalid age-to-age selection: `{}`".format(sel))
-        ldfs_ =pd.Series(data=ldfs_, index=ldfs_.index, dtype=np.float_, name="ldf")
-        return(ldfs_.sort_index())
+        common_ = (self.tri.pow(alpha) * self.tri.a2aind)
+        common_ = common_.dropna(axis=0, how="all").dropna(axis=1, how="all")
+        ldfs_ = (common_ * self.tri.a2a).sum() / common_.sum()
+        tindx_ = ldfs_.index.max() + 1
+        ldfs_ = ldfs_.append(pd.Series(data=[tail], index=[tindx_]))
+        return(pd.Series(data=ldfs_, index=ldfs_.index, dtype=np.float_, name="ldf"))
 
 
-
-
-    # def __call__(self, sel="mack-alpha-1", tail=1.0):
-    #     """
-    #     Return a summary of ultimate and reserve estimates resulting from
-    #     the application of the development technique over self.tri. Summary
-    #     DataFrame is comprised of origin year, maturity of origin year, loss
-    #     amount at latest evaluation, cumulative loss development factors,
-    #     projected ultimates and the reserve estimate, by origin year and in
-    #     aggregate.
-    #
-    #     Returns
-    #     -------
-    #     pd.DataFrame
-    #         Summary with values by origin year for maturity, latest cumulative
-    #         loss amount, cumulative loss development factor, projected
-    #         ultimate loss and the reserve amount.
-    #     """
-    #     # Bind reference to class method return values.
-    #     ldfs    = self._ldfs(sel=sel, tail=tail)
-    #     cldfs   = self._cldfs(sel=sel, tail=tail)
-    #     ults    = self._ultimates(cldfs=cldfs)
-    #     ibnr    = self._reserves(ultimates=ults)
-    #     sigma_i = np.log(1 + self.msepi / ibnr**2)
-    #     mu_i    = np.log(ibnr - .50 * sigma_i)
-    #
-    #     summcols = ["maturity", "latest", "cldf", "ultimate", "reserve"]
-    #     summDF   = pd.DataFrame(columns=summcols, index=self.tri.index)
-    #     summDF["maturity"]  = self.tri.maturity.astype(np.str)
-    #     summDF["latest"]    = self.tri.latest_by_origin
-    #     summDF["cldf"]      = cldfs.values[::-1]
-    #     summDF["ultimate"]  = ults
-    #     summDF["reserve"]   = ibnr
-    #     self._summary['RMSEP']        = self.rmsepi
-    #     self._summary['CV']           = self.rmsepi/self.reserves
-    #     self._summary["NORM_95%_LB"]  = self.reserves - (1.96 * self.rmsepi)
-    #     self._summary["NORM_95%_UB"]  = self.reserves + (1.96 * self.rmsepi)
-    #     self._summary["LNORM_95%_LB"] = np.exp(mu_i - 1.96 * sigma_i)
-    #     self._summary["LNORM_95%_UB"] = np.exp(mu_i + 1.96 * sigma_i)
-    #     self._summary.loc['TOTAL']    = self._summary.sum()
-    #     summDF.loc["total"] = summDF.sum()
-    #
-    #     # Set to NaN columns that shouldn't be summed.
-    #     summDF.loc["total", "maturity"] = ""
-    #     summDF.loc["total", "cldf"]     = np.NaN
-    #     summDF = summDF.reset_index().rename({"index":"origin"}, axis="columns")
-    #
-    #
-    #
-    #
-    #         # # Populate self._summary with existing properties if available.
-    #         # self._summary['LATEST']       = self.latest_by_origin
-    #         # self._summary['CLDF']         = self.cldfs[::-1]
-    #         # self._summary['EMERGENCE']    = 1/self.cldfs[::-1]
-    #         # self._summary['ULTIMATE']     = self.ultimates
-    #         # self._summary['RESERVE']      = self.reserves
-    #         # self._summary['RMSEP']        = self.rmsepi
-    #         # self._summary['CV']           = self.rmsepi/self.reserves
-    #         # self._summary["NORM_95%_LB"]  = self.reserves - (1.96 * self.rmsepi)
-    #         # self._summary["NORM_95%_UB"]  = self.reserves + (1.96 * self.rmsepi)
-    #         # self._summary["LNORM_95%_LB"] = np.exp(mu_i - 1.96 * sigma_i)
-    #         # self._summary["LNORM_95%_UB"] = np.exp(mu_i + 1.96 * sigma_i)
-    #         # self._summary.loc['TOTAL']    = self._summary.sum()
-    #         #
-    #         # # Set CLDF Total value to `NaN`.
-    #         # self._summary.loc["TOTAL","CLDF","EMERGENCE"] = np.NaN
-    #
-    #     return(self._summary)
-
-
+    def _devpvar(self, ldfs):
+        """
+        Return the development period variance estimator, the sum of the
+        squared deviations of losses at the end of the development period from
+        the Chain ladder predictions given the losses at the beginning of the
+        period, all divided by n - 1, where n is the number of terms in the
+        summation.
 
 
 
@@ -415,17 +396,17 @@ class _MackChainLadder(_BaseChainLadder):
 
 
 
-    def __repr__(self):
-        """
-        Override default numerical precision used for representing
-        ultimate loss projections and age-to-ultimate factors.
-        """
-        summary_cols = [
-            "LATEST","CLDF","EMERGENCE","ULTIMATE","RESERVE","RMSEP",
-            "CV","NORM_95%_LB","NORM_95%_UB","LNORM_95%_LB","LNORM_95%_UB"
-            ]
-
-        summ_specs = pd.Series([0, 5, 5, 0, 0, 0, 5, 0, 0, 0, 0], index=summary_cols)
-        return(self.summary.round(summ_specs).to_string())
+    # def __repr__(self):
+    #     """
+    #     Override default numerical precision used for representing
+    #     ultimate loss projections and age-to-ultimate factors.
+    #     """
+    #     summary_cols = [
+    #         "LATEST","CLDF","EMERGENCE","ULTIMATE","RESERVE","RMSEP",
+    #         "CV","NORM_95%_LB","NORM_95%_UB","LNORM_95%_LB","LNORM_95%_UB"
+    #         ]
+    #
+    #     summ_specs = pd.Series([0, 5, 5, 0, 0, 0, 5, 0, 0, 0, 0], index=summary_cols)
+    #     return(self.summary.round(summ_specs).to_string())
 
 

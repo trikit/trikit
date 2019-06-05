@@ -483,9 +483,42 @@ if BOOT_CL_TEST:
 # Testing MackChainLadder ====================================================]
 
 # if MACK_CL_TEST:
+alpha = 1
+DATA = trikit.load("ta83")
 tri = trikit.totri(DATA, type_="cumulative")
+C = tri.pow(alpha)
+w = tri.a2aind
+f = tri.a2a
+cmn_ = (C * w).dropna(axis=0, how="all").dropna(axis=1, how="all")
 
-mcl = trikit.chainladder._MackChainLadder(
+num_ = (cmn_ * f).sum()
+den_ = cmn_.sum()
+ldfs_ = num_ / den_
+
+
+diff_ = f.subtract(ldfs_, axis=1).pow(2).replace(0, np.NaN)
+prod_ = (diff_ * C).dropna(axis=0, how="all").dropna(axis=1, how="all").sum()
+coeffs_ = pd.Series(data=(1 / (tri.shape[0] - prod_.index - 1)), index=prod_.index)
+devpvar_ = prod_ * coeffs_
+
+
+
+
+# Set devpvar_{n-1} to 1 to allow for efficient multiplication between
+# coeffs_ and prod_:
+coeffs_.iloc[-1] = 1
+
+np.min((
+    self._devpvar[-2]**2 / self._devpvar[-3],
+    np.min([self._devpvar[-2],self._devpvar[-3]])
+    ))
+
+mcl = trikit._MackChainLadder(cumtri=tri)
+
+#
+ll0 = mcl._ldfs(alpha=0)
+ll1 = mcl._ldfs(alpha=1)
+ll2 = mcl._ldfs(alpha=2)
 
 
 

@@ -42,7 +42,7 @@ class _BaseChainLadder:
 
 
 
-    def run(self, sel="all-weighted", tail=1.0):
+    def __call__(self, sel="all-weighted", tail=1.0):
         """
         Compile a summary of ultimate and reserve estimates resulting from
         the application of the development technique over ``self.tri``.
@@ -63,6 +63,15 @@ class _BaseChainLadder:
         Returns
         -------
         trikit.chainladder._ChainLadderResult
+
+        # dfcldfs = cldfs_.to_frame().reset_index(drop=False)
+        # dfcldfs = dfcldfs.rename({"index":"maturity"}, axis=1)
+        # dfcldfs["maturity"] = dfcldfs["maturity"].astype(np.str)
+        # dfmat = maturity_.to_frame().reset_index(drop=False)
+        # dfmat = dfmat.rename({"index":"origin"}, axis=1)
+        # dfcldfs = pd.merge(dfmat, dfcldfs, on="maturity", how="inner")
+        # dfcldfs = dfcldfs.set_index("origin").drop("maturity", axis=1)
+        # dfcldfs.index.name = None
         """
         # sel = "all-weighted"
         # tail = 1.0
@@ -79,38 +88,21 @@ class _BaseChainLadder:
         reserves_ = self._reserves(ultimates=ultimates_)
         maturity_ = self.tri.maturity.astype(np.str)
         latest_ = self.tri.latest_by_origin
-        dfcldfs = cldfs_.to_frame().reset_index(drop=False)
-        dfcldfs = dfcldfs.rename({"index":"maturity"}, axis=1)
-        dfcldfs["maturity"] = dfcldfs["maturity"].astype(np.str)
-        dfmat = maturity_.to_frame().reset_index(drop=False)
-        dfmat = dfmat.rename({"index":"origin"}, axis=1)
-        dfcldfs = pd.merge(dfmat, dfcldfs, on="maturity", how="inner")
-        dfcldfs = dfcldfs.set_index("origin").drop("maturity", axis=1)
-        dfcldfs.index.name = None
-
-        # Use join instead of merge to preserve origin year indicies.
 
         # Compile Chain Ladder point estimate summary.
-        # dfmatur_ = maturity_.to_frame().reset_index(drop=False).rename({"index":"origin"}, axis=1)
-        # dfcldfs_ = cldfs_.to_frame().reset_index(drop=False).rename({"index":"maturity"}, axis=1)
-        # dfcldfs_["maturity"] = dfcldfs_["maturity"].astype(np.str)
-        # dfsumm = dfmatur_.merge(dfcldfs_, on=["maturity"], how="left").set_index("origin")
-        # dfsumm.index.name = None
-        # dflatest_ = latest_.to_frame().rename({"latest_by_origin":"latest"}, axis=1)
-        # dfultimates_ = ultimates_.to_frame()
-        # dfreserves_ = reserves_.to_frame()
-        # dfsumm = functools.reduce(
-        #     lambda df1, df2: df1.join(df2),
-        #     (dflatest_, dfultimates_, dfreserves_), dfsumm
-        #     )
-        #
+        dfmatur_ = maturity_.to_frame().reset_index(drop=False).rename({"index":"origin"}, axis=1)
+        dfcldfs_ = cldfs_.to_frame().reset_index(drop=False).rename({"index":"maturity"}, axis=1)
+        dfcldfs_["maturity"] = dfcldfs_["maturity"].astype(np.str)
+        dfsumm = dfmatur_.merge(dfcldfs_, on=["maturity"], how="left").set_index("origin")
+        dfsumm.index.name = None
+        dflatest_ = latest_.to_frame().rename({"latest_by_origin":"latest"}, axis=1)
+        dfultimates_, dfreserves_ = ultimates_.to_frame(), reserves_.to_frame()
+        dfsumm = functools.reduce(
+            lambda df1, df2: df1.join(df2),
+            (dflatest_, dfultimates_, dfreserves_), dfsumm
+            )
 
-        dfsumm = maturity_.to_frame().join(latest_)
-        dfsumm = dfsumm.rename({"latest_by_origin":"latest"}, axis=1)
-        dfsumm = dfsumm.join(dfcldfs).join(ultimates_).join(reserves_)
         dfsumm.loc["total"] = dfsumm.sum()
-
-        # Set to NaN fields that shouldn't be aggregated.
         dfsumm.loc["total", "maturity"] = ""
         dfsumm.loc["total", "cldf"] = np.NaN
         dfsumm = dfsumm.reset_index().rename({"index":"origin"}, axis=1)
