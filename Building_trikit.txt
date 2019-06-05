@@ -1,0 +1,119 @@
+In short:
+
+# For test PyPI:
+$ python setup.py bdist_wheel --universal
+$ python setup.py sdist --formats=zip,gztar,xztar
+$ twine upload --repository testpypi dist/*
+$ pip install -i https://test.pypi.org/simple/ trikit
+
+
+# For real PyPI:
+python setup.py sdist bdist_wheel --universal
+$ twine upload dist/*
+
+# =============================================================================]
+# Set HTTP_PROXY and HTTPS_PROXY
+
+# Update pip, twine, setuptools and wheel.
+$ python -m pip install --upgrade pip
+$ python -m pip install --upgrade setuptools wheel
+$ python -m pip install --upgrade twine
+
+
+# Create setup.py in project top-level directory:
+
+    import setuptools
+
+    with open("README.md", "r") as fh:
+        long_description = fh.read()
+
+    setuptools.setup(
+        name="trikit",
+        version="0.1.0",
+        author="James D. Triveri",
+        author_email="james.triveri@gmail.com",
+        description="Actuarial Reserving Methods in Python",
+        long_description=long_description,
+        long_description_content_type="text/markdown",
+        url="https://github.com/trikit/trikit",
+        packages=setuptools.find_packages(),
+        classifiers=[
+            "Programming Language :: Python :: 3",
+            "License :: OSI Approved :: BSD License",
+            "Operating System :: OS Independent",
+            ],
+        include_package_data=True,
+        )   
+
+
+# Create MANIFEST.in with directories to include and/or exclude:
+
+    include *.txt
+    include *.py
+    recursive-include chainladder *.py
+    recursive-include tests *.py
+    include datasets/*.csv
+    include docs/source/*.rst
+    include docs/source/*.md
+    prune Reference
+    prune docs/build
+
+
+# Create build distributions:
+$ python setup.py bdist_wheel --universal
+$ python setup.py sdist --formats=zip,gztar,xztar
+
+# This command should output a lot of text and once completed should generate 
+# four files in the dist directory:
+
+dist/
+  trikit-0.1.0-py2.py3-none-any.whl
+  trikit-0.1.0.tar.gz
+  trikit-0.1.0.zip
+
+
+
+# The tar.gz file is a source archive whereas the .whl file is a built 
+# distribution. Newer pip versions preferentially install built distributions, 
+# but will fall back to source archives if needed. You should always upload a 
+# source archive and provide built archives for the platforms your project is 
+# compatible with. In this case, our example package is compatible with Python 
+# on any platform so only one built distribution is needed.
+
+
+# Login to TestPyPI @ https://test.pypi.org/account/register/
+username: jtrive84
+password: Principia1687
+
+
+
+
+# Export build distribution as follows:
+$ twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+
+
+# If .pypirc file exists, we can instead specify:
+$ twine upload --repository testpypi dist/*
+
+
+
+
+
+
+
+
+# Create new virtual environment with site-packages:
+$ python -m venv U:/Dev/env37 --system-site-packages
+
+# Without site-packages:
+$ python -m venv U:/Dev/env37
+
+# To activate, from Windows run <path_to_env>\Scripts\activate.bat:
+$ U:/Dev/env37/Scripts/activate.bat
+
+
+
+
+# Install build distribution as follows (ensuring pip is the virtual instance):
+$ pip install -i https://test.pypi.org/simple/ trikit
+

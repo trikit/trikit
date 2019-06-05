@@ -79,19 +79,20 @@ class _BootstrapChainLadder(_BaseChainLadder):
 
     References
     ----------
-    - England, P., and R. Verrall, *Stochastic Claims Reserving in General
-    Insurance*, British Actuarial Journal 8(3), 2002: 443-518.
+    - England, P., and R. Verrall, (2002), *Stochastic Claims Reserving in General
+    Insurance*, British Actuarial Journal 8(3): 443-518.
     - CAS Working Party on Quantifying Variability in Reserve Estimates,
     *The Analysis and Estimation of Loss & ALAE Variability: A Summary Report*,
     Casualty Actuarial Society Forum, Fall 2005.
-    - Leong et al., *Back-Testing the ODP Bootstrap of the Paid Chain-Ladder
-    Model with Actual Historical Claims Data*, Casualty Actuarial Society
-    E-Forum, Summer 2012.
+    - Leong et al., (2012), *Back-Testing the ODP Bootstrap of the Paid
+    Chain-Ladder Model with Actual Historical Claims Data*, Casualty Actuarial
+    Society E-Forum.
     - Kirschner, et al., *Two Approaches to Calculating Correlated Reserve
     Indications Across Multiple Lines of Business* Appendix III, Variance
     Journal, Volume 2/Issue 1.
-    - Shapland, Mark R., *Using the ODP Bootstrap Model: A Practicioner's
-    Guide*, CAS Monograph Series Number 4: Casualty Actuarial Society, 2016.
+    - Shapland, Mark R., (2016), *Using the ODP Bootstrap Model: A
+    Practicioner's Guide*, CAS Monograph Series Number 4: Casualty Actuarial
+    Society, 2016.
     """
     def __init__(self, cumtri):
         """

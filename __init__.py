@@ -89,9 +89,11 @@ np.set_printoptions(
     )
 
 # Bind reference to package version number.
+
 version_path_ = os.path.dirname(__file__) + os.path.sep + "VERSION"
-with open(version_path_, "r") as fversion:
-    __version__ = fversion.read(fversion).strip()
+with open(version_path_) as fversion:
+    __version__ = fversion.read().strip("\n")
+
 
 
 

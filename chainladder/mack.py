@@ -17,6 +17,16 @@ class _MackChainLadder(_BaseChainLadder):
     the inability to accurately predict which single outcome from the
     distribution will occur at a given time. The predicition error is
     specified as the standard deviation of the forecast.
+
+
+    References
+    ----------
+    - Mack, T. (1993), *Distribution Free Calculation of the Standard Error of
+    Chain Ladder Reserve Estimates*, ASTIN Bulletin 23, 213-225.
+    - Mack, T. (1999), *The Standard Error of Chain Ladder Reserve Estimates:
+    Recursive Calculation and Inclusion of a Tail Factor*, ASTIN Bulletin
+    29(2), 361-366.
+    - Murphy, D. (2007), *Chain Ladder Reserve Risk Estimators*, CAS E-Forum.
     """
     def __init__(self, cumtri):
         """
@@ -40,141 +50,169 @@ class _MackChainLadder(_BaseChainLadder):
         self._msepi = None
 
 
-    def __call__(self, sel="mack-alpha-1", tail=1.0):
+
+
+    def _ldfs(self, sel="all-weighted", tail=1.0):
         """
-        Return a summary of ultimate and reserve estimates resulting from
-        the application of the development technique over self.tri. Summary
-        DataFrame is comprised of origin year, maturity of origin year, loss
-        amount at latest evaluation, cumulative loss development factors,
-        projected ultimates and the reserve estimate, by origin year and in
-        aggregate.
+        Compute Mack LDFs based on provided ``alpha`` and ``tail``.
+
+        Parameters
+        ----------
+        alpha: {0, 1, 2}
+            The parameter specifying the nature of the LDF patterns used in
+            the Mack Chain Ladder. From Mack (1999),
+
+        tail: float
+            Tail factor. Defaults to 1.0.
 
         Returns
         -------
-        pd.DataFrame
-            Summary with values by origin year for maturity, latest cumulative
-            loss amount, cumulative loss development factor, projected
-            ultimate loss and the reserve amount.
+        pd.Series
         """
-        # Bind reference to class method return values.
-        ldfs    = self._ldfs(sel=sel, tail=tail)
-        cldfs   = self._cldfs(sel=sel, tail=tail)
-        ults    = self._ultimates(cldfs=cldfs)
-        ibnr    = self._reserves(ultimates=ults)
-        sigma_i = np.log(1 + self.msepi / ibnr**2)
-        mu_i    = np.log(ibnr - .50 * sigma_i)
-
-        summcols = ["maturity", "latest", "cldf", "ultimate", "reserve"]
-        summDF   = pd.DataFrame(columns=summcols, index=self.tri.index)
-        summDF["maturity"]  = self.tri.maturity.astype(np.str)
-        summDF["latest"]    = self.tri.latest_by_origin
-        summDF["cldf"]      = cldfs.values[::-1]
-        summDF["ultimate"]  = ults
-        summDF["reserve"]   = ibnr
-        self._summary['RMSEP']        = self.rmsepi
-        self._summary['CV']           = self.rmsepi/self.reserves
-        self._summary["NORM_95%_LB"]  = self.reserves - (1.96 * self.rmsepi)
-        self._summary["NORM_95%_UB"]  = self.reserves + (1.96 * self.rmsepi)
-        self._summary["LNORM_95%_LB"] = np.exp(mu_i - 1.96 * sigma_i)
-        self._summary["LNORM_95%_UB"] = np.exp(mu_i + 1.96 * sigma_i)
-        self._summary.loc['TOTAL']    = self._summary.sum()
-        summDF.loc["total"] = summDF.sum()
-
-        # Set to NaN columns that shouldn't be summed.
-        summDF.loc["total", "maturity"] = ""
-        summDF.loc["total", "cldf"]     = np.NaN
-        summDF = summDF.reset_index().rename({"index":"origin"}, axis="columns")
+        try:
+            ldfs_ = self.tri.a2a_avgs.loc[sel]
+            tindx_ = ldfs_.index.max() + 1
+            ldfs_ = ldfs_.append(pd.Series(data=[tail], index=[tindx_]))
+        except KeyError:
+                print("Invalid age-to-age selection: `{}`".format(sel))
+        ldfs_ =pd.Series(data=ldfs_, index=ldfs_.index, dtype=np.float_, name="ldf")
+        return(ldfs_.sort_index())
 
 
 
 
-            # # Populate self._summary with existing properties if available.
-            # self._summary['LATEST']       = self.latest_by_origin
-            # self._summary['CLDF']         = self.cldfs[::-1]
-            # self._summary['EMERGENCE']    = 1/self.cldfs[::-1]
-            # self._summary['ULTIMATE']     = self.ultimates
-            # self._summary['RESERVE']      = self.reserves
-            # self._summary['RMSEP']        = self.rmsepi
-            # self._summary['CV']           = self.rmsepi/self.reserves
-            # self._summary["NORM_95%_LB"]  = self.reserves - (1.96 * self.rmsepi)
-            # self._summary["NORM_95%_UB"]  = self.reserves + (1.96 * self.rmsepi)
-            # self._summary["LNORM_95%_LB"] = np.exp(mu_i - 1.96 * sigma_i)
-            # self._summary["LNORM_95%_UB"] = np.exp(mu_i + 1.96 * sigma_i)
-            # self._summary.loc['TOTAL']    = self._summary.sum()
-            #
-            # # Set CLDF Total value to `NaN`.
-            # self._summary.loc["TOTAL","CLDF","EMERGENCE"] = np.NaN
-
-        return(self._summary)
-
-
-    @staticmethod
-    def get_quantile(*pctl):
-        pass
-
-
-
-
-    @property
-    def originref(self):
-        """
-        Intended for internal use only. Contains data by origin year.
-        """
-        if self._originref is None:
-            self._originref = pd.DataFrame({
-                'reserve'      :self.reserves,
-                'ultimate'     :self.ultimates,
-                'process_error':self.process_error,
-                'param_error'  :self.parameter_error,
-                'msep'         :self.msepi,
-                'rmsep'        :self.rmsepi}, index=self.tri.index)
-            self._originref = \
-                self._originref[
-                    ["reserve","ultimate","process_error","param_error","msep","rmsep"]
-                    ]
-        return(self._originref)
-
-
-
-    @property
-    def devpref(self):
-        """
-        Intended for internal use only. Contains data by development period.
-        """
-        if self._devpref is None:
-            self._devpref = pd.DataFrame({
-                "ldf"    :self.ldfs,
-                "sse"    :self.devpvar.values,
-                "ratio"  :(self.devpvar.values / self.ldfs ** 2),
-                "dev"    :self.tri.columns[:-1],
-                "inv_sum":self.inverse_sums},
-                index=self.tri.columns[:-1]
-                )
-
-            self._devpref["indx"] = \
-                self._devpref["dev"].map(
-                    lambda x: self.tri.columns.get_loc(x))
-
-            self._devpref = \
-                self._devpref[["dev","indx","ldf","sse","ratio","inv_sum"]]
-
-        return(self._devpref)
+    # def __call__(self, sel="mack-alpha-1", tail=1.0):
+    #     """
+    #     Return a summary of ultimate and reserve estimates resulting from
+    #     the application of the development technique over self.tri. Summary
+    #     DataFrame is comprised of origin year, maturity of origin year, loss
+    #     amount at latest evaluation, cumulative loss development factors,
+    #     projected ultimates and the reserve estimate, by origin year and in
+    #     aggregate.
+    #
+    #     Returns
+    #     -------
+    #     pd.DataFrame
+    #         Summary with values by origin year for maturity, latest cumulative
+    #         loss amount, cumulative loss development factor, projected
+    #         ultimate loss and the reserve amount.
+    #     """
+    #     # Bind reference to class method return values.
+    #     ldfs    = self._ldfs(sel=sel, tail=tail)
+    #     cldfs   = self._cldfs(sel=sel, tail=tail)
+    #     ults    = self._ultimates(cldfs=cldfs)
+    #     ibnr    = self._reserves(ultimates=ults)
+    #     sigma_i = np.log(1 + self.msepi / ibnr**2)
+    #     mu_i    = np.log(ibnr - .50 * sigma_i)
+    #
+    #     summcols = ["maturity", "latest", "cldf", "ultimate", "reserve"]
+    #     summDF   = pd.DataFrame(columns=summcols, index=self.tri.index)
+    #     summDF["maturity"]  = self.tri.maturity.astype(np.str)
+    #     summDF["latest"]    = self.tri.latest_by_origin
+    #     summDF["cldf"]      = cldfs.values[::-1]
+    #     summDF["ultimate"]  = ults
+    #     summDF["reserve"]   = ibnr
+    #     self._summary['RMSEP']        = self.rmsepi
+    #     self._summary['CV']           = self.rmsepi/self.reserves
+    #     self._summary["NORM_95%_LB"]  = self.reserves - (1.96 * self.rmsepi)
+    #     self._summary["NORM_95%_UB"]  = self.reserves + (1.96 * self.rmsepi)
+    #     self._summary["LNORM_95%_LB"] = np.exp(mu_i - 1.96 * sigma_i)
+    #     self._summary["LNORM_95%_UB"] = np.exp(mu_i + 1.96 * sigma_i)
+    #     self._summary.loc['TOTAL']    = self._summary.sum()
+    #     summDF.loc["total"] = summDF.sum()
+    #
+    #     # Set to NaN columns that shouldn't be summed.
+    #     summDF.loc["total", "maturity"] = ""
+    #     summDF.loc["total", "cldf"]     = np.NaN
+    #     summDF = summDF.reset_index().rename({"index":"origin"}, axis="columns")
+    #
+    #
+    #
+    #
+    #         # # Populate self._summary with existing properties if available.
+    #         # self._summary['LATEST']       = self.latest_by_origin
+    #         # self._summary['CLDF']         = self.cldfs[::-1]
+    #         # self._summary['EMERGENCE']    = 1/self.cldfs[::-1]
+    #         # self._summary['ULTIMATE']     = self.ultimates
+    #         # self._summary['RESERVE']      = self.reserves
+    #         # self._summary['RMSEP']        = self.rmsepi
+    #         # self._summary['CV']           = self.rmsepi/self.reserves
+    #         # self._summary["NORM_95%_LB"]  = self.reserves - (1.96 * self.rmsepi)
+    #         # self._summary["NORM_95%_UB"]  = self.reserves + (1.96 * self.rmsepi)
+    #         # self._summary["LNORM_95%_LB"] = np.exp(mu_i - 1.96 * sigma_i)
+    #         # self._summary["LNORM_95%_UB"] = np.exp(mu_i + 1.96 * sigma_i)
+    #         # self._summary.loc['TOTAL']    = self._summary.sum()
+    #         #
+    #         # # Set CLDF Total value to `NaN`.
+    #         # self._summary.loc["TOTAL","CLDF","EMERGENCE"] = np.NaN
+    #
+    #     return(self._summary)
 
 
 
-    @property
-    def inverse_sums(self):
-        """
-        Convenience aggregation for use in parameter error
-        calcuation.
-        """
-        if self._inverse_sums is None:
-            devp_sums = \
-                self.tri.sum(axis=0)-self.tri.latest_by_origin[::-1].values
-            self._inverse_sums = pd.Series(
-                data=devp_sums,index=devp_sums.index,name='inverse_sums')
-            self._inverse_sums = (1 / (self._inverse_sums))[:-1]
-        return(self._inverse_sums)
+
+
+
+    # @property
+    # def originref(self):
+    #     """
+    #     Intended for internal use only. Contains data by origin year.
+    #     """
+    #     if self._originref is None:
+    #         self._originref = pd.DataFrame({
+    #             'reserve'      :self.reserves,
+    #             'ultimate'     :self.ultimates,
+    #             'process_error':self.process_error,
+    #             'param_error'  :self.parameter_error,
+    #             'msep'         :self.msepi,
+    #             'rmsep'        :self.rmsepi}, index=self.tri.index)
+    #         self._originref = \
+    #             self._originref[
+    #                 ["reserve","ultimate","process_error","param_error","msep","rmsep"]
+    #                 ]
+    #     return(self._originref)
+    #
+    #
+    #
+    # @property
+    # def devpref(self):
+    #     """
+    #     Intended for internal use only. Contains data by development period.
+    #     """
+    #     if self._devpref is None:
+    #         self._devpref = pd.DataFrame({
+    #             "ldf"    :self.ldfs,
+    #             "sse"    :self.devpvar.values,
+    #             "ratio"  :(self.devpvar.values / self.ldfs ** 2),
+    #             "dev"    :self.tri.columns[:-1],
+    #             "inv_sum":self.inverse_sums},
+    #             index=self.tri.columns[:-1]
+    #             )
+    #
+    #         self._devpref["indx"] = \
+    #             self._devpref["dev"].map(
+    #                 lambda x: self.tri.columns.get_loc(x))
+    #
+    #         self._devpref = \
+    #             self._devpref[["dev","indx","ldf","sse","ratio","inv_sum"]]
+    #
+    #     return(self._devpref)
+
+
+
+    # @property
+    # def inverse_sums(self):
+    #     """
+    #     Convenience aggregation for use in parameter error
+    #     calcuation.
+    #     """
+    #     if self._inverse_sums is None:
+    #         devp_sums = \
+    #             self.tri.sum(axis=0)-self.tri.latest_by_origin[::-1].values
+    #         self._inverse_sums = pd.Series(
+    #             data=devp_sums,index=devp_sums.index,name='inverse_sums')
+    #         self._inverse_sums = (1 / (self._inverse_sums))[:-1]
+    #     return(self._inverse_sums)
 
 
 
@@ -195,6 +233,10 @@ class _MackChainLadder(_BaseChainLadder):
     #         self._inverse_sums = \
     #             pd.Series(data=vals, index=indx, name='inverse_sums')
     #     return(self._inverse_sums)
+
+
+
+
 
     @property
     def devpvar(self) -> np.ndarray:
@@ -367,9 +409,9 @@ class _MackChainLadder(_BaseChainLadder):
         return(self._summary)
 
 
-    @staticmethod
-    def get_quantile(*pctl):
-        pass
+
+
+
 
 
 

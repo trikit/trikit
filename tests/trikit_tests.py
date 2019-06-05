@@ -1,4 +1,4 @@
-import sys; sys.path.append("G:\\Repos\\")
+import sys; sys.path.append("C:\\Users\\cac9159\\Repos\\")
 import unittest
 import pandas as pd
 import numpy as np
@@ -482,10 +482,10 @@ if BOOT_CL_TEST:
 
 # Testing MackChainLadder ====================================================]
 
-if MACK_CL_TEST:
+# if MACK_CL_TEST:
+tri = trikit.totri(DATA, type_="cumulative")
 
-    pass
-
+mcl = trikit.chainladder._MackChainLadder(
 
 
 
