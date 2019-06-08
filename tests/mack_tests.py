@@ -1,4 +1,4 @@
-import sys; sys.path.append("C:\\Users\\cac9159\\Repos\\")
+import sys; sys.path.append("G:\\Repos")   #"C:\\Users\\cac9159\\Repos\\")
 import unittest
 import trikit
 import pandas as pd
@@ -26,45 +26,115 @@ ta83 = trikit.load("ta83")
 tri = trikit.totri(RAA)
 
 
-bcl = tri._chladder(range_method="bootstrap", sims=1000)
+bcl = tri.chladder(range_method="bootstrap", sims=1000)
 dfsim = bcl.sims_data[["origin", "dev", "reserve"]]
 dfres = bcl.reserve_dist
 
-pctlu = 95
-pctll = 1 - pctlu
 
 # dfsim["u95"] = dfsim.groupby(["origin", "dev"], as_index=False)["reserve"].transform("quantile", pctlu)
 dfsim = bcl.sims_data[["origin", "dev", "reserve"]]
 
-dfsim = dfsim.groupby(["origin", "dev"]).aggregate("quantile", q=pctlu).reset_index(drop=False)
-dfsim = dfsim.reset_index(drop=True)
 
 
-def get_percentile(pctl, both=True):
+
+
+
+
+def get_quantile(q, symmetric=True, interpolation="linear"):
     """
     Return percentile of bootstrapped reserve distribution given by
     pctl.
 
     Parameters
     ----------
-    pctl: float or iterable
-        Single percentile as float or list of percentiles to evaluate.
-        ``pctl`` must fall between [0, 1].
+    q: float in range of [0,1] (or sequence of floats)
+        Percentile to compute, which must be between 0 and 1 inclusive.
 
-    both: bool
+    symmetric: bool
         Whether the symmetric interval should be returned. For example, if
-        ``both==True`` and ``pctl=.95``, a nx2 DataFrame representing the
-        5th and 95th percentile of the bootstrapped reserve distribution for
-        each origin year at each development period is returned.
+        ``symmetric==True`` and ``q=.95``, then the 2.5th and 97.5th
+        quantiles of the bootstrapped reserve distribution will be returned
+        [(1 - .95) / 2, (1 + .95) / 2]. When False, only the specified
+        quantile(s) will be computed.
+
+    interpolation: {'linear', 'lower', 'higher', 'midpoint', 'nearest'}
+        This optional parameter specifies the interpolation method to use when
+        the desired quantile lies between two data points i < j:
+
+            - linear: i + (j - i) * fraction, where fraction is the fractional
+            part of the index surrounded by i and j.
+            - lower: i.
+            - higher: j.
+            - nearest: i or j, whichever is nearest.
+            - midpoint: (i + j) / 2.
+
+    Returns
+    -------
+    pd.DataFrame
     """
-    pctl_ = np.asarray([pctl] if isinstance(pctl, (float, int)) else pctl)
-    if np.any(np.logical_or(pctl_ > 1., pctl_ < 0)):
-        raise ValueError("Values for pctl must fall between [0, 1].")
+    # dfsims = bcl.sims_data[["origin", "dev", "reserve"]]
+    # symmetric =True
+    # q = [.90, .95]
+    # interpolation = "linear"
+
+    dfsims = self.sims_data[["origin", "dev", "reserve"]]
+    pctl_ = np.asarray([q] if isinstance(q, (float, int)) else q)
+    if np.any(np.logical_or(pctl_ > 1, pctl_ < 0)):
+        raise ValueError("Values for percentiles must fall between [0, 1].")
     else:
-        if both:
-            pctlarr = np.sort(np.unique(np.append(pctl_, 1 - pctl_)))
+        if symmetric:
+            pctlarr = np.sort(np.unique(np.append((1 - pctl_) / 2, (1 + pctl_) / 2)))
         else:
             pctlarr = np.sort(np.unique(pctl_))
+
+        pctlfmt = [
+            "{:.5f}".format(i).rstrip("0").rstrip(".") + "%" for i in 100 * pctlarr
+            ]
+
+        # Initialize DataFrame for percentile data.
+        dfpctl = dfsims.groupby(["origin", "dev"]).aggregate(
+            "quantile", q=.50, interpolation=interpolation)
+        dfpctl = dfpctl.rename({"reserve":"50%"}, axis=1)
+        dfpctl.columns.name = None
+
+        for q_, pctlstr_ in zip(pctlarr, pctlfmt):
+            if q_!=.50:
+                df_ = dfsims.groupby(["origin", "dev"]).aggregate(
+                    "quantile", q=q_, interpolation=interpolation)
+                df_ = df_.rename({"reserve":pctlstr_}, axis=1)
+                df_.columns.name = None
+                dfpctl = dfpctl.join(df_)
+
+        if .50 not in pctl_:
+            dfpctl = dfpctl.drop("50%", axis=1)
+
+        return(dfpctl.reset_index(drop=False).sort_index())
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    ll = [dfsim.groupby(["origin", "dev"]).aggregate("quantile", q=i)
+
+    for pctl_, pctlstr_ in zip(pctlarr, pctlfmt):
+        dfsumm[pctlstr_] = dfsumm.index.map(
+            lambda v: np.percentile(
+                dfreserves[dfreserves["origin"]==v]["reserve"].values,
+                pctl_, interpolation=interpolation
+                )
+            )
 
         
 
@@ -72,21 +142,6 @@ def get_percentile(pctl, both=True):
 
 
 
-
-
-
-df_["pctl95"] = df_.groupby()["reserve"].quantile(.75)
-
-df_["pctl95"]  = df_.groupby(["origin", "dev",])["reserve"].apply(lambda v: np.percentile(v,60))
-
-df_ = df_.groupby(["origin", "dev",])["reserve"].apply(lambda x: np.percentile(x,80))
-
-
-df[].groupby('group').quantile(.6)
-
-
-
-dffcst.groupby(["sim", "origin"])["_l_init_indx"].transform("min")
 
 
 

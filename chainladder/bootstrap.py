@@ -108,7 +108,7 @@ class _BootstrapChainLadder(_BaseChainLadder):
 
 
     def __call__(self, sel="all-weighted", sims=1000, neg_handler=1, procdist="gamma",
-                 parametric=False, percentiles=[.75, .95], interpolation="linear",
+                 parametric=False, q=[.75, .95], symmetric=True, interpolation="linear",
                  random_state=None):
         """
         ``_BootstrapChainLadder`` simulation initializer. Generates predictive
@@ -144,11 +144,15 @@ class _BootstrapChainLadder(_BaseChainLadder):
             The distribution used to incorporate process variance. Currently,
             this can only be set to "gamma".
 
-        percentiles:list
-            The percentiles to include along with the Chain Ladder point
-            estimates. Specified percentile values should be between [0, 1).
-            For each percentile $\pi$ given, the $1 - \pi^{th}$ percentile
-            will also be included in the output summary. Defaults to [.75, .95].
+        q: float in range of [0,1] (or sequence of floats)
+            Percentile to compute, which must be between 0 and 1 inclusive.
+
+        symmetric: bool
+            Whether the symmetric interval should be returned. For example, if
+            ``symmetric==True`` and ``q=.95``, then the 2.5th and 97.5th
+            quantiles of the bootstrapped reserve distribution will be returned
+            [(1 - .95) / 2, (1 + .95) / 2]. When False, only the specified
+            quantile(s) will be computed.
 
         parametric: bool
             If True, fit standardized residuals to a normal distribution, and
@@ -171,14 +175,6 @@ class _BootstrapChainLadder(_BaseChainLadder):
         -------
         _BootstrapChainLadderResult
         """
-        # sel = "all-weighted"
-        # sims=100
-        # neg_handler=1
-        # procdist="gamma"
-        # parametric=False
-        # percentiles=[.75, .95]
-        # interpolation="linear"
-        # random_state=516
         # Obtain reference to Chain ladder point estimates.
         ldfs_ = self._ldfs(sel=sel)
         cldfs_ = self._cldfs(ldfs=ldfs_)
@@ -199,6 +195,7 @@ class _BootstrapChainLadder(_BaseChainLadder):
             sims=sims, neg_handler=neg_handler, parametric=parametric,
             random_state=random_state
             )
+
         dfldfs = self._bs_ldfs(dfsamples=dfsamples)
         dflvi = self.tri.rlvi.reset_index(drop=False)
         dflvi = dflvi.rename({"index":"origin", "dev":"l_act_dev"}, axis=1)
@@ -211,15 +208,15 @@ class _BootstrapChainLadder(_BaseChainLadder):
             dfforecasts=dfforecasts, scale_param=scale_param_, procdist=procdist,
             random_state=random_state)
         dfreserves = self._bs_reserves(dfprocerror=dfprocerror)
+        pctl_ = np.asarray([q] if isinstance(q, (float, int)) else q)
 
-        pctlarr1 = np.unique(np.asarray(percentiles, dtype=np.float))
-        if np.any(pctlarr1 <= 1):
-            pctlarr1 = 100 * pctlarr1
-            pctlarr2 = 100 - pctlarr1
-            pctlarr = np.sort(np.unique(np.append(pctlarr1, pctlarr2)))
-            pctlfmt = ["{:.5f}".format(i).rstrip("0").rstrip(".") + "%" for i in pctlarr]
+        if np.any(np.logical_or(pctl_ <= 1, pctl_ >= 0)):
+            if symmetric:
+                pctlarr = np.sort(np.unique(np.append((1 - pctl_) / 2, (1 + pctl_) / 2)))
+            else:
+                pctlarr = np.sort(np.unique(pctl_))
         else:
-            raise ValueError("Elements of percentiles must fall between [0, 1).")
+            raise ValueError("Values for quantiles must fall between [0, 1].")
 
         # Compile Chain Ladder point estimate summary.
         dfmatur_ = maturity_.to_frame().reset_index(drop=False).rename({"index":"origin"}, axis=1)
@@ -236,11 +233,12 @@ class _BootstrapChainLadder(_BaseChainLadder):
             )
 
         # Attach percentile fields to dfsumm.
-        for pctl_, pctlstr_ in zip(pctlarr, pctlfmt):
+        pctlfmt = ["{:.5f}".format(i).rstrip("0").rstrip(".") + "%" for i in 100 * pctlarr]
+        for q_, pctlstr_ in zip(pctlarr, pctlfmt):
             dfsumm[pctlstr_] = dfsumm.index.map(
                 lambda v: np.percentile(
                     dfreserves[dfreserves["origin"]==v]["reserve"].values,
-                    pctl_, interpolation=interpolation
+                    100 * q_, interpolation=interpolation
                     )
                 )
 
@@ -251,7 +249,7 @@ class _BootstrapChainLadder(_BaseChainLadder):
         dfsumm = dfsumm.reset_index(drop=False).rename({"index":"origin"}, axis=1)
         kwds = {"sel":sel, "sims": sims, "neg_handler":neg_handler,
                 "procdist":procdist, "parametric":parametric,
-                "percentiles":percentiles, "interpolation":interpolation,}
+                "q":q, "interpolation":interpolation,}
         sampling_dist_res = None if parametric==True else sampling_dist_
         clresult_ = _BootstrapChainLadderResult(
             summary=dfsumm, reserve_dist=dfreserves, sims_data=dfprocerror,
@@ -1066,6 +1064,71 @@ class _BootstrapChainLadderResult(_ChainLadderResult):
             g.fig.suptitle("Reserve Distribution by Origin Year", color=tc, weight="bold")
             plt.subplots_adjust(top=0.92)
         plt.show()
+
+
+    def get_quantile(self, q, symmetric=True, interpolation="linear"):
+        """
+        Return percentile of bootstrapped reserve distribution given by
+        pctl.
+
+        Parameters
+        ----------
+        q: float in range of [0,1] (or sequence of floats)
+            Percentile to compute, which must be between 0 and 1 inclusive.
+
+        symmetric: bool
+            Whether the symmetric interval should be returned. For example, if
+            ``symmetric==True`` and ``q=.95``, then the 2.5th and 97.5th
+            quantiles of the bootstrapped reserve distribution will be returned
+            [(1 - .95) / 2, (1 + .95) / 2]. When False, only the specified
+            quantile(s) will be computed.
+
+        interpolation: {'linear', 'lower', 'higher', 'midpoint', 'nearest'}
+            This optional parameter specifies the interpolation method to use when
+            the desired quantile lies between two data points i < j:
+
+                - linear: i + (j - i) * fraction, where fraction is the fractional
+                part of the index surrounded by i and j.
+                - lower: i.
+                - higher: j.
+                - nearest: i or j, whichever is nearest.
+                - midpoint: (i + j) / 2.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        dfsims = self.sims_data[["origin", "dev", "reserve"]]
+        pctl_ = np.asarray([q] if isinstance(q, (float, int)) else q)
+        if np.any(np.logical_and(pctl_ <= 1, pctl_ >= 0)):
+            if symmetric:
+                pctlarr = np.sort(np.unique(np.append((1 - pctl_) / 2, (1 + pctl_) / 2)))
+            else:
+                pctlarr = np.sort(np.unique(pctl_))
+        else:
+            raise ValueError("Values for percentiles must fall between [0, 1].")
+
+        pctlfmt = ["{:.5f}".format(i).rstrip("0").rstrip(".") + "%" for i in 100 * pctlarr]
+
+        # Initialize DataFrame for percentile data.
+        dfpctl = dfsims.groupby(["origin", "dev"]).aggregate(
+            "quantile", q=.50, interpolation=interpolation)
+        dfpctl = dfpctl.rename({"reserve":"50%"}, axis=1)
+        dfpctl.columns.name = None
+
+        for q_, pctlstr_ in zip(pctlarr, pctlfmt):
+            if q_!=.50:
+                df_ = dfsims.groupby(["origin", "dev"]).aggregate(
+                    "quantile", q=q_, interpolation=interpolation)
+                df_ = df_.rename({"reserve":pctlstr_}, axis=1)
+                df_.columns.name = None
+                dfpctl = dfpctl.join(df_)
+
+        if .50 not in pctl_:
+            dfpctl = dfpctl.drop("50%", axis=1)
+
+        return(dfpctl.reset_index(drop=False).sort_index())
+
 
 
     def __str__(self):

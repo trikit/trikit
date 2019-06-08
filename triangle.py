@@ -796,7 +796,7 @@ class _CumTriangle(_IncrTriangle):
         return(pd.DataFrame(self))
 
 
-    def _chladder(self, sel="all-weighted", tail=1.0, range_method=None, **kwargs):
+    def chladder(self, sel="all-weighted", tail=1.0, range_method=None, **kwargs):
         """
         trikit's chain ladder implementation.
         """
