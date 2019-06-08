@@ -4,7 +4,7 @@ _MackChainLadder class definition.
 import numpy as np
 import pandas as pd
 from scipy.stats import norm, lognorm
-from . import _BaseChainLadder
+from ..chainladder import _BaseChainLadder, _ChainLadderResult
 
 
 

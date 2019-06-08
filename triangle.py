@@ -801,9 +801,9 @@ class _CumTriangle(_IncrTriangle):
         trikit's chain ladder implementation.
         """
         if range_method is None:
-            cl_ = _BaseChainLadder(self).run(sel="all-weighted", tail=1.0)
+            cl_ = _BaseChainLadder(self).__call__(sel="all-weighted", tail=1.0)
         elif range_method.lower().strip().startswith("boot"):
-            cl_ = _BootstrapChainLadder(self).run(sel="all-weighted", **kwargs)
+            cl_ = _BootstrapChainLadder(self).__call__(sel="all-weighted", **kwargs)
         return(cl_)
 
 

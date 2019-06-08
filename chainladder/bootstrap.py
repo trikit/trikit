@@ -674,6 +674,7 @@ class _BootstrapChainLadder(_BaseChainLadder):
             fdist(dfforecasts["param1"].values, dfforecasts["param2"].values) * dfforecasts["sign"].values,
             dfforecasts["samp_incr"].values)
         dfforecasts["final_cum"] = dfforecasts.groupby(["sim", "origin"])["final_incr"].cumsum()
+        dfforecasts = dfforecasts.rename({"final_cum":"ultimate", "l_act_cum":"latest"}, axis=1)
         return(dfforecasts.sort_values(by=["sim", "origin", "dev"]).reset_index(drop=True))
 
 
@@ -694,7 +695,6 @@ class _BootstrapChainLadder(_BaseChainLadder):
         """
         keepcols_ = ["sim", "origin", "latest", "ultimate", "reserve"]
         max_devp_ = dfprocerror["dev"].values.max()
-        dfprocerror = dfprocerror.rename(columns={"final_cum":"ultimate", "l_act_cum":"latest"})
         dfprocerror["reserve"] = dfprocerror["ultimate"] - dfprocerror["latest"]
         dfreserves_ = dfprocerror[dfprocerror["dev"].values==max_devp_][keepcols_].drop_duplicates()
         dfreserves_["latest"]  = np.where(
