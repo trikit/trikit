@@ -26,121 +26,8 @@ ta83 = trikit.load("ta83")
 tri = trikit.totri(RAA)
 
 
-bcl = tri.chladder(range_method="bootstrap", sims=1000)
-dfsim = bcl.sims_data[["origin", "dev", "reserve"]]
-dfres = bcl.reserve_dist
-
-
-# dfsim["u95"] = dfsim.groupby(["origin", "dev"], as_index=False)["reserve"].transform("quantile", pctlu)
-dfsim = bcl.sims_data[["origin", "dev", "reserve"]]
-
-
-
-
-
-
-
-def get_quantile(q, symmetric=True, interpolation="linear"):
-    """
-    Return percentile of bootstrapped reserve distribution given by
-    pctl.
-
-    Parameters
-    ----------
-    q: float in range of [0,1] (or sequence of floats)
-        Percentile to compute, which must be between 0 and 1 inclusive.
-
-    symmetric: bool
-        Whether the symmetric interval should be returned. For example, if
-        ``symmetric==True`` and ``q=.95``, then the 2.5th and 97.5th
-        quantiles of the bootstrapped reserve distribution will be returned
-        [(1 - .95) / 2, (1 + .95) / 2]. When False, only the specified
-        quantile(s) will be computed.
-
-    interpolation: {'linear', 'lower', 'higher', 'midpoint', 'nearest'}
-        This optional parameter specifies the interpolation method to use when
-        the desired quantile lies between two data points i < j:
-
-            - linear: i + (j - i) * fraction, where fraction is the fractional
-            part of the index surrounded by i and j.
-            - lower: i.
-            - higher: j.
-            - nearest: i or j, whichever is nearest.
-            - midpoint: (i + j) / 2.
-
-    Returns
-    -------
-    pd.DataFrame
-    """
-    # dfsims = bcl.sims_data[["origin", "dev", "reserve"]]
-    # symmetric =True
-    # q = [.90, .95]
-    # interpolation = "linear"
-
-    dfsims = self.sims_data[["origin", "dev", "reserve"]]
-    pctl_ = np.asarray([q] if isinstance(q, (float, int)) else q)
-    if np.any(np.logical_or(pctl_ > 1, pctl_ < 0)):
-        raise ValueError("Values for percentiles must fall between [0, 1].")
-    else:
-        if symmetric:
-            pctlarr = np.sort(np.unique(np.append((1 - pctl_) / 2, (1 + pctl_) / 2)))
-        else:
-            pctlarr = np.sort(np.unique(pctl_))
-
-        pctlfmt = [
-            "{:.5f}".format(i).rstrip("0").rstrip(".") + "%" for i in 100 * pctlarr
-            ]
-
-        # Initialize DataFrame for percentile data.
-        dfpctl = dfsims.groupby(["origin", "dev"]).aggregate(
-            "quantile", q=.50, interpolation=interpolation)
-        dfpctl = dfpctl.rename({"reserve":"50%"}, axis=1)
-        dfpctl.columns.name = None
-
-        for q_, pctlstr_ in zip(pctlarr, pctlfmt):
-            if q_!=.50:
-                df_ = dfsims.groupby(["origin", "dev"]).aggregate(
-                    "quantile", q=q_, interpolation=interpolation)
-                df_ = df_.rename({"reserve":pctlstr_}, axis=1)
-                df_.columns.name = None
-                dfpctl = dfpctl.join(df_)
-
-        if .50 not in pctl_:
-            dfpctl = dfpctl.drop("50%", axis=1)
-
-        return(dfpctl.reset_index(drop=False).sort_index())
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    ll = [dfsim.groupby(["origin", "dev"]).aggregate("quantile", q=i)
-
-    for pctl_, pctlstr_ in zip(pctlarr, pctlfmt):
-        dfsumm[pctlstr_] = dfsumm.index.map(
-            lambda v: np.percentile(
-                dfreserves[dfreserves["origin"]==v]["reserve"].values,
-                pctl_, interpolation=interpolation
-                )
-            )
-
-        
-
-
-
-
+bcl = tri.chladder(range_method="bootstrap", q=.95, symmetric=True, sims=100)
+dfsims = bcl.get_quantile(q=.90, which="ultimate")
 
 
 
@@ -186,11 +73,18 @@ dfpred_ = df[df["incl_pred"]==1][["origin", "dev", "value"]]
 dfpred_["description"] = "forecast"
 data = pd.concat([dfact_, dfpred_]).reset_index(drop=True)
 
+
+data = pd.merge(data, dfsims, how="outer", on=["origin", "dev"])
+
 # Plot chain ladder projections by development period for each
 # origin year. FacetGrid's ``hue`` argument should be set to
 # "description".
 axes_style="darkgrid"
 context="notebook"
+actuals_color="#334488"
+forecasts_color="#FFFFFF"
+col_wrap=5
+kwargs=None
 
 sns.set_context(context)
 
@@ -212,7 +106,13 @@ with sns.axes_style(axes_style):
         sharey=True, hue_order=["forecast", "actual",]
         )
 
-    g.map(plt.plot, "dev", "value", **pltkwargs)
+    m_ = g.map(plt.plot, "dev", "value", **pltkwargs)
+    lci_ = g.map(plt.plot, "dev", "2.5%", linestyle="-", linewidth=1.15, alpha=1.0, color="#000000")
+    uci_ = g.map(plt.plot, "dev", "97.5%", linestyle="-", linewidth=1.15, alpha=1.0, color="#000000")
+
+
+
+
     g.set_axis_labels("", "")
     g.set(xticks=data.dev.unique().tolist())
     g.set_titles("{col_name}", size=9)

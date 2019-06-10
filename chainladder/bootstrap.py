@@ -1066,7 +1066,7 @@ class _BootstrapChainLadderResult(_ChainLadderResult):
         plt.show()
 
 
-    def get_quantile(self, q, symmetric=True, interpolation="linear"):
+    def get_quantile(self, q, which="reserve", symmetric=True, interpolation="linear", ):
         """
         Return percentile of bootstrapped reserve distribution given by
         pctl.
@@ -1075,6 +1075,10 @@ class _BootstrapChainLadderResult(_ChainLadderResult):
         ----------
         q: float in range of [0,1] (or sequence of floats)
             Percentile to compute, which must be between 0 and 1 inclusive.
+
+        which: {"reserve", "ultimate"}
+            The column used to compute bootstrapped confidence intervals.
+            Default value is "reserve".
 
         symmetric: bool
             Whether the symmetric interval should be returned. For example, if
@@ -1098,7 +1102,11 @@ class _BootstrapChainLadderResult(_ChainLadderResult):
         -------
         pd.DataFrame
         """
-        dfsims = self.sims_data[["origin", "dev", "reserve"]]
+        which_ = which.lower().strip()
+        if which_ not in self.sims_data.columns:
+            raise ValueError("which must be one of {'reserve', 'ultimate'}")
+
+        dfsims = self.sims_data[["origin", "dev", which_]]
         pctl_ = np.asarray([q] if isinstance(q, (float, int)) else q)
         if np.any(np.logical_and(pctl_ <= 1, pctl_ >= 0)):
             if symmetric:
@@ -1113,14 +1121,14 @@ class _BootstrapChainLadderResult(_ChainLadderResult):
         # Initialize DataFrame for percentile data.
         dfpctl = dfsims.groupby(["origin", "dev"]).aggregate(
             "quantile", q=.50, interpolation=interpolation)
-        dfpctl = dfpctl.rename({"reserve":"50%"}, axis=1)
+        dfpctl = dfpctl.rename({which_:"50%"}, axis=1)
         dfpctl.columns.name = None
 
         for q_, pctlstr_ in zip(pctlarr, pctlfmt):
             if q_!=.50:
                 df_ = dfsims.groupby(["origin", "dev"]).aggregate(
                     "quantile", q=q_, interpolation=interpolation)
-                df_ = df_.rename({"reserve":pctlstr_}, axis=1)
+                df_ = df_.rename({which_:pctlstr_}, axis=1)
                 df_.columns.name = None
                 dfpctl = dfpctl.join(df_)
 
