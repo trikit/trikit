@@ -21,30 +21,25 @@ tri = trikit.totri(RAA)
 
 
 
-# dfsims = bcl.sims_data[["origin", "dev", "rectype", "ultimate", "reserve"]]
-# d = dfsims[dfsims.origin==1984]
-#
-
-
 
 # ============================================================================]
-bcl = tri.chladder(range_method="bootstrap", q=[.75, .95], symmetric=False, sims=1000)
-tfc = bcl._tri_fit_cum(sel="all-weighted")
-tfi = bcl._tri_fit_incr(tfc)
-r_us = bcl._resid_us(tfi)
-sclp = bcl._scale_param(r_us)
-r_adj = bcl._resid_adj(r_us)
-sampd = bcl._sampling_dist(r_adj)
-dfsamples = bcl._bs_samples(sampd, tfi, sims=100)
-dfldfs = bcl._bs_ldfs(dfsamples)
-dflvi = bcl.tri.rlvi.reset_index(drop=False)
-dflvi = dflvi.rename({"index":"origin", "dev":"l_act_dev"}, axis=1)
-dflvi = dflvi.drop("col_offset", axis=1)
-dfcombined = dfsamples.merge(dfldfs, on=["sim", "dev"], how="left")
-dfcombined = dfcombined.merge(dflvi, on=["origin"], how="left", )
-dfcombined = dfcombined.reset_index(drop=True).sort_values(by=["sim", "origin", "dev"])
-dfforecasts = bcl._bs_forecasts(dfcombined=dfcombined, scale_param=sclp)
-dfprocerror = bcl._bs_process_error(dfforecasts=dfforecasts, scale_param=sclp,)
+# bcl = tri.chladder(range_method="bootstrap", q=[.75, .95], symmetric=False, sims=1000)
+# tfc = bcl._tri_fit_cum(sel="all-weighted")
+# tfi = bcl._tri_fit_incr(tfc)
+# r_us = bcl._resid_us(tfi)
+# sclp = bcl._scale_param(r_us)
+# r_adj = bcl._resid_adj(r_us)
+# sampd = bcl._sampling_dist(r_adj)
+# dfsamples = bcl._bs_samples(sampd, tfi, sims=100)
+# dfldfs = bcl._bs_ldfs(dfsamples)
+# dflvi = bcl.tri.rlvi.reset_index(drop=False)
+# dflvi = dflvi.rename({"index":"origin", "dev":"l_act_dev"}, axis=1)
+# dflvi = dflvi.drop("col_offset", axis=1)
+# dfcombined = dfsamples.merge(dfldfs, on=["sim", "dev"], how="left")
+# dfcombined = dfcombined.merge(dflvi, on=["origin"], how="left", )
+# dfcombined = dfcombined.reset_index(drop=True).sort_values(by=["sim", "origin", "dev"])
+# dfforecasts = bcl._bs_forecasts(dfcombined=dfcombined, scale_param=sclp)
+# dfprocerror = bcl._bs_process_error(dfforecasts=dfforecasts, scale_param=sclp,)
 # ============================================================================]
 
 
@@ -107,7 +102,9 @@ for hdr_ in pctl_hdrs:
         data["value"].values, data[hdr_].values
         )
 
+
 data.drop(["_ff", "_minf"], axis=1, inplace=True)
+
 
 
 
@@ -118,6 +115,7 @@ axes_style="darkgrid"
 context="notebook"
 actuals_color="#334488"
 forecasts_color="#FFFFFF"
+fill_color = "#B1FCB1"
 col_wrap=5
 fillcolors = {"green":"#B1FCB1", "peach":"#FCD7B1", "purple":"#D7B1FC", "yellow":"#FCFCB1",
               "orange":"#FFD282",}
@@ -125,6 +123,7 @@ fillcolor = fillcolors["green"]
 kwargs=None
 
 sns.set_context(context)
+sns.axes_style(axes_style)
 
 
 with sns.axes_style(axes_style):
@@ -137,9 +136,13 @@ with sns.axes_style(axes_style):
         fillstyle="full",
         )
     ulbkwargs = dict(
-        alpha=1, color="#000000", linestyle="--", linewidth=1.,
+        alpha=1, color="#000000", linestyle="--", linewidth=.75,
         label=None,
         )
+    fillkwargs = dict(
+        alpha=.5, color="#B1FCB1",
+        )
+
     if kwargs:
         pltkwargs.update(kwargs)
 
@@ -154,6 +157,13 @@ with sns.axes_style(axes_style):
     lbound_= g.map(plt.plot, "dev", data.columns[-2], **ulbkwargs)
     ubound_ = g.map(plt.plot, "dev", data.columns[-1], **ulbkwargs)
 
+    # for hdr_ in pctl_hdrs: data[hdr_] = data[hdr_].replace(np.NaN, 0)
+    # fill_ = g.map(
+    #     plt.fill_between, "dev", lbound_, ubound_,
+    #     )
+
+
+    # fill_between(x, y1, y2=0, where=None, interpolate=False, step=None, *, data=None,
     g.set_axis_labels("", "")
     g.set(xticks=data.dev.unique().tolist())
     g.set_titles("{col_name}", size=9)
@@ -176,7 +186,13 @@ with sns.axes_style(axes_style):
         ylabels_ = ["{:,.0f}".format(i) for i in ylabelsn_]
         ax_.set_yticklabels(ylabels_, size=8)
 
-
+        # Fill between upper and lower range bounds.
+        c = ax_.get_children()
+        lines_ = [i for i in c if isinstance(i, matplotlib.lines.Line2D)]
+        xx = [i._x for i in lines_ if len(i._x)>0]
+        yy = [i._y for i in lines_ if len(i._y)>0]
+        x_, lb_, ub_ = xx[0], yy[-2], yy[-1]
+        ax_.fill_between(x_, lb_, ub_, **fillkwargs)
 
         # Draw border around each facet.
         for _, spine_ in ax_.spines.items():
@@ -194,3 +210,15 @@ g.fig.suptitle(
     titlestr_, x=0.065, y=.975, fontsize=11, color="#404040", ha="left"
     )
 
+
+ll = list(enumerate(g.axes))
+i, _ = ll[8]
+ax = g.axes[i]
+c = ax.get_children()
+
+lines = [i for i in c if isinstance(i, matplotlib.lines.Line2D)]
+xx = [i._x for i in lines if len(i._x)>0]
+yy = [i._y for i in lines if len(i._y)>0]
+
+x_, lb_, ub_ = xx[0], yy[-2], yy[-1]
+l1, l2 = lines[0], lines[1]
