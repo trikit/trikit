@@ -8,6 +8,7 @@ import os.path
 import decimal
 import logging
 import timeit
+import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
 import trikit
@@ -104,6 +105,14 @@ for hdr_ in pctl_hdrs:
 
 
 data.drop(["_ff", "_minf"], axis=1, inplace=True)
+dfv = data[["origin", "dev", "rectype", "value"]]
+dfl = data[["origin", "dev", "rectype", pctl_hdrs[0]]]
+dfu = data[["origin", "dev", "rectype", pctl_hdrs[-1]]]
+dfl["rectype"] = pctl_hdrs[0]
+dfl = dfl.rename({pctl_hdrs[0]:"value"}, axis=1)
+dfu["rectype"] = pctl_hdrs[-1]
+dfu = dfu.rename({pctl_hdrs[-1]:"value"}, axis=1)
+dfstk = pd.concat([dfv, dfl, dfu])
 
 
 
@@ -118,8 +127,8 @@ forecasts_color="#FFFFFF"
 fill_color = "#B1FCB1"
 col_wrap=5
 fillcolors = {"green":"#B1FCB1", "peach":"#FCD7B1", "purple":"#D7B1FC", "yellow":"#FCFCB1",
-              "orange":"#FFD282",}
-fillcolor = fillcolors["green"]
+              "orange":"#FFD282", "pink":"#FFC1CB",}
+fillcolor = fillcolors["pink"]
 kwargs=None
 
 sns.set_context(context)
@@ -129,53 +138,58 @@ sns.axes_style(axes_style)
 with sns.axes_style(axes_style):
 
     titlestr_ = "Bootstrap Chain Ladder Ultimate Ranges by Origin"
-    palette_ = dict(actual=actuals_color, forecast=forecasts_color)
-    pltkwargs = dict(
-        marker="o", markersize=6, alpha=1, markeredgecolor="#000000",
-        markeredgewidth=.50, linestyle="--", linewidth=.75,
-        fillstyle="full",
-        )
-    ulbkwargs = dict(
-        alpha=1, color="#000000", linestyle="--", linewidth=.75,
-        label=None,
-        )
+    # palette_ = {"actual":actuals_color, "forecast":forecasts_color,
+    #             pctl_hdrs[0]:"#000000", pctl_hdrs[-1]:"#000000"}
+    palette_ = None
+    # pltkwargs = dict(
+    #     marker="o", markersize=6, alpha=1, markeredgecolor="#000000",
+    #     markeredgewidth=.50, linestyle="--", linewidth=.65,
+    #     fillstyle="full",
+    #     )
+    # ulbkwargs = dict(
+    #     alpha=1, color="#000000", linestyle="-", linewidth=.65,
+    #     )
     fillkwargs = dict(
-        alpha=.5, color="#B1FCB1",
+        alpha=.75, color="#FCFCB1", label="nolegend",
         )
+
+    huekwargs = dict(
+        marker=["o", "o", None, None,], markersize=[6, 6, None, None,],
+        color=["#000000", "#000000", "#000000", "#000000",],
+        fillstyle=["full", "full", "none", "none",],
+        markerfacecolor=[forecasts_color, actuals_color, None, None,],
+        markeredgecolor=["#000000", "#000000", None, None,],
+        markeredgewidth=[.50, .50, None, None,],
+        linestyle=["-", "-", "-.", "--",], linewidth=[.475, .475, .625, .625,],
+        )
+
 
     if kwargs:
         pltkwargs.update(kwargs)
 
 
     g = sns.FacetGrid(
-        data, col="origin", hue="rectype", palette=palette_,
+        dfstk, col="origin", palette=palette_, hue="rectype", hue_kws=huekwargs,
         col_wrap=col_wrap, margin_titles=False, despine=True,
-        sharex=True, sharey=True, hue_order=["forecast", "actual",]
+        sharex=True, sharey=True,
+        hue_order=["forecast", "actual", pctl_hdrs[0], pctl_hdrs[-1]]
         )
 
     mean_ = g.map(plt.plot, "dev", "value", **pltkwargs)
-    lbound_= g.map(plt.plot, "dev", data.columns[-2], **ulbkwargs)
-    ubound_ = g.map(plt.plot, "dev", data.columns[-1], **ulbkwargs)
+    # lbound_= g.map(plt.plot, "dev", dfstk.columns[-2], label="_nolegend_", **ulbkwargs)
+    # ubound_ = g.map(plt.plot, "dev", dfstk.columns[-1], label="_nolegend_", **ulbkwargs)
 
-    # for hdr_ in pctl_hdrs: data[hdr_] = data[hdr_].replace(np.NaN, 0)
-    # fill_ = g.map(
-    #     plt.fill_between, "dev", lbound_, ubound_,
-    #     )
-
-
-    # fill_between(x, y1, y2=0, where=None, interpolate=False, step=None, *, data=None,
+    # fill_between(x, y1, y2=0, where=None, interpolate=False, step=None, *, dfstk=None,
     g.set_axis_labels("", "")
-    g.set(xticks=data.dev.unique().tolist())
+    g.set(xticks=dfstk.dev.unique().tolist())
     g.set_titles("{col_name}", size=9)
-    g.set_xticklabels(data.dev.unique().tolist(), size=8)
-
-
+    g.set_xticklabels(dfstk.dev.unique().tolist(), size=8)
 
     # Change ticklabel font size and place legend on each facet.
     for i, _ in enumerate(g.axes):
         ax_ = g.axes[i]
         legend_ = ax_.legend(
-            loc="lower right", fontsize="x-small", frameon=True,
+            loc="upper left", fontsize="x-small", frameon=True,
             fancybox=True, shadow=False, edgecolor="#909090",
             framealpha=1, markerfirst=True,)
         legend_.get_frame().set_facecolor("#FFFFFF")
@@ -201,7 +215,11 @@ with sns.axes_style(axes_style):
             spine_.set_linewidth(.50)
 
 
-
+        # handles, labels = ax_.get_legend_handles_labels()
+        # for h in handles: h.set_linestyle("")
+        #
+        # ll = ax_.get_legend()
+        # c = ll.get_children()
 
 
 # Adjust facets downward and and left-align figure title.

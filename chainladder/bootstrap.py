@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 from numpy.random import RandomState
 from scipy import stats
-import matplotlib as mpl
+import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
 from ..chainladder import _BaseChainLadder, _ChainLadderResult
@@ -1051,7 +1051,7 @@ class _BootstrapChainLadderResult(_ChainLadderResult):
                 "Distribution of Bootstrap Reserve Estimates (Aggregate)",
                 loc="left", color=tc)
             ax.get_xaxis().set_major_formatter(
-                mpl.ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
+                matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
             ax.set_xlabel("Reserves"); ax.set_ylabel("Frequency")
             ax.hist(dat, **plt_params)
 
