@@ -4,7 +4,7 @@ _MackChainLadder class definition.
 import numpy as np
 import pandas as pd
 from scipy.stats import norm, lognorm
-from ..chainladder import _BaseChainLadder, _ChainLadderResult
+from ..chainladder import _BaseChainLadder, _BaseChainLadderResult
 
 
 
@@ -431,7 +431,7 @@ class _MackChainLadder(_BaseChainLadder):
     #     return(self.summary.round(summ_specs).to_string())
 
 
-class _MackChainLadderResult(_ChainLadderResult):
+class _MackChainLadderResult(_BaseChainLadderResult):
     """
     Curated output resulting from ``_BootstrapChainLadder``'s ``run`` method.
     """

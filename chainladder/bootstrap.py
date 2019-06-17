@@ -14,8 +14,15 @@ FUTURE ENHANCEMENTS                                       |
             Variance = n * p / (1 - p)^2
             Variance = Mean / (1 - p)
 
+- Implement heteroscedasticity adjustment (Shapland pg. 25)
+- Plot residuals vs. development period
+- Plot residuals vs. origin
+- Separate class for residuals assessment
+
+
 """
 import functools
+import warnings
 import numpy as np
 import pandas as pd
 from numpy.random import RandomState
@@ -23,7 +30,7 @@ from scipy import stats
 import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
-from ..chainladder import _BaseChainLadder, _ChainLadderResult
+from ..chainladder import _BaseChainLadder, _BaseChainLadderResult
 
 
 
@@ -704,7 +711,7 @@ class _BootstrapChainLadder(_BaseChainLadder):
 
 
 
-class _BootstrapChainLadderResult(_ChainLadderResult):
+class _BootstrapChainLadderResult(_BaseChainLadderResult):
     """
     Curated output resulting from ``_BootstrapChainLadder``'s ``run`` method.
     """
@@ -840,9 +847,7 @@ class _BootstrapChainLadderResult(_ChainLadderResult):
 
         pctlfields_ = [i for i in self.summary.columns if i.endswith("%")]
         pctlfmts_ = {i:"{:.0f}".format for i in pctlfields_}
-        self.summspecs = {"ultimate":"{:.0f}".format, "reserve":"{:.0f}".format,
-                          "latest":"{:.0f}".format, "cldf":"{:.5f}".format,}
-        self.summspecs.update(pctlfmts_)
+        self._summspecs.update(pctlfmts_)
 
 
 
@@ -909,10 +914,9 @@ class _BootstrapChainLadderResult(_ChainLadderResult):
         """
         Return a summary assessing the fit of the parametric model used for
         bootstrap resampling. Applicable when ``parametric`` argument to
-        ``run`` is True. Returns a dictionary with keys ``kstest``,
-        ``anderson``, ``shapiro``, ``skewtest``, ``kurtosistest`` and
-        ``normaltest``, corresponding to statistical tests available in
-        scipy.stats.
+        is True. Returns a dictionary with keys ``kstest``, ``anderson``,
+        ``shapiro``, ``skewtest``, ``kurtosistest`` and ``normaltest``,
+        corresponding to statistical tests available in ``scipy.stats``.
 
         Returns
         -------
@@ -943,7 +947,7 @@ class _BootstrapChainLadderResult(_ChainLadderResult):
     @property
     def residuals_detail(self):
         """
-        Compute summary statistics based on triangle residuals.
+        Summary statistics based on triangle residuals.
 
         Returns
         -------
@@ -1006,9 +1010,193 @@ class _BootstrapChainLadderResult(_ChainLadderResult):
         return(self._residuals_detail)
 
 
+    def _bs_data_transform(self, which, q):
+        """
+        Starts with ``_BaseChainLadderResult``'s ``_data_transform``, and
+        performs additional pre-processing in order to generate bootstrapped
+        reserve ranges by origin period.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        data = self._data_transform()
+        dfsims = self.get_quantile(q=q, which=which, symmetric=True)
+        data = pd.merge(data, dfsims, how="outer", on=["origin", "dev"])
+        pctl_hdrs = [i for i in dfsims.columns if i not in ("origin", "dev")]
+        for hdr_ in pctl_hdrs:
+            data[hdr_] = np.where(
+                data["rectype"].values=="actual", np.NaN, data[hdr_].values
+                )
+
+        # Determine the first forecast period by origin, and set q-fields to actuals.
+        data["_ff"] = np.where(
+            data["rectype"].values=="forecast", data["dev"].values, data["dev"].values.max() + 1)
+        data["_minf"] = data.groupby(["origin"])["_ff"].transform("min")
+        for hdr_ in pctl_hdrs:
+            data[hdr_] = np.where(
+                np.logical_and(data["rectype"].values=="forecast", data["_minf"].values==data["dev"].values),
+                data["value"].values, data[hdr_].values
+                )
+
+        data.drop(["_ff", "_minf"], axis=1, inplace=True)
+        dfv = data[["origin", "dev", "rectype", "value"]]
+        dfl = data[["origin", "dev", "rectype", pctl_hdrs[0]]]
+        dfu = data[["origin", "dev", "rectype", pctl_hdrs[-1]]]
+        dfl["rectype"] = pctl_hdrs[0]
+        dfl = dfl.rename({pctl_hdrs[0]:"value"}, axis=1)
+        dfu["rectype"] = pctl_hdrs[-1]
+        dfu = dfu.rename({pctl_hdrs[-1]:"value"}, axis=1)
+        return(pd.concat([dfv, dfl, dfu]).sort_index())
 
 
-    def plotdist(self, level="aggregate", tc="#FE0000", path=None, **kwargs):
+    def plot(self, which="ultimate", q=.90, actuals_color="#334488",
+             forecasts_color="#FFFFFF", fill_color="#FCFCB1", fill_alpha=.75,
+             axes_style="darkgrid", context="notebook", col_wrap=5, hue_kws=None,
+             **kwargs):
+        """
+        Generate exhibit representing the distribution of ultimates or
+        reserves resulting from bootstrap resampling, along with
+        percentiles from the distribution given by ``q``. Distribution by
+        development period can be viewed as a function of origin period or
+        in aggregate, controlled by ``view``.
+
+        Parameters
+        ----------
+        which: {"ultimate", "reserve"}
+            Specifies whether exhibit should highlight ultimate or reserve
+            variability. Defaults to "ultimate".
+
+        q: float in range of [0,1]
+            Symmetric percentile interval to highlight, which must be between
+            0 and 1 inclusive. For example, when ``q=.90``, the 5th and
+            95th percentile of the ultimate/reserve distribution will be
+            highlighted in the exhibit $(\frac{1 - q}{2}, \frac(1 + q}{2})$.
+
+        actuals_color: str
+            A color name or hexidecimal code used to represent actual
+            observations. Defaults to "#00264C".
+
+        forecasts_color: str
+            A color name or hexidecimal code used to represent forecast
+            observations. Defaults to "#FFFFFF".
+
+        fill_color: str
+            A color name or hexidecimal code used to represent the fill color
+            between percentiles of the ultimate/reserve bootstrap
+            distribution as specified by ``q``. Defaults to "#FCFCB1".
+
+        fill_alpha: float
+            Control transparency of ``fill_color`` between upper and lower
+            percentile bounds of the ultimate/reserve distribution. Defaults
+            to .75.
+
+        axes_style: str
+            Aesthetic style of plots. Defaults to "darkgrid". Other options
+            include {whitegrid, dark, white, ticks}.
+
+        context: str
+            Set the plotting context parameters. According to the seaborn
+            documentation, This affects things like the size of the labels,
+            lines, and other elements of the plot, but not the overall style.
+            Defaults to ``"notebook"``. Additional options include
+            {paper, talk, poster}.
+
+        col_wrap: int
+            The maximum number of origin period axes to have on a single row
+            of the resulting FacetGrid. Defaults to 5.
+
+        hue_kws: dictionary of param:list of values mapping
+            Other keyword arguments to insert into the plotting call to let
+            other plot attributes vary across levels of the hue variable
+            (e.g. the markers in a scatterplot). Each list of values should
+            have length 4, with each index representing aesthetic
+            overrides for forecasts, actuals, lower percentile and upper
+            percentile renderings respectively. Defaults to ``None``.
+
+        kwargs: dict
+            Additional styling options for scatter points. This can override
+            default settings for ``plt.plot`` objects.
+
+        Returns
+        -------
+        None
+        """
+        data = self._bs_data_transform(which=which, q=q)
+        sns.set_context(context)
+        with sns.axes_style(axes_style):
+            huekwargs = dict(
+                marker=["o", "o", None, None,], markersize=[6, 6, None, None,],
+                color=["#000000", "#000000", "#000000", "#000000",],
+                fillstyle=["full", "full", "none", "none",],
+                markerfacecolor=[forecasts_color, actuals_color, None, None,],
+                markeredgecolor=["#000000", "#000000", None, None,],
+                markeredgewidth=[.50, .50, None, None,],
+                linestyle=["-", "-", "-.", "--",], linewidth=[.475, .475, .625, .625,],
+                )
+
+            if hue_kws is not None:
+                # Determine whether the length of each element of hue_kws is 4.
+                if all(len(hue_kws[i])==4 for i in hue_kws):
+                    huekwargs.update(hue_kws)
+                else:
+                    warnings.warn("hue_kws overrides not correct length - Ignoring.")
+
+            titlestr_ = "Bootstrap Chain Ladder {} Range Projections".format(which.title())
+
+            grid_ = sns.FacetGrid(
+                data, col="origin", hue="rectype", hue_kws=huekwargs,
+                col_wrap=col_wrap, margin_titles=False, despine=True,
+                sharex=True, sharey=True,
+                hue_order=["forecast", "actual", pctl_hdrs[0], pctl_hdrs[-1]]
+                )
+
+            mean_ = grid_.map(plt.plot, "dev", "value",)
+            grid_.set_axis_labels("", "")
+            grid_.set(xticks=data["dev"].unique().tolist())
+            grid_.set_titles("{col_name}", size=9)
+            grid_.set_xticklabels(data["dev"].unique().tolist(), size=8)
+
+            # Change ticklabel font size and place legend on each facet.
+            for i, _ in enumerate(grid_.axes):
+                ax_ = grid_.axes[i]
+                legend_ = ax_.legend(
+                    loc="upper left", fontsize="x-small", frameon=True,
+                    fancybox=True, shadow=False, edgecolor="#909090",
+                    framealpha=1, markerfirst=True,)
+                legend_.get_frame().set_facecolor("#FFFFFF")
+                ylabelss_ = [i.get_text() for i in list(ax_.get_yticklabels())]
+                ylabelsn_ = [float(i.replace(u"\u2212", "-")) for i in ylabelss_]
+                ylabelsn_ = [i for i in ylabelsn_ if i>=0]
+                ylabels_ = ["{:,.0f}".format(i) for i in ylabelsn_]
+                ax_.set_yticklabels(ylabels_, size=8)
+
+                # Fill between upper and lower range bounds.
+                axc_ = ax_.get_children()
+                lines_ = [i for i in axc_ if isinstance(i, matplotlib.lines.Line2D)]
+                xx = [i._x for i in lines_ if len(i._x)>0]
+                yy = [i._y for i in lines_ if len(i._y)>0]
+                x_, lb_, ub_ = xx[0], yy[-2], yy[-1]
+                ax_.fill_between(x_, lb_, ub_, color=fill_color, alpha=fill_alpha)
+
+                # Draw border around each facet.
+                for _, spine_ in ax_.spines.items():
+                    spine_.set_visible(True)
+                    spine_.set_color("#000000")
+                    spine_.set_linewidth(.50)
+
+            # Adjust facets downward and and left-align figure title.
+            plt.subplots_adjust(top=0.9)
+            grid_.fig.suptitle(
+                titlestr_, x=0.065, y=.975, fontsize=10, color="#404040", ha="left"
+                )
+
+
+
+
+    def hist(self, which="ultimate", kde=False, rug=False, hist=False,
+             axes_style="darkgrid", context="notebook", col_wrap=5,
+             **kwargs):
         """
         Generate visual representation of full predicitive distribtion
         of loss reserves in aggregate or by origin. Additional options
@@ -1016,8 +1204,90 @@ class _BootstrapChainLadderResult(_ChainLadderResult):
 
         Parameters
         ----------
-        level: str
-            Set ``level`` to "origin" for faceted plot with predicitive
+        path: str
+            If path is not None, save plot to the specified location.
+            Otherwise, parameter is ignored. Default value is None.
+
+        kwargs: dict
+            Dictionary of optional matplotlib styling parameters.
+
+        """
+        which_ = which.lower().strip()
+        if which_ not in self.sims_data.columns:
+            raise ValueError("which must be one of ['reserve', 'ultimate']")
+
+        data = bcl.sims_data[["origin", "dev", "latest", "reserve", which_]]
+        sns.set_context(context)
+        with sns.axes_style(axes_style):
+
+            titlestr_ = "Bootstrap Chain Ladder {} Distribution by Origin".format(which.title())
+            pltkwargs = {}
+            if kwargs is not None:
+                pltkwargs.update(kwargs)
+
+            grid_ = sns.FacetGrid(
+                data, col="origin", col_wrap=col_wrap, margin_titles=False,
+                despine=True, sharex=True, sharey=True,
+                )
+
+            hists_ = grid_.map(
+                sns.distplot, data[which_].values, kde=kde, rug=rug, hist=hist,
+                **pltkwargs
+                )
+
+            grid_.set_axis_labels("", "")
+            grid_.set(xticks=data["dev"].unique().tolist())
+            grid_.set_titles("{col_name}", size=9)
+            grid_.set_xticklabels(data["dev"].unique().tolist(), size=8)
+
+            # Change ticklabel font size and place legend on each facet.
+            for i, _ in enumerate(grid_.axes):
+                ax_ = grid_.axes[i]
+                legend_ = ax_.legend(
+                    loc="upper left", fontsize="x-small", frameon=True,
+                    fancybox=True, shadow=False, edgecolor="#909090",
+                    framealpha=1, markerfirst=True,)
+                legend_.get_frame().set_facecolor("#FFFFFF")
+                ylabelss_ = [i.get_text() for i in list(ax_.get_yticklabels())]
+                ylabelsn_ = [float(i.replace(u"\u2212", "-")) for i in ylabelss_]
+                ylabelsn_ = [i for i in ylabelsn_ if i>=0]
+                ylabels_ = ["{:,.0f}".format(i) for i in ylabelsn_]
+                ax_.set_yticklabels(ylabels_, size=8)
+
+                # Fill between upper and lower range bounds.
+                axc_ = ax_.get_children()
+                lines_ = [i for i in axc_ if isinstance(i, matplotlib.lines.Line2D)]
+                xx = [i._x for i in lines_ if len(i._x)>0]
+                yy = [i._y for i in lines_ if len(i._y)>0]
+                x_, lb_, ub_ = xx[0], yy[-2], yy[-1]
+                ax_.fill_between(x_, lb_, ub_, color=fill_color, alpha=fill_alpha)
+
+                # Draw border around each facet.
+                for _, spine_ in ax_.spines.items():
+                    spine_.set_visible(True)
+                    spine_.set_color("#000000")
+                    spine_.set_linewidth(.50)
+
+            # Adjust facets downward and and left-align figure title.
+            plt.subplots_adjust(top=0.9)
+            grid_.fig.suptitle(
+                titlestr_, x=0.065, y=.975, fontsize=10, color="#404040", ha="left"
+                )
+
+
+
+
+
+    def plotdist(self, which="ultimate", view="aggregate", **kwargs):
+        """
+        Generate visual representation of full predicitive distribtion
+        of loss reserves in aggregate or by origin. Additional options
+        to style the histogram can be passed as keyword arguments.
+
+        Parameters
+        ----------
+        view: str
+            Set ``view`` to "origin" for faceted plot with predictive
             distirbution by origin year, or "aggregate" for single plot
             of predicitive distribution of reserves in aggregate. Default
             value is "aggregate".
@@ -1030,10 +1300,9 @@ class _BootstrapChainLadderResult(_ChainLadderResult):
             Dictionary of optional matplotlib styling parameters.
 
         """
-        plt_params = {
-            "alpha":.995, "color":"#FFFFFF", "align":"mid", "edgecolor":"black",
-            "histtype":"bar", "linewidth":1.1, "orientation":"vertical",
-            }
+        plt_params = {"alpha":.995, "color":"#FFFFFF", "align":"mid",
+                      "edgecolor":"black", "histtype":"bar",
+                      "linewidth":1.1, "orientation":"vertical",}
 
         if level.lower().strip().startswith(("agg", "tot")):
             # bins computed using self._nbrbins if not passed as optional
@@ -1066,10 +1335,10 @@ class _BootstrapChainLadderResult(_ChainLadderResult):
         plt.show()
 
 
-    def get_quantile(self, q, which="reserve", symmetric=True, interpolation="linear", ):
+    def get_quantile(self, q, which="reserve", symmetric=True, interpolation="linear"):
         """
-        Return percentile of bootstrapped reserve distribution given by
-        pctl.
+        Return percentile of bootstrapped ultimate or reserve range
+        distribution as specified by ``q``.
 
         Parameters
         ----------
@@ -1104,7 +1373,7 @@ class _BootstrapChainLadderResult(_ChainLadderResult):
         """
         which_ = which.lower().strip()
         if which_ not in self.sims_data.columns:
-            raise ValueError("which must be one of {'reserve', 'ultimate'}")
+            raise ValueError("which must be one of ['reserve', 'ultimate']")
 
         dfsims = self.sims_data[["origin", "dev", which_]]
         pctl_ = np.asarray([q] if isinstance(q, (float, int)) else q)
@@ -1140,15 +1409,15 @@ class _BootstrapChainLadderResult(_ChainLadderResult):
 
 
     def __str__(self):
-        return(self.summary.to_string(formatters=self.summspecs))
+        return(self.summary.to_string(formatters=self._summspecs))
 
 
-    def __repr__(self):
-        # pctls_ = [i for i in self.summary.columns if i.endswith("%")]
-        # pctlfmts_ = {i:"{:.0f}".format for i in pctls_}
-        # formats_ = {"ultimate":"{:.0f}".format, "reserve":"{:.0f}".format,
-        #             "latest":"{:.0f}".format, "cldf":"{:.5f}".format,}
-        return(self.summary.to_string(formatters=self.summspecs))
+    # def __repr__(self):
+    #     # pctls_ = [i for i in self.summary.columns if i.endswith("%")]
+    #     # pctlfmts_ = {i:"{:.0f}".format for i in pctls_}
+    #     # formats_ = {"ultimate":"{:.0f}".format, "reserve":"{:.0f}".format,
+    #     #             "latest":"{:.0f}".format, "cldf":"{:.5f}".format,}
+    #     return(self.summary.to_string(formatters=self._summspecs))
 
 
 

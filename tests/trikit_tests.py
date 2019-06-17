@@ -1,4 +1,4 @@
-import sys; sys.path.append("C:\\Users\\cac9159\\Repos\\")
+import sys; sys.path.append("G:\\Repos\\")
 import unittest
 import pandas as pd
 import numpy as np
@@ -334,11 +334,7 @@ res = cl_init._reserves(ultimates=ults)
 # ibnr0a  = r.reserves
 # tsqr0a  = r.trisqrd
 
-# BootstrapChainLadder =======================================================]
-bb = trikit.chladder(data=DATA, range_method="bootstrap")
 
-r0 = bb.run(sims=175, neg_handler=1, parametric=False, random_state=516)
-r0.plotdist(level="year")
 
 
 # from trikit.chainladder import bootstrap
@@ -481,6 +477,11 @@ if BOOT_CL_TEST:
 
 
 # Testing MackChainLadder ====================================================]
+tri = trikit.triangle._CumTriangle(data=RAA)
+cl = trikit._BaseChainLadder(tri).__call__()
+
+cl = cl.__call__()
+
 
 # if MACK_CL_TEST:
 DATA = trikit.load("ta83")

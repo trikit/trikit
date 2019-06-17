@@ -5,11 +5,13 @@ dataset and triangle arguments should be passed to ``chladder``, which will
 return the initialized ChainLadder instance, from which estimates of outstanding
 liabilities and optionally ranges can be obtained.
 """
+import functools
 import pandas as pd
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import seaborn as sns
+
 
 
 class _BaseChainLadder:
@@ -63,25 +65,7 @@ class _BaseChainLadder:
         Returns
         -------
         trikit.chainladder._ChainLadderResult
-
-        # dfcldfs = cldfs_.to_frame().reset_index(drop=False)
-        # dfcldfs = dfcldfs.rename({"index":"maturity"}, axis=1)
-        # dfcldfs["maturity"] = dfcldfs["maturity"].astype(np.str)
-        # dfmat = maturity_.to_frame().reset_index(drop=False)
-        # dfmat = dfmat.rename({"index":"origin"}, axis=1)
-        # dfcldfs = pd.merge(dfmat, dfcldfs, on="maturity", how="inner")
-        # dfcldfs = dfcldfs.set_index("origin").drop("maturity", axis=1)
-        # dfcldfs.index.name = None
         """
-        # sel = "all-weighted"
-        # tail = 1.0
-        # ldfs_ = cl._ldfs(sel=sel, tail=tail)
-        # cldfs_ = cl._cldfs(ldfs=ldfs_)
-        # ultimates_ = cl._ultimates(cldfs=cldfs_)
-        # reserves_ = cl._reserves(ultimates=ultimates_)
-        # maturity_ = tri1.maturity.astype(np.str)
-        # latest_ = tri1.latest_by_origin
-
         ldfs_ = self._ldfs(sel=sel, tail=tail)
         cldfs_ = self._cldfs(ldfs=ldfs_)
         ultimates_ = self._ultimates(cldfs=cldfs_)
@@ -89,7 +73,7 @@ class _BaseChainLadder:
         maturity_ = self.tri.maturity.astype(np.str)
         latest_ = self.tri.latest_by_origin
 
-        # Compile Chain Ladder point estimate summary.
+        # Compile chain ladder point estimate summary.
         dfmatur_ = maturity_.to_frame().reset_index(drop=False).rename({"index":"origin"}, axis=1)
         dfcldfs_ = cldfs_.to_frame().reset_index(drop=False).rename({"index":"maturity"}, axis=1)
         dfcldfs_["maturity"] = dfcldfs_["maturity"].astype(np.str)
@@ -109,7 +93,7 @@ class _BaseChainLadder:
         kwds = {"sel":sel, "tail":tail}
 
         # Initialize and return _ChainLadderResult instance.
-        clresult_ = _ChainLadderResult(
+        clresult_ = _BaseChainLadderResult(
             summary=dfsumm, tri=self.tri, ldfs=ldfs_, cldfs=cldfs_,
             latest=latest_, maturity=maturity_, ultimates=ultimates_,
             reserves=reserves_, **kwds)
@@ -223,16 +207,10 @@ class _BaseChainLadder:
 
 
 
-
-
-
-
-
-
-
-class _ChainLadderResult:
+class _BaseChainLadderResult:
     """
-    Curated output resulting from ``_BaseChainLadder``'s ``run`` method.
+    Container class consisting of output resulting from invocation of
+    ``_BaseChainLadder``'s ``__call__`` method.
     """
     def __init__(self, summary, tri, ldfs, cldfs, latest, maturity,
                  ultimates, reserves, **kwargs):
@@ -286,8 +264,8 @@ class _ChainLadderResult:
         # Properties.
         self._trisqrd = None
 
-        self.summspecs = {"ultimate":"{:.0f}".format, "reserve":"{:.0f}".format,
-                          "latest":"{:.0f}".format, "cldf":"{:.5f}".format,}
+        self._summspecs = {"ultimate":"{:.0f}".format, "reserve":"{:.0f}".format,
+                           "latest":"{:.0f}".format, "cldf":"{:.5f}".format,}
 
 
     @property
@@ -319,23 +297,71 @@ class _ChainLadderResult:
 
 
 
+    def _data_transform(self):
+        """
+        Transform dataset for use in FacetGrid plot by origin
+        exhibting chain ladder ultimate and reserve estimates.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        df0 = self.trisqrd.reset_index(drop=False).rename({"index":"origin" }, axis=1)
+        df0 = pd.melt(df0, id_vars=["origin"], var_name="dev", value_name="value")
+        df0 = df0[~np.isnan(df0["value"])].reset_index(drop=True)
+        df1 = self.tri.triind.reset_index(drop=False).rename({"index":"origin"}, axis=1)
+        df1 = pd.melt(df1, id_vars=["origin"], var_name="dev", value_name="value")
+        df1["value"] = df1["value"].map(lambda v: 1 if v==0 else 0)
+        df1 = df1[~np.isnan(df1["value"])].rename({"value":"actual_ind"}, axis=1)
+        df1 = df1.reset_index(drop=True)
+        if self.tail!=1:
+            df0["dev"] = df0["dev"].map(
+                lambda v: (self.tri.devp.max() + 1) if v=="ultimate" else v
+                )
+        else:
+            df0 = df0[df0["dev"]!="ultimate"]
+
+        # Combine df0 and df1 into a single DataFrame, then perform cleanup
+        # actions for cases in which df0 has more records than df1.
+        df = pd.merge(df0, df1, on=["origin", "dev"], how="left", sort=False)
+        df["actual_ind"] = df["actual_ind"].map(lambda v: 0 if np.isnan(v) else v)
+        df["actual_ind"] = df["actual_ind"].astype(np.int_)
+        df = df.sort_values(["origin", "dev"]).reset_index(drop=True)
+        dfma = df[df["actual_ind"]==1].groupby(["origin"])["dev"].max().to_frame()
+        dfma = dfma.reset_index(drop=False).rename(
+            {"index":"origin", "dev":"max_actual"}, axis=1)
+        df = pd.merge(df, dfma, on="origin", how="outer", sort=False)
+        df = df.sort_values(["origin", "dev"]).reset_index(drop=True)
+        df["incl_actual"] = df["actual_ind"].map(lambda v: 1 if v==1 else 0)
+        df["incl_pred"] = df.apply(
+            lambda rec: 1 if (rec.actual_ind==0 or rec.dev==rec.max_actual) else 0,
+            axis=1
+            )
+
+        # Vertically concatenate dfact_ and dfpred_.
+        dfact_ = df[df["incl_actual"]==1][["origin", "dev", "value"]]
+        dfact_["rectype"] = "actual"
+        dfpred_ = df[df["incl_pred"]==1][["origin", "dev", "value"]]
+        dfpred_["rectype"] = "forecast"
+        return(pd.concat([dfact_, dfpred_]).reset_index(drop=True))
+
+
+
     def plot(self, actuals_color="#334488", forecasts_color="#FFFFFF",
              axes_style="darkgrid", context="notebook", col_wrap=5,
-             **kwargs):
+             hue_kws=None, **kwargs):
         """
-        Visualize projected chain ladder development. First transforms data
-        into long format, then plots actual and forecast loss amounts at each
-        development period for each origin year using seaborn's ``FacetGrid``.
+        Visualize actual losses along with projected chain ladder development.
 
         Parameters
         ----------
         actuals_color: str
-            A hexidecimal color code used to represent actual scatter points
-            in FacetGrid. Defaults to "#00264C".
+            A color name or hexidecimal code used to represent actual
+            observations. Defaults to "#00264C".
 
         forecasts_color: str
-            A hexidecimal color code used to represent forecast scatter points
-            in FacetGrid. Defaults to "#FFFFFF".
+            A color name or hexidecimal code used to represent forecast
+            observations. Defaults to "#FFFFFF".
 
         axes_style: str
             Aesthetic style of plots. Defaults to "darkgrid". Other options
@@ -351,6 +377,14 @@ class _ChainLadderResult:
         col_wrap: int
             The maximum number of origin period axes to have on a single row
             of the resulting FacetGrid. Defaults to 5.
+
+        hue_kws: dictionary of param:list of values mapping
+            Other keyword arguments to insert into the plotting call to let
+            other plot attributes vary across levels of the hue variable
+            (e.g. the markers in a scatterplot). Each list of values should
+            have length 2, with each index representing aesthetic
+            overrides for forecasts and actuals respectively. Defaults to
+            ``None``.
 
         kwargs: dict
             Additional styling options for scatter points. This can override
@@ -368,78 +402,58 @@ class _ChainLadderResult:
 
         >>> import trikit
         >>> raa = trikit.load(dataset="raa")
-        >>> cl_init = trikit.chladder(data=raa)
-        >>> cl_result = cl_init(sel="simple-5", tail=1.005)
+        >>> tri = trikit.totri(data=raa)
+        >>> cl = tri.chladder(sel="all-weighted", tail=1.005)
 
-        ``cl_result`` represents an instance of ``_ChainLadderResult``, which
+        ``cl`` represents an instance of ``_ChainLadderResult``, which
         exposes the ``plot`` method. First, we compile the dictionary of
         attributes to override:
 
         >>> kwds = dict(marker="s", markersize=6)
-        >>> cl_result.plot(**kwds)
+        >>> cl.plot(**kwds)
         """
-        df0 = self.trisqrd.reset_index(drop=False).rename({"index":self.tri.origin}, axis=1)
-        df0 = pd.melt(df0, id_vars=[self.tri.origin], var_name=self.tri.dev, value_name=self.tri.value)
-        df0 = df0[~np.isnan(df0[self.tri.value])].reset_index(drop=True)
-        df1 = self.tri.triind.reset_index(drop=False).rename({"index":self.tri.origin}, axis=1)
-        df1 = pd.melt(df1, id_vars=[self.tri.origin], var_name=self.tri.dev, value_name=self.tri.value)
-        df1[self.tri.value] = df1[self.tri.value].map(lambda v: 1 if v==0 else 0)
-        df1 = df1[~np.isnan(df1[self.tri.value])].rename({self.tri.value:"actual_ind"}, axis=1)
-        df1 = df1.reset_index(drop=True)
-        if self.tail!=1:
-            df0[self.tri.dev] = df0[self.tri.dev].map(
-                lambda v: (self.tri.devp.max() + 1) if v=="ultimate" else v
-                )
-        else:
-            df0 = df0[df0[self.tri.dev]!="ultimate"]
-
-        # Combine df0 and df1 into a single DataFrame, then perform cleanup
-        # actions for cases in which df0 has more records than df1.
-        df = pd.merge(df0, df1, on=[self.tri.origin, self.tri.dev], how="left", sort=False)
-        df["actual_ind"] = df["actual_ind"].map(lambda v: 0 if np.isnan(v) else v)
-        df["actual_ind"] = df["actual_ind"].astype(np.int_)
-        df = df.sort_values([self.tri.origin, self.tri.dev]).reset_index(drop=True)
-        dfma = df[df["actual_ind"]==1].groupby([self.tri.origin])[self.tri.dev].max().to_frame()
-        dfma = dfma.reset_index(drop=False).rename(
-            {"index":self.tri.origin, self.tri.dev:"max_actual"}, axis=1)
-        df = pd.merge(df, dfma, on=self.tri.origin, how="outer", sort=False)
-        df = df.sort_values([self.tri.origin, self.tri.dev]).reset_index(drop=True)
-        df["incl_actual"] = df["actual_ind"].map(lambda v: 1 if v==1 else 0)
-        df["incl_pred"] = df.apply(
-            lambda rec: 1 if (rec.actual_ind==0 or rec.dev==rec.max_actual) else 0,
-            axis=1
-            )
-
-        # Vertically concatenate dfact_ and dfpred_.
-        dfact_ = df[df["incl_actual"]==1][["origin", "dev", "value"]]
-        dfact_["description"] = "actual"
-        dfpred_ = df[df["incl_pred"]==1][["origin", "dev", "value"]]
-        dfpred_["description"] = "forecast"
-        data = pd.concat([dfact_, dfpred_]).reset_index(drop=True)
+        data = self._data_transform()
 
         # Plot chain ladder projections by development period for each
         # origin year. FacetGrid's ``hue`` argument should be set to
-        # "description".
+        # "rectype".
         sns.set_context(context)
         with sns.axes_style(axes_style):
-            titlestr_ = "Chain Ladder Projections with Actuals by Origin"
-            palette_ = dict(actual=actuals_color, forecast=forecasts_color)
-            pltkwargs = dict(
-                marker="o", markersize=7, alpha=1, markeredgecolor="#000000",
-                markeredgewidth=.50, linestyle="--", linewidth=.75,
-                fillstyle="full",
+            huekwargs = dict(
+                marker=["o", "o",], markersize=[6, 6,],
+                color=["#000000", "#000000",], fillstyle=["full", "full",],
+                markerfacecolor=[forecasts_color, actuals_color,],
+                markeredgecolor=["#000000", "#000000",],
+                markeredgewidth=[.50, .50,], linestyle=["-", "-",],
+                linewidth=[.475, .475,],
                 )
 
-            if kwargs:
-                pltkwargs.update(kwargs)
+            if hue_kws is not None:
+                # Determine whether the length of each element of hue_kws is 4.
+                if all(len(hue_kws[i])==4 for i in hue_kws):
+                    huekwargs.update(hue_kws)
+                else:
+                    warnings.warn("hue_kws overrides not correct length - Ignoring.")
+
+            titlestr_ = "Chain Ladder Ultimate Projections by Origin"
+
+
+            # pltkwargs = dict(
+            #     marker="o", markersize=6, alpha=1, markeredgecolor="#000000",
+            #     markeredgewidth=.50, linestyle="--", linewidth=.75,
+            #     fillstyle="full",
+            #     )
+            #
+            # if kwargs:
+            #     pltkwargs.update(kwargs)
 
             g = sns.FacetGrid(
-                data, col="origin", hue="description", palette=palette_,
+                data, col="origin", hue="rectype", hue_kws=huekwargs,
                 col_wrap=col_wrap, margin_titles=False, despine=True, sharex=True,
                 sharey=True, hue_order=["forecast", "actual",]
                 )
 
-            g.map(plt.plot, "dev", "value", **pltkwargs)
+            g.map(plt.plot, "dev", "value",)
             g.set_axis_labels("", "")
             g.set(xticks=data.dev.unique().tolist())
             g.set_titles("{col_name}", size=9)
@@ -468,17 +482,15 @@ class _ChainLadderResult:
         # Adjust facets downward and and left-align figure title.
         plt.subplots_adjust(top=0.9)
         g.fig.suptitle(
-            titlestr_, x=0.065, y=.975, fontsize=11, color="#404040", ha="left"
+            titlestr_, x=0.065, y=.975, fontsize=9, color="#404040", ha="left"
             )
 
 
-    def __str__(self):
-        formats_ = {"ultimate":"{:.0f}".format, "reserve":"{:.0f}".format,
-                    "latest":"{:.0f}".format, "cldf":"{:.5f}".format,}
-        return(self.summary.to_string(formatters=formats_))
+    # def __str__(self):
+    #     formats_ = {"ultimate":"{:.0f}".format, "reserve":"{:.0f}".format,
+    #                 "latest":"{:.0f}".format, "cldf":"{:.5f}".format,}
+    #     return(self.summary.to_string(formatters=formats_))
 
 
     def __repr__(self):
-        formats_ = {"ultimate":"{:.0f}".format, "reserve":"{:.0f}".format,
-                    "latest":"{:.0f}".format, "cldf":"{:.5f}".format,}
-        return(self.summary.to_string(formatters=formats_))
+        return(self.summary.to_string(formatters=self._summspecs))
