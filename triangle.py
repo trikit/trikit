@@ -796,15 +796,107 @@ class _CumTriangle(_IncrTriangle):
         return(pd.DataFrame(self))
 
 
-    def chladder(self, sel="all-weighted", tail=1.0, range_method=None, **kwargs):
+    def chladder(self, range_method=None, **kwargs):
         """
-        trikit's chain ladder implementation.
+        Apply Chain Ladder method to ``CumTriangle`` instance.
+
+        Parameters
+        ----------
+        range_method: {"bootstrap", "mack", "mcmc"}
+            Specifies the method to use to quantify ultimate/reserve
+            variability. When ``range_method=None``, reduces to the standard
+            chain ladder technique providing point estimate reserve
+            projections at ultimate. Defaults to None.
+
+        kwargs: dict
+            For each value of ``range_method``, there are a number of optional
+            parameters that can be used to override the default behavior of
+            the algorithm in question. If a keyword argument is provided that
+            is not valid within the context of the given Chain Ladder variant,
+            the argument will be ignored and a warning will be generated.
+            What follows are valid optional keyword parameters that can be
+            passed into ``chladder`` for different values of ``range_method``:
+
+            * ``range_method==None`` (Standard chain ladder)
+                - ``sel``: The ldf average to select from ``triangle._CumTriangle.a2a_avgs``.
+                Defaults to "all-weighted".
+                - ``tail``: Tail factor. Defaults to 1.0.
+
+            * ``range_method="bootstrap"`` (Bootstrap chain ladder)
+                - ``sims``: The number of bootstrap resamplings to perform.
+                Defaults to 1000.
+                - ``q``: Determines which percentiles of the reserve distribution
+                to compute. Defaults to [.75, .95].
+                - ``neg_handler``: Dictates how negative triangle values should
+                be handled. See documentation for ``_BoostrapChainLadder``
+                for more information. Defaults to 1.
+                - ``procdist``: The distribution used to incorporate process
+                variance. Currently, this can only be set to "gamma".
+                - ``parametric``: If True, fit standardized residuals to a
+                normal distribution then sample from this parameterized
+                distribution. Otherwise, sample with replacement from the
+                collection of standardized residuals. Defaults to False.
+                - ``symmetric``: Whether the symmetric interval of given
+                ``q``('s) should be included in summary output.
+                - ``interpolation``: See ``numpy.quantile`` for more information.
+                Defaults to "linear".
+                - ``random_state``: Set random seed for reproducibility.
+                Defaults to None.
+
+            * ``range_method="mack"`` (Mack chain ladder)
+                - ``alpha``: Can be one of {0, 1, 2}. See ``_MackChainLadder._ldfs``
+                for more information. Defaults to 1.
+                - ``q``: Determines which percentiles of the reserve distribution
+                to compute. Defaults to [.75, .95].
+                - ``symmetric``: Whether the symmetric interval of given
+                ``q``('s) should be included in summary output.
+
+            * ``range_method="mcmc"`` (not yet implemented)
+                - ``q``: Determines which percentiles of the reserve distribution
+                to compute. Defaults to [.75, .95].
+                - ``symmetric``: Whether the symmetric interval of given
+                ``q``('s) should be included in summary output.
+
+        Returns
+        -------
+        chainladder.*ChainLadderResult
+            One of {``_BaseChainLadderResult``, ``_BootstrapChainLadderResult``,
+                    ``_MackChainLadderResult``, ``_MCMCChainLadderResult``}
+
+        Examples
+        --------
+        In the following examples we refer to the raa sample dataset which
+        can be retrieved as follows:
+
+        >>> import trikit
+        >>> RAA = trikit.load("raa")
+        >>> tri = trikit.totri(RAA)
+
+
+        1. Perform standard chain ladder technique, overriding ``sel`` and ``tail``:
+
+        >>> kwds = dict(sel="medial-5", tail=1.015)
+        >>> cl = tri.chladder(**kwds)
+
+        2. Perform boostrap chain ladder, overriding ``sims``, ``q`` and ``symmetric``:
+
+        >>> kwds = dict(sims=2500, q=[.90, .99], symmetric=True)
+        >>> bcl = tri.chladder(range_method="bootstrap", **kwds)
+
+        3. Perfrom Mack chain ladder, overriding ``alpha``:
+
+        >>> kwds = {"alpha":2}
+        >>> mcl = tri.chladder(range_method="mack", **kwds)
         """
+        kwds = {} if kwargs is None else kwargs
         if range_method is None:
-            cl_ = _BaseChainLadder(self).__call__(sel="all-weighted", tail=1.0)
+            cl_ = _BaseChainLadder(self).__call__(**kwds)
         elif range_method.lower().strip().startswith("boot"):
-            cl_ = _BootstrapChainLadder(self).__call__(sel="all-weighted", **kwargs)
+            cl_ = _BootstrapChainLadder(self).__call__(**kwds)
+        elif range_method.lower().strip().startswith("mack"):
+            cl_ = _MackChainLadder(self).__call__(**kwds)
+        elif range_method.lower().startswith("mcmc"):
+            raise NotImplementedError("range_method='mcmc' not currently available.")
+        else:
+            raise ValueError("Invalid range_method specification: {}".format(range_method))
         return(cl_)
-
-
-

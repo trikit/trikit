@@ -33,7 +33,7 @@ Outstanding Tasks =>
 
 [*] Fix _BaseChainLadder's run method to mirror BootstrapChainLadder's run method.
 
-[*] Update documentation for _ChainLadderResult
+[*] Update documentation for _BaseChainLadderResult
 
 [*] Fix this error:
 # tri2 = DataFrame

@@ -114,8 +114,8 @@ class _BootstrapChainLadder(_BaseChainLadder):
 
 
 
-    def __call__(self, sel="all-weighted", sims=1000, neg_handler=1, procdist="gamma",
-                 parametric=False, q=[.75, .95], symmetric=True, interpolation="linear",
+    def __call__(self, sims=1000, q=[.75, .95], neg_handler=1, procdist="gamma",
+                 parametric=False, symmetric=False, interpolation="linear",
                  random_state=None):
         """
         ``_BootstrapChainLadder`` simulation initializer. Generates predictive
@@ -124,19 +124,15 @@ class _BootstrapChainLadder(_BaseChainLadder):
         As stated in ``_BootstrapChainLadder``'s documentation, the estimated
         distribution of losses assumes development is complete by the final
         development period in order to avoid the complication of modeling a
-        tail factor. This may change in a future release.
+        tail factor. In addition, the ldf selection is set to "all-weighted".
 
         Parameters
         ----------
-        sel: str
-            Specifies which set of age-to-age factors should be applied
-            when performing backwards recursion to obtain the fitted cumulative
-            and incremental triangles. Note that within the actual bootstrap
-            routine, ldfs are calculated using an all-year weighted average.
-            In addition, the tail factor is assumed to be 1.0.
-
         sims: int
             The number of bootstrap simulations to perfrom. Defaults to 1000.
+
+        q: float in range of [0,1] (or sequence of floats)
+            Percentile to compute, which must be between 0 and 1 inclusive.
 
         neg_handler: int
             If ``neg_handler=1``, then any first development period negative
@@ -151,15 +147,13 @@ class _BootstrapChainLadder(_BaseChainLadder):
             The distribution used to incorporate process variance. Currently,
             this can only be set to "gamma".
 
-        q: float in range of [0,1] (or sequence of floats)
-            Percentile to compute, which must be between 0 and 1 inclusive.
-
         symmetric: bool
-            Whether the symmetric interval should be returned. For example, if
-            ``symmetric==True`` and ``q=.95``, then the 2.5th and 97.5th
-            quantiles of the bootstrapped reserve distribution will be returned
-            [(1 - .95) / 2, (1 + .95) / 2]. When False, only the specified
-            quantile(s) will be computed.
+            Whether the symmetric interval should be included in summary
+            output. For example, if ``symmetric==True`` and ``q=.95``, then
+            the 2.5th and 97.5th quantiles of the bootstrapped reserve
+            distribution will be returned [(1 - .95) / 2, (1 + .95) / 2]. When
+            False, only the specified quantile(s) will be computed. Defaults
+            to False.
 
         parametric: bool
             If True, fit standardized residuals to a normal distribution, and
@@ -167,10 +161,16 @@ class _BootstrapChainLadder(_BaseChainLadder):
             procedure samples with replacement from the collection of
             standardized residuals. Defaults to False.
 
-        interpolation: {"linear", "lower", "higher", "midpoint", "nearest"}
-            Specifies the interpolation method to use when the desired
-            percentile lies between two data points. Defaults to "linear".
-            Argument only valid when ``returnas``="summary".
+        interpolation: {'linear', 'lower', 'higher', 'midpoint', 'nearest'}
+            This optional parameter specifies the interpolation method to use
+            when the desired quantile lies between two data points i < j:
+
+                - linear: i + (j - i) * fraction, where fraction is the fractional
+                part of the index surrounded by i and j.
+                - lower: i.
+                - higher: j.
+                - nearest: i or j, whichever is nearest.
+                - midpoint: (i + j) / 2.
 
         random_state: np.random.RandomState
             If int, random_state is the seed used by the random number
@@ -183,7 +183,7 @@ class _BootstrapChainLadder(_BaseChainLadder):
         _BootstrapChainLadderResult
         """
         # Obtain reference to Chain ladder point estimates.
-        ldfs_ = self._ldfs(sel=sel)
+        ldfs_ = self._ldfs(sel="all-weighted")
         cldfs_ = self._cldfs(ldfs=ldfs_)
         ultimates_ = self._ultimates(cldfs=cldfs_)
         reserves_ = self._reserves(ultimates=ultimates_)
@@ -191,7 +191,7 @@ class _BootstrapChainLadder(_BaseChainLadder):
         latest_ = self.tri.latest_by_origin
 
         # Obtain reference to Bootstrap estimates.
-        tri_fit_cum_ = self._tri_fit_cum(sel=sel)
+        tri_fit_cum_ = self._tri_fit_cum(sel="all-weighted")
         tri_fit_incr_ = self._tri_fit_incr(fitted_tri_cum=tri_fit_cum_)
         unscld_residuals_ = self._resid_us(fitted_tri_incr=tri_fit_incr_)
         adjust_residuals_ = self._resid_adj(resid_us=unscld_residuals_)
@@ -254,7 +254,7 @@ class _BootstrapChainLadder(_BaseChainLadder):
         dfsumm.loc["total", "maturity"] = ""
         dfsumm.loc["total", "cldf"] = np.NaN
         dfsumm = dfsumm.reset_index(drop=False).rename({"index":"origin"}, axis=1)
-        kwds = {"sel":sel, "sims": sims, "neg_handler":neg_handler,
+        kwds = {"sel":"all-weighted", "sims": sims, "neg_handler":neg_handler,
                 "procdist":procdist, "parametric":parametric,
                 "q":q, "interpolation":interpolation,}
         sampling_dist_res = None if parametric==True else sampling_dist_
@@ -840,10 +840,10 @@ class _BootstrapChainLadderResult(_BaseChainLadderResult):
                 setattr(self, key_, kwargs[key_])
 
         # Properties.
+        self._aggregate_distribution = None
+        self._origin_distribution = None
         self._residuals_detail = None
         self._fit_assessment = None
-        self._origindist = None
-        self._aggdist = None
 
         pctlfields_ = [i for i in self.summary.columns if i.endswith("%")]
         pctlfmts_ = {i:"{:.0f}".format for i in pctlfields_}
@@ -876,37 +876,43 @@ class _BootstrapChainLadderResult(_BaseChainLadderResult):
         return(int((datrng / bw) + 1))
 
 
+
+
     @property
-    def aggdist(self):
+    def origin_distribution(self):
         """
-        Return aggregate distribution of simulated reserve amounts
-        over all origin years.
+        Return distribution of bootstrapped ultimates/reserves by
+        origin period.
 
         Returns
         -------
         pd.DataFrame
         """
-        if self._aggdist is None:
+        if self._origin_distribution is None:
             keepcols_ = ["latest", "ultimate", "reserve"]
-            self._aggdist = self.reserve_dist.groupby(
-                ["sim"], as_index=False)[keepcols_].sum()
-        return(self._aggdist)
-
-
-    @property
-    def origindist(self):
-        """
-        Return distribution of simulated loss reserves by origin year.
-
-        Returns
-        -------
-        pd.DataFrame
-        """
-        if self._origindist is None:
-            keepcols_ = ["latest", "ultimate", "reserve"]
-            self._origindist = self.reserve_dist.groupby(
+            self._origin_distribution = self.reserve_dist.groupby(
                 ["sim", "origin"], as_index=False)[keepcols_].sum()
-        return(self._origindist)
+        return(self._origin_distribution)
+
+
+    @property
+    def aggregate_distribution(self):
+        """
+        Return distribution of boostrapped ultimates/reserves aggregated
+        over all origin periods.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        if self._aggregate_distribution is None:
+            keepcols_ = ["latest", "ultimate", "reserve"]
+            self._aggregate_distribution = self.origin_distribution.drop("origin", axis=1)
+            self._aggregate_distribution = self._aggregate_distribution.groupby("sim", as_index=False).sum()
+        return(self._aggregate_distribution)
+
+
+
 
 
     @property
@@ -1064,7 +1070,7 @@ class _BootstrapChainLadderResult(_BaseChainLadderResult):
         Parameters
         ----------
         which: {"ultimate", "reserve"}
-            Specifies whether exhibit should highlight ultimate or reserve
+            Specifies whether exhibit should reflect ultimate or reserve
             variability. Defaults to "ultimate".
 
         q: float in range of [0,1]
@@ -1122,7 +1128,20 @@ class _BootstrapChainLadderResult(_BaseChainLadderResult):
         -------
         None
         """
-        data = self._bs_data_transform(which=which, q=q)
+        # which           = "ultimate"                               #
+        # q               = .90                                      #
+        # actuals_color   ="#334488"                                 #
+        # forecasts_color ="#FFFFFF"                                 #
+        # fill_color      = "#FCFCB1"                                #
+        # fill_alpha      = .75                                      #
+        # axes_style      = "darkgrid"                               #
+        # context         = "notebook"                               #
+        # col_wrap        = 5                                        #
+        # hue_kws          = None                                    #
+        # data            = bcl._bs_data_transform(which=which, q=q) #
+        which_ = which.lower().strip()
+        data = self._bs_data_transform(which=which_, q=q)
+        pctl_hdrs = sorted([i for i in data["rectype"].unique() if i not in ("actual", "forecast")])
         sns.set_context(context)
         with sns.axes_style(axes_style):
             huekwargs = dict(
@@ -1194,33 +1213,72 @@ class _BootstrapChainLadderResult(_BaseChainLadderResult):
 
 
 
+
+
     def hist(self, which="ultimate", kde=False, rug=False, hist=False,
              axes_style="darkgrid", context="notebook", col_wrap=5,
              **kwargs):
         """
         Generate visual representation of full predicitive distribtion
-        of loss reserves in aggregate or by origin. Additional options
-        to style the histogram can be passed as keyword arguments.
+        of ultimates/reserves by origin and in aggregate. Additional
+        options to style seaborn's distplot can be passed as keyword
+        arguments.
 
         Parameters
         ----------
-        path: str
-            If path is not None, save plot to the specified location.
-            Otherwise, parameter is ignored. Default value is None.
+        which: {"ultimate", "reserve"}
+            Specifies whether exhibit should reflect ultimate or reserve
+            variability. Defaults to "ultimate".
+
+        kde: bool
+            Whether to plot a gaussian kernel density estimate. Defaults to
+            False.
+
+        rug: bool
+            Whether to draw a rugplot on the support axis. Defaults to False.
+
+
+        hist: bool
+            Whether to plot a (normed) histogram. Defaults to False.
+
+
+        axes_style: str
+            Aesthetic style of plots. Defaults to "darkgrid". Other options
+            include {whitegrid, dark, white, ticks}.
+
+        context: str
+            Set the plotting context parameters. According to the seaborn
+            documentation, This affects things like the size of the labels,
+            lines, and other elements of the plot, but not the overall style.
+            Defaults to ``"notebook"``. Additional options include
+            {paper, talk, poster}.
+
+        col_wrap: int
+            The maximum number of origin period axes to have on a single row
+            of the resulting FacetGrid. Defaults to 5.
 
         kwargs: dict
             Dictionary of optional matplotlib styling parameters.
 
         """
+        # which           = "ultimate"                               #
+        # axes_style      = "darkgrid"                               #
+        # context         = "notebook"                               #
+        # col_wrap        = 5                                        #
+        # data            = bcl.sims_data[["origin", "dev", "latest", "reserve", which]] #
         which_ = which.lower().strip()
-        if which_ not in self.sims_data.columns:
-            raise ValueError("which must be one of ['reserve', 'ultimate']")
+        data = bcl.sims_data[["sim", "origin", "dev", "rectype", "latest", "ultimate", "reserve",]]
+        max_devp_ = data["dev"].max()
+        data = data[(data["dev"]==max_devp_) & (data["rectype"]=="forecast")].reset_index(drop=True)
 
-        data = bcl.sims_data[["origin", "dev", "latest", "reserve", which_]]
         sns.set_context(context)
         with sns.axes_style(axes_style):
 
-            titlestr_ = "Bootstrap Chain Ladder {} Distribution by Origin".format(which.title())
+            defaults = {
+                "color":"#334488", "edgecolor":"#fbfbfb"
+                }
+
+            titlestr_ = "Bootstrap Chain Ladder Predictive Distribution of {} by Origin".format(which.title())
             pltkwargs = {}
             if kwargs is not None:
                 pltkwargs.update(kwargs)
@@ -1418,160 +1476,3 @@ class _BootstrapChainLadderResult(_BaseChainLadderResult):
     #     # formats_ = {"ultimate":"{:.0f}".format, "reserve":"{:.0f}".format,
     #     #             "latest":"{:.0f}".format, "cldf":"{:.5f}".format,}
     #     return(self.summary.to_string(formatters=self._summspecs))
-
-
-
-    # def plot(self, actuals_color="#334488", forecasts_color="#FFFFFF",
-    #          axes_style="darkgrid", context="notebook", col_wrap=5,
-    #          **kwargs):
-    #     """
-    #     Visualize projected chain ladder development. First transforms data
-    #     into long format, then plots actual and forecast loss amounts at each
-    #     development period for each origin year using seaborn's ``FacetGrid``.
-    #
-    #     Parameters
-    #     ----------
-    #     actuals_color: str
-    #         A hexidecimal color code used to represent actual scatter points
-    #         in FacetGrid. Defaults to "#00264C".
-    #
-    #     forecasts_color: str
-    #         A hexidecimal color code used to represent forecast scatter points
-    #         in FacetGrid. Defaults to "#FFFFFF".
-    #
-    #     axes_style: str
-    #         Aesthetic style of plots. Defaults to "darkgrid". Other options
-    #         include: {whitegrid, dark, white, ticks}.
-    #
-    #     context: str
-    #         Set the plotting context parameters. According to the seaborn
-    #         documentation, This affects things like the size of the labels,
-    #         lines, and other elements of the plot, but not the overall style.
-    #         Defaults to ``"notebook"``. Additional options include
-    #         {paper, talk, poster}.
-    #
-    #     col_wrap: int
-    #         The maximum number of origin period axes to have on a single row
-    #         of the resulting FacetGrid. Defaults to 5.
-    #
-    #     kwargs: dict
-    #         Additional styling options for scatter points. This can override
-    #         default values for ``plt.plot`` objects. For a demonstration,
-    #         See the Examples section.
-    #
-    #     Returns
-    #     -------
-    #     None
-    #
-    #     Examples
-    #     --------
-    #     Demonstration of how to pass a dictionary of plot properties in order
-    #     to update the scatter size and marker:
-    #
-    #     >>> import trikit
-    #     >>> raa = trikit.load(dataset="raa")
-    #     >>> cl_init = trikit.chladder(data=raa)
-    #     >>> cl_result = cl_init(sel="simple-5", tail=1.005)
-    #
-    #     ``cl_result`` represents an instance of ``_ChainLadderResult``, which
-    #     exposes the ``plot`` method. First, we compile the dictionary of
-    #     attributes to override:
-    #
-    #     >>> kwds = dict(marker="s", markersize=6)
-    #     >>> cl_result.plot(**kwds)
-    #     """
-    #     df0 = self.trisqrd.reset_index(drop=False).rename({"index":self.tri.origin}, axis=1)
-    #     df0 = pd.melt(df0, id_vars=[self.tri.origin], var_name=self.tri.dev, value_name=self.tri.value)
-    #     df0 = df0[~np.isnan(df0[self.tri.value])].reset_index(drop=True)
-    #     df1 = self.tri.triind.reset_index(drop=False).rename({"index":self.tri.origin}, axis=1)
-    #     df1 = pd.melt(df1, id_vars=[self.tri.origin], var_name=self.tri.dev, value_name=self.tri.value)
-    #     df1[self.tri.value] = df1[self.tri.value].map(lambda v: 1 if v==0 else 0)
-    #     df1 = df1[~np.isnan(df1[self.tri.value])].rename({self.tri.value:"actual_ind"}, axis=1)
-    #     df1 = df1.reset_index(drop=True)
-    #     if self.tail!=1:
-    #         df0[self.tri.dev] = df0[self.tri.dev].map(
-    #             lambda v: (self.tri.devp.max() + 1) if v=="ultimate" else v
-    #             )
-    #     else:
-    #         df0 = df0[df0[self.tri.dev]!="ultimate"]
-    #
-    #     # Combine df0 and df1 into a single DataFrame, then perform cleanup
-    #     # actions for cases in which df0 has more records than df1.
-    #     df = pd.merge(df0, df1, on=[self.tri.origin, self.tri.dev], how="left", sort=False)
-    #     df["actual_ind"] = df["actual_ind"].map(lambda v: 0 if np.isnan(v) else v)
-    #     df["actual_ind"] = df["actual_ind"].astype(np.int_)
-    #     df = df.sort_values([self.tri.origin, self.tri.dev]).reset_index(drop=True)
-    #     dfma = df[df["actual_ind"]==1].groupby([self.tri.origin])[self.tri.dev].max().to_frame()
-    #     dfma = dfma.reset_index(drop=False).rename(
-    #         {"index":self.tri.origin, self.tri.dev:"max_actual"}, axis=1)
-    #     df = pd.merge(df, dfma, on=self.tri.origin, how="outer", sort=False)
-    #     df = df.sort_values([self.tri.origin, self.tri.dev]).reset_index(drop=True)
-    #     df["incl_actual"] = df["actual_ind"].map(lambda v: 1 if v==1 else 0)
-    #     df["incl_pred"] = df.apply(
-    #         lambda rec: 1 if (rec.actual_ind==0 or rec.dev==rec.max_actual) else 0,
-    #         axis=1
-    #         )
-    #
-    #     # Vertically concatenate dfact_ and dfpred_.
-    #     dfact_ = df[df["incl_actual"]==1][["origin", "dev", "value"]]
-    #     dfact_["description"] = "actual"
-    #     dfpred_ = df[df["incl_pred"]==1][["origin", "dev", "value"]]
-    #     dfpred_["description"] = "forecast"
-    #     data = pd.concat([dfact_, dfpred_]).reset_index(drop=True)
-    #
-    #     # Plot chain ladder projections by development period for each
-    #     # origin year. FacetGrid's ``hue`` argument should be set to
-    #     # "description".
-    #     sns.set_context(context)
-    #     with sns.axes_style(axes_style):
-    #         titlestr_ = "Chain Ladder Projections with Actuals by Origin"
-    #         palette_ = dict(actual=actuals_color, forecast=forecasts_color)
-    #         pltkwargs = dict(
-    #             marker="o", markersize=7, alpha=1, markeredgecolor="#000000",
-    #             markeredgewidth=.50, linestyle="--", linewidth=.75,
-    #             fillstyle="full",
-    #             )
-    #
-    #         if kwargs:
-    #             pltkwargs.update(kwargs)
-    #
-    #         g = sns.FacetGrid(
-    #             data, col="origin", hue="description", palette=palette_,
-    #             col_wrap=col_wrap, margin_titles=False, despine=True, sharex=True,
-    #             sharey=True, hue_order=["forecast", "actual",]
-    #             )
-    #
-    #         g.map(plt.plot, "dev", "value", **pltkwargs)
-    #         g.set_axis_labels("", "")
-    #         g.set(xticks=data.dev.unique().tolist())
-    #         g.set_titles("{col_name}", size=9)
-    #         g.set_xticklabels(data.dev.unique().tolist(), size=8)
-    #
-    #         # Change ticklabel font size and place legend on each facet.
-    #         for i, _ in enumerate(g.axes):
-    #             ax_ = g.axes[i]
-    #             legend_ = ax_.legend(
-    #                 loc="lower right", fontsize="x-small", frameon=True,
-    #                 fancybox=True, shadow=False, edgecolor="#909090",
-    #                 framealpha=1, markerfirst=True,)
-    #             legend_.get_frame().set_facecolor("#FFFFFF")
-    #             ylabelss_ = [i.get_text() for i in list(ax_.get_yticklabels())]
-    #             ylabelsn_ = [float(i.replace(u"\u2212", "-")) for i in ylabelss_]
-    #             ylabelsn_ = [i for i in ylabelsn_ if i>=0]
-    #             ylabels_ = ["{:,.0f}".format(i) for i in ylabelsn_]
-    #             ax_.set_yticklabels(ylabels_, size=8)
-    #
-    #             # Draw border around each facet.
-    #             for _, spine_ in ax_.spines.items():
-    #                 spine_.set_visible(True)
-    #                 spine_.set_color("#000000")
-    #                 spine_.set_linewidth(.50)
-    #
-    #     # Adjust facets downward and and left-align figure title.
-    #     plt.subplots_adjust(top=0.9)
-    #     g.fig.suptitle(
-    #         titlestr_, x=0.065, y=.975, fontsize=11, color="#404040", ha="left"
-    #         )
-
-
-
