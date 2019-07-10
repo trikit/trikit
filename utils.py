@@ -10,7 +10,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from numpy.random import RandomState
-from .triangle import _IncrTriangle, _CumTriangle
+from .triangle import IncrTriangle, CumTriangle
 
 
 
@@ -398,9 +398,9 @@ def totri(data=None, type_="cumulative", origin="origin", dev="dev",
             data2 = data
 
     if type_.lower().startswith("i"):
-        tri = _IncrTriangle(data=data2, origin=origin, dev=dev, value=value)
+        tri = IncrTriangle(data=data2, origin=origin, dev=dev, value=value)
     elif type_.lower().startswith("c"):
-        tri = _CumTriangle(data=data2, origin=origin, dev=dev, value=value)
+        tri = CumTriangle(data=data2, origin=origin, dev=dev, value=value)
     return(tri)
 
 

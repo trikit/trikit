@@ -1,4 +1,4 @@
-import sys; sys.path.append("E:\\Repos\\")
+import sys; sys.path.append("G:\\Repos\\")
 import unittest
 import trikit
 import pandas as pd
@@ -45,7 +45,7 @@ class CumTriangleTestCase(unittest.TestCase):
     def test_a2adim(self):
         self.assertEqual(
             self.ctri.shape[0]-1, self.ctri.a2a.shape[0],
-            "Age-toage Factors not properly computed."
+            "Age-to-age Factors not properly computed."
             )
 
     def test_latest_by_origin(self):

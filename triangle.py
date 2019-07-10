@@ -1,9 +1,9 @@
 """
-This module contains the definitions of both the ``_IncrTriangle`` and
-``_CumTriangle`` classes. Users should avoid instantiating ``_IncrTriangle``
-or ``_CumTriangle`` instances directly; rather the dataset and triangle
+This module contains the definitions of both the ``IncrTriangle`` and
+``CumTriangle`` classes. Users should avoid instantiating ``IncrTriangle``
+or ``CumTriangle`` instances directly; rather the dataset and triangle
 arguments should be passed to ``totri``, which will return either an
-instance of ``_CumTriangle`` or ``_IncrTriangle``, depending on the argument
+instance of ``CumTriangle`` or ``IncrTriangle``, depending on the argument
 specified for ``type_``.
 
 ##### TODO #####
@@ -15,20 +15,18 @@ import itertools
 import numpy as np
 import pandas as pd
 
-
-from .chainladder import _BaseChainLadder
-#from .chainladder import bootstrap._BootstrapChainLadder
-from .chainladder.bootstrap import _BootstrapChainLadder
-from .chainladder.mack import _MackChainLadder
-# from chainladder.bootstrap import _BootstrapChainLadder
+from .chainladder import BaseChainLadder
+from .chainladder.bootstrap import BootstrapChainLadder
+from .chainladder.mack import MackChainLadder
 
 
-class _IncrTriangle(pd.DataFrame):
+
+class IncrTriangle(pd.DataFrame):
     """
-    ``_IncrTriangle`` specification. Note that this class isn't part of
+    ``IncrTriangle`` specification. Note that this class isn't part of
     trikit's public interface, as is used  primarily as a base class for
-    ``_CumTriangle`` object definitions. As such, users shouldn't
-    instantiate ``_IncrTriangle`` instances directly. To obtain an
+    ``CumTriangle`` object definitions. As such, users shouldn't
+    instantiate ``IncrTriangle`` instances directly. To obtain an
     incremental triangle object, use ``trikit.totri``.
     """
     def __init__(self, data, origin=None, dev=None, value=None):
@@ -42,7 +40,7 @@ class _IncrTriangle(pd.DataFrame):
         Parameters
         ----------
         data: pd.DataFrame
-            The dataset to be coerced into a ``_IncrTriangle`` instance.
+            The dataset to be coerced into a ``IncrTriangle`` instance.
             ``data`` must be tabular loss data with at minimum columns
             representing the origin/acident year, the development
             period and the actual loss amount, given by ``origin``, ``dev``
@@ -62,7 +60,7 @@ class _IncrTriangle(pd.DataFrame):
 
         Returns
         -------
-        trikit.triangle._IncrTriangle
+        trikit.triangle.IncrTriangle
         """
         try:
             if all(i is None for i in (origin, dev, value)):
@@ -301,7 +299,7 @@ class _IncrTriangle(pd.DataFrame):
         """
         Transform incremental triangle instance into a cumulative
         representation. Note that returned object will be a DataFrame,
-        not an instance of ``triangle._CumTriangle``.
+        not an instance of ``triangle.CumTriangle``.
 
         Returns
         -------
@@ -312,7 +310,7 @@ class _IncrTriangle(pd.DataFrame):
 
     def as_incr(self):
         """
-        Transform ``triangle._IncrTriangle`` instance to pd.DataFrame.
+        Transform ``triangle.IncrTriangle`` instance to pd.DataFrame.
 
         Returns
         -------
@@ -321,24 +319,23 @@ class _IncrTriangle(pd.DataFrame):
         return(pd.DataFrame(self))
 
 
-    # def __str__(self):
-    #     # Controls when print(self) is called
-    #     formats_ = {dev_:"{:.0f}".format for dev_ in self.columns}
-    #     return(self.to_string(formatters=formats_))
-
-
-    def __repr__(self):
-        """
-        Controls when object is referenced from interpreter.
-        """
+    def __str__(self):
         formats_ = {dev_:"{:.0f}".format for dev_ in self.columns}
         return(self.to_string(formatters=formats_))
 
 
+    # def __repr__(self):
+    #     """
+    #     Controls when object is referenced from interpreter.
+    #     """
+    #     formats_ = {dev_:"{:.0f}".format for dev_ in self.columns}
+    #     return(self.to_string(formatters=formats_))
 
 
 
-class _CumTriangle(_IncrTriangle):
+
+
+class CumTriangle(IncrTriangle):
     """
     Cumulative triangle class definition.
     """
@@ -366,7 +363,7 @@ class _CumTriangle(_IncrTriangle):
 
         Returns
         -------
-        trikit.triangle._CumTriangle
+        trikit.triangle.CumTriangle
         """
         if all(i is None for i in (origin, dev, value)):
             origin, dev, value = "origin", "dev", "value"
@@ -774,7 +771,7 @@ class _CumTriangle(_IncrTriangle):
         """
         Convert cumulative triangle instance into an incremental
         representation. Note that returned object will not be of type
-        ``triangle._IncrTriangle``, but will instead be a DataFrame.
+        ``triangle.IncrTriangle``, but will instead be a DataFrame.
 
         Returns
         -------
@@ -787,7 +784,7 @@ class _CumTriangle(_IncrTriangle):
 
     def as_cum(self):
         """
-        Transform ``triangle._CumTriangle`` instance to pd.DataFrame.
+        Transform ``triangle.CumTriangle`` instance to pd.DataFrame.
 
         Returns
         -------
@@ -802,7 +799,7 @@ class _CumTriangle(_IncrTriangle):
 
         Parameters
         ----------
-        range_method: {"bootstrap", "mack", "mcmc"}
+        range_method: {"bootstrap", "mack"}
             Specifies the method to use to quantify ultimate/reserve
             variability. When ``range_method=None``, reduces to the standard
             chain ladder technique providing point estimate reserve
@@ -818,7 +815,7 @@ class _CumTriangle(_IncrTriangle):
             passed into ``chladder`` for different values of ``range_method``:
 
             * ``range_method==None`` (Standard chain ladder)
-                - ``sel``: The ldf average to select from ``triangle._CumTriangle.a2a_avgs``.
+                - ``sel``: The ldf average to select from ``triangle.CumTriangle.a2a_avgs``.
                 Defaults to "all-weighted".
                 - ``tail``: Tail factor. Defaults to 1.0.
 
@@ -860,8 +857,8 @@ class _CumTriangle(_IncrTriangle):
         Returns
         -------
         chainladder.*ChainLadderResult
-            One of {``_BaseChainLadderResult``, ``_BootstrapChainLadderResult``,
-                    ``_MackChainLadderResult``, ``_MCMCChainLadderResult``}
+            One of {``BaseChainLadderResult``, ``BootstrapChainLadderResult``,
+                    ``MackChainLadderResult``, ``MCMCChainLadderResult``}
 
         Examples
         --------
@@ -890,11 +887,11 @@ class _CumTriangle(_IncrTriangle):
         """
         kwds = {} if kwargs is None else kwargs
         if range_method is None:
-            cl_ = _BaseChainLadder(self).__call__(**kwds)
+            cl_ = BaseChainLadder(self).__call__(**kwds)
         elif range_method.lower().strip().startswith("boot"):
-            cl_ = _BootstrapChainLadder(self).__call__(**kwds)
+            cl_ = BootstrapChainLadder(self).__call__(**kwds)
         elif range_method.lower().strip().startswith("mack"):
-            cl_ = _MackChainLadder(self).__call__(**kwds)
+            cl_ = MackChainLadder(self).__call__(**kwds)
         elif range_method.lower().startswith("mcmc"):
             raise NotImplementedError("range_method='mcmc' not currently available.")
         else:

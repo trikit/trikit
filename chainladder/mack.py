@@ -1,14 +1,14 @@
 """
-_MackChainLadder class definition.
+MackChainLadder class definition.
 """
 import numpy as np
 import pandas as pd
 from scipy.stats import norm, lognorm
-from ..chainladder import _BaseChainLadder, _BaseChainLadderResult
+from ..chainladder import BaseChainLadder, BaseChainLadderResult
 
 
 
-class _MackChainLadder(_BaseChainLadder):
+class MackChainLadder(BaseChainLadder):
     """
     Perform Mack Chain Ladder method. The predicition variance is comprised
     of the estimation variance and the process variance. Estimation
@@ -67,27 +67,27 @@ class _MackChainLadder(_BaseChainLadder):
 
 
 
-        summcols = ["maturity", "latest", "cldf", "ultimate", "reserve"]
-        summDF   = pd.DataFrame(columns=summcols, index=self.tri.index)
-        summDF["maturity"]  = self.tri.maturity.astype(np.str)
-        summDF["latest"]    = self.tri.latest_by_origin
-        summDF["cldf"]      = cldfs.values[::-1]
-        summDF["ultimate"]  = ults
-        summDF["reserve"]   = ibnr
-        self._summary['RMSEP']        = self.rmsepi
-        self._summary['CV']           = self.rmsepi/self.reserves
-        self._summary["NORM_95%_LB"]  = self.reserves - (1.96 * self.rmsepi)
-        self._summary["NORM_95%_UB"]  = self.reserves + (1.96 * self.rmsepi)
-        self._summary["LNORM_95%_LB"] = np.exp(mu_i - 1.96 * sigma_i)
-        self._summary["LNORM_95%_UB"] = np.exp(mu_i + 1.96 * sigma_i)
-        self._summary.loc['TOTAL']    = self._summary.sum()
-        summDF.loc["total"] = summDF.sum()
-
-        # Set to NaN columns that shouldn't be summed.
-        summDF.loc["total", "maturity"] = ""
-        summDF.loc["total", "cldf"]     = np.NaN
-        summDF = summDF.reset_index().rename({"index":"origin"}, axis="columns")
-        return(None)
+        # summcols = ["maturity", "latest", "cldf", "ultimate", "reserve"]
+        # summDF   = pd.DataFrame(columns=summcols, index=self.tri.index)
+        # summDF["maturity"]  = self.tri.maturity.astype(np.str)
+        # summDF["latest"]    = self.tri.latest_by_origin
+        # summDF["cldf"]      = cldfs.values[::-1]
+        # summDF["ultimate"]  = ults
+        # summDF["reserve"]   = ibnr
+        # self._summary['RMSEP']        = self.rmsepi
+        # self._summary['CV']           = self.rmsepi/self.reserves
+        # self._summary["NORM_95%_LB"]  = self.reserves - (1.96 * self.rmsepi)
+        # self._summary["NORM_95%_UB"]  = self.reserves + (1.96 * self.rmsepi)
+        # self._summary["LNORM_95%_LB"] = np.exp(mu_i - 1.96 * sigma_i)
+        # self._summary["LNORM_95%_UB"] = np.exp(mu_i + 1.96 * sigma_i)
+        # self._summary.loc['TOTAL']    = self._summary.sum()
+        # summDF.loc["total"] = summDF.sum()
+        #
+        # # Set to NaN columns that shouldn't be summed.
+        # summDF.loc["total", "maturity"] = ""
+        # summDF.loc["total", "cldf"]     = np.NaN
+        # summDF = summDF.reset_index().rename({"index":"origin"}, axis="columns")
+        # return(None)
 
 
 
@@ -116,7 +116,7 @@ class _MackChainLadder(_BaseChainLadder):
         pd.Series
         """
         if alpha not in (0, 1 ,2,):
-            raise ValueError("Invalid `alpha` specification: {}".format(alpha))
+            raise ValueError("Invalid alpha specification: {}".format(alpha))
         else:
             common_ = (self.tri.pow(alpha) * self.tri.a2aind)
             common_ = common_.dropna(axis=0, how="all").dropna(axis=1, how="all")
@@ -150,6 +150,67 @@ class _MackChainLadder(_BaseChainLadder):
         return(pd.Series(data=devpvar_, index=devpvar_.index, name="devpvar"))
 
 
+
+    def process_error(self, alpha=1, tail=1.0):
+        """
+        Process error (forecast error) calculation. The process error
+        component arises from the stochastic movement of the process.
+        Returns a Series containing estimates of process variance by
+        origin year.
+        """
+        # ldfs_ = self._ldfs(alpha=alpha, tail=tail)
+        # cldfs_ = self._cldfs(ldfs=ldfs_)
+        # ultimates_ = self._ultimates(cldfs=cldfs_)
+        # devpvar_ = self._devpvar(alpha=alpha, tail=tail)
+        ta83 = trikit.load("ta83")
+        tri = trikit.totri(ta83)
+        mcl = mack.MackChainLadder(tri)
+        alpha = 1
+        tail =1
+        ldfs_ = mcl._ldfs(alpha=alpha, tail=tail)
+        cldfs_ = mcl._cldfs(ldfs=ldfs_)
+        ultimates_ = mcl._ultimates(cldfs=cldfs_)
+        devpvar_ = mcl._devpvar(alpha=alpha, tail=tail)
+        trisqrd_ = mcl._trisqrd(ldfs=ldfs_).drop("ultimate", axis=1).round(0)
+        tri_ = mcl.tri
+
+        for i in range(tri_.latest.shape[0]):
+            origin_ = tri_.latest.loc[i, "origin"]
+            dev_ = tri_.latest.loc[i, "dev"]
+            latest_ = tri_.latest.loc[i, "latest"]
+            tri_.at[origin_, dev_]-=latest_
+
+        tridiff_ = trisqrd_ - tri_.fillna(0)
+
+
+
+
+
+        ratio_ = devpvar_ / ldfs_.pow(2)
+
+
+
+        v = trisqrd_.lookup(mcl.tri.rlvi.index, mcl.tri.rlvi.col_offset)
+
+
+        if self._process_error is None:
+            lastcol, pelist = self.tri.columns.size-1, list()
+            for rindx in self.tri.rlvi.index:
+                iult = self.ultimates[rindx]
+                ilvi = self.tri.rlvi.loc[rindx,:].col_offset
+                ilvc = self.tri.rlvi.loc[rindx,:].dev
+                ipe  = 0
+                if ilvi<lastcol:
+                    for dev in self.trisqrd.loc[rindx][ilvi:lastcol].index:
+                        ipe+=(self.devpref.loc[dev,'RATIO'] / self.trisqrd.loc[rindx,dev])
+                    ipe*=(iult**2)
+                pelist.append((rindx,ipe))
+
+            # Convert list of tuples into Series object.
+            indx, vals = zip(*pelist)
+            self._process_error = \
+                pd.Series(data=vals, index=indx, name="process_error")
+        return(self._process_error)
 
 
 
@@ -271,144 +332,144 @@ class _MackChainLadder(_BaseChainLadder):
 
 
 
-    @property
-    def process_error(self):
-        """
-        Process error (forecast error) calculation. The process error
-        component originates from the stochastic movement of the process.
-        Returns a pandas Series containing estimates of process variance by
-        origin year.
-        """
-        if self._process_error is None:
-            lastcol, pelist = self.tri.columns.size-1, list()
-            for rindx in self.tri.rlvi.index:
-                iult = self.ultimates[rindx]
-                ilvi = self.tri.rlvi.loc[rindx,:].col_offset
-                ilvc = self.tri.rlvi.loc[rindx,:].dev
-                ipe  = 0
-                if ilvi<lastcol:
-                    for dev in self.trisqrd.loc[rindx][ilvi:lastcol].index:
-                        ipe+=(self.devpref.loc[dev,'RATIO'] / self.trisqrd.loc[rindx,dev])
-                    ipe*=(iult**2)
-                pelist.append((rindx,ipe))
-
-            # Convert list of tuples into Series object.
-            indx, vals = zip(*pelist)
-            self._process_error = \
-                pd.Series(data=vals, index=indx, name="process_error")
-        return(self._process_error)
-
-
-
-
-    @property
-    def parameter_error(self):
-        """
-        Estimation error (parameter error) reflects the uncertainty in
-        the estimation of the parameters.
-        """
-        if self._parameter_error is None:
-            lastcol, pelist = self.tri.columns.size-1, list()
-            for i in enumerate(self.tri.index):
-                ii, rindx = i[0], i[1]
-                iult = self.ultimates[rindx]
-                ilvi = self.tri.rlvi.loc[rindx,:].col_offset
-                ilvc = self.tri.rlvi.loc[rindx,:].dev
-                ipe  = 0
-                if ilvi<lastcol:
-                    for k in range(ilvi,lastcol):
-                        ratio  = self.devpref[self.devpref['indx']==k]['ratio'].values[0]
-                        invsum = self.devpref[self.devpref['indx']==k]['inv_sum'].values[0]
-                        ipe+=(ratio * invsum)
-                    ipe*=iult**2
-                else:
-                    ipe = 0
-                pelist.append((rindx, ipe))
-            # Convert list of tuples into Series object.
-            indx, vals = zip(*pelist)
-            self._parameter_error = \
-                pd.Series(data=vals, index=indx, name="parameter_error")
-        return(self._parameter_error)
-
-
-
-
-    @property
-    def covariance_term(self):
-        """
-        Used to derive the conditional mean squared error of total
-        reserve prediction. MSE_(i,j) is non-zero only for cells
-        in which i < j (i.e., the
-        :return:
-        """
-        pass
-
-
-    @property
-    def msepi(self):
-        """
-        Return the mean squared error of predicition by origin year.
-        Does not contain estimate for total MSEP.
-        MSE_i = process error + parameter error
-        """
-        if self._msepi is None:
-            self._msepi = self.process_error + self.parameter_error
-        return(self._msepi)
-
-
-    @property
-    def rmsepi(self):
-        """
-        Return the root mean squared error of predicition by origin
-        year. Does not contain estimate for total MSEP.
-
-            MSE_i = process error + parameter error
-        """
-        if self._rmsepi is None:
-            self._rmsepi = np.sqrt(self.msepi)
-        return(self._rmsepi)
-
-
-
-
-    @property
-    def summary(self):
-        """
-        Return a DataFrame containing summary statistics resulting
-        from applying the development method to tri, in addition
-        to Mack-generated range estimates.
-        """
-        if self._summary is None:
-            self._summary = \
-                pd.DataFrame(
-                    columns=[
-                        "LATEST","CLDF","EMERGENCE","ULTIMATE","RESERVE","RMSEP",
-                        "CV","NORM_95%_LB","NORM_95%_UB","LNORM_95%_LB","LNORM_95%_UB"
-                        ], index=self.tri.index
-                    )
-
-            # Initialize lognormal confidence interval parameters.
-            sigma_i = np.log(1 + self.msepi/self.reserves**2)
-            mu_i    = np.log(self.reserves - .50 * sigma_i)
-
-            # Populate self._summary with existing properties if available.
-            self._summary['LATEST']       = self.latest_by_origin
-            self._summary['CLDF']         = self.cldfs[::-1]
-            self._summary['EMERGENCE']    = 1/self.cldfs[::-1]
-            self._summary['ULTIMATE']     = self.ultimates
-            self._summary['RESERVE']      = self.reserves
-            self._summary['RMSEP']        = self.rmsepi
-            self._summary['CV']           = self.rmsepi/self.reserves
-            self._summary["NORM_95%_LB"]  = self.reserves - (1.96 * self.rmsepi)
-            self._summary["NORM_95%_UB"]  = self.reserves + (1.96 * self.rmsepi)
-            self._summary["LNORM_95%_LB"] = np.exp(mu_i - 1.96 * sigma_i)
-            self._summary["LNORM_95%_UB"] = np.exp(mu_i + 1.96 * sigma_i)
-            self._summary.loc['TOTAL']    = self._summary.sum()
-
-            # Set CLDF Total value to `NaN`.
-            self._summary.loc["TOTAL","CLDF","EMERGENCE"] = np.NaN
-
-        return(self._summary)
+    # @property
+    # def process_error(self):
+    #     """
+    #     Process error (forecast error) calculation. The process error
+    #     component originates from the stochastic movement of the process.
+    #     Returns a pandas Series containing estimates of process variance by
+    #     origin year.
+    #     """
+    #     if self._process_error is None:
+    #         lastcol, pelist = self.tri.columns.size-1, list()
+    #         for rindx in self.tri.rlvi.index:
+    #             iult = self.ultimates[rindx]
+    #             ilvi = self.tri.rlvi.loc[rindx,:].col_offset
+    #             ilvc = self.tri.rlvi.loc[rindx,:].dev
+    #             ipe  = 0
+    #             if ilvi<lastcol:
+    #                 for dev in self.trisqrd.loc[rindx][ilvi:lastcol].index:
+    #                     ipe+=(self.devpref.loc[dev,'RATIO'] / self.trisqrd.loc[rindx,dev])
+    #                 ipe*=(iult**2)
+    #             pelist.append((rindx,ipe))
+    #
+    #         # Convert list of tuples into Series object.
+    #         indx, vals = zip(*pelist)
+    #         self._process_error = \
+    #             pd.Series(data=vals, index=indx, name="process_error")
+    #     return(self._process_error)
+    #
+    #
+    #
+    #
+    # @property
+    # def parameter_error(self):
+    #     """
+    #     Estimation error (parameter error) reflects the uncertainty in
+    #     the estimation of the parameters.
+    #     """
+    #     if self._parameter_error is None:
+    #         lastcol, pelist = self.tri.columns.size-1, list()
+    #         for i in enumerate(self.tri.index):
+    #             ii, rindx = i[0], i[1]
+    #             iult = self.ultimates[rindx]
+    #             ilvi = self.tri.rlvi.loc[rindx,:].col_offset
+    #             ilvc = self.tri.rlvi.loc[rindx,:].dev
+    #             ipe  = 0
+    #             if ilvi<lastcol:
+    #                 for k in range(ilvi,lastcol):
+    #                     ratio  = self.devpref[self.devpref['indx']==k]['ratio'].values[0]
+    #                     invsum = self.devpref[self.devpref['indx']==k]['inv_sum'].values[0]
+    #                     ipe+=(ratio * invsum)
+    #                 ipe*=iult**2
+    #             else:
+    #                 ipe = 0
+    #             pelist.append((rindx, ipe))
+    #         # Convert list of tuples into Series object.
+    #         indx, vals = zip(*pelist)
+    #         self._parameter_error = \
+    #             pd.Series(data=vals, index=indx, name="parameter_error")
+    #     return(self._parameter_error)
+    #
+    #
+    #
+    #
+    # @property
+    # def covariance_term(self):
+    #     """
+    #     Used to derive the conditional mean squared error of total
+    #     reserve prediction. MSE_(i,j) is non-zero only for cells
+    #     in which i < j (i.e., the
+    #     :return:
+    #     """
+    #     pass
+    #
+    #
+    # @property
+    # def msepi(self):
+    #     """
+    #     Return the mean squared error of predicition by origin year.
+    #     Does not contain estimate for total MSEP.
+    #     MSE_i = process error + parameter error
+    #     """
+    #     if self._msepi is None:
+    #         self._msepi = self.process_error + self.parameter_error
+    #     return(self._msepi)
+    #
+    #
+    # @property
+    # def rmsepi(self):
+    #     """
+    #     Return the root mean squared error of predicition by origin
+    #     year. Does not contain estimate for total MSEP.
+    #
+    #         MSE_i = process error + parameter error
+    #     """
+    #     if self._rmsepi is None:
+    #         self._rmsepi = np.sqrt(self.msepi)
+    #     return(self._rmsepi)
+    #
+    #
+    #
+    #
+    # @property
+    # def summary(self):
+    #     """
+    #     Return a DataFrame containing summary statistics resulting
+    #     from applying the development method to tri, in addition
+    #     to Mack-generated range estimates.
+    #     """
+    #     if self._summary is None:
+    #         self._summary = \
+    #             pd.DataFrame(
+    #                 columns=[
+    #                     "LATEST","CLDF","EMERGENCE","ULTIMATE","RESERVE","RMSEP",
+    #                     "CV","NORM_95%_LB","NORM_95%_UB","LNORM_95%_LB","LNORM_95%_UB"
+    #                     ], index=self.tri.index
+    #                 )
+    #
+    #         # Initialize lognormal confidence interval parameters.
+    #         sigma_i = np.log(1 + self.msepi/self.reserves**2)
+    #         mu_i    = np.log(self.reserves - .50 * sigma_i)
+    #
+    #         # Populate self._summary with existing properties if available.
+    #         self._summary['LATEST']       = self.latest_by_origin
+    #         self._summary['CLDF']         = self.cldfs[::-1]
+    #         self._summary['EMERGENCE']    = 1/self.cldfs[::-1]
+    #         self._summary['ULTIMATE']     = self.ultimates
+    #         self._summary['RESERVE']      = self.reserves
+    #         self._summary['RMSEP']        = self.rmsepi
+    #         self._summary['CV']           = self.rmsepi/self.reserves
+    #         self._summary["NORM_95%_LB"]  = self.reserves - (1.96 * self.rmsepi)
+    #         self._summary["NORM_95%_UB"]  = self.reserves + (1.96 * self.rmsepi)
+    #         self._summary["LNORM_95%_LB"] = np.exp(mu_i - 1.96 * sigma_i)
+    #         self._summary["LNORM_95%_UB"] = np.exp(mu_i + 1.96 * sigma_i)
+    #         self._summary.loc['TOTAL']    = self._summary.sum()
+    #
+    #         # Set CLDF Total value to `NaN`.
+    #         self._summary.loc["TOTAL","CLDF","EMERGENCE"] = np.NaN
+    #
+    #     return(self._summary)
 
 
 
@@ -431,7 +492,7 @@ class _MackChainLadder(_BaseChainLadder):
     #     return(self.summary.round(summ_specs).to_string())
 
 
-class _MackChainLadderResult(_BaseChainLadderResult):
+class MackChainLadderResult(BaseChainLadderResult):
     """
     Curated output resulting from ``_BootstrapChainLadder``'s ``run`` method.
     """

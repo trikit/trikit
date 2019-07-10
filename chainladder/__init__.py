@@ -1,5 +1,5 @@
 """
-This module contains the class definitions for ``_BaseChainLadder``.
+This module contains the class definitions for ``BaseChainLadder``.
 Users should avoid calling any ``*ChainLadder`` instances directly; rather the
 dataset and triangle arguments should be passed to ``chladder``, which will
 return the initialized ChainLadder instance, from which estimates of outstanding
@@ -14,7 +14,7 @@ import seaborn as sns
 
 
 
-class _BaseChainLadder:
+class BaseChainLadder:
     """
     From the Casualty Actuarial Society's "Estimating Unpaid Claims Using
     Basic Techniques" Version 3 (Friedland, Jacqueline - 2010), the
@@ -32,7 +32,7 @@ class _BaseChainLadder:
         """
         Generate point estimates for outstanding claim liabilities at
         ultimate for each origin year and in aggregate. The
-        ``_BaseChainLadder`` class exposes no functionality to estimate
+        ``BaseChainLadder`` class exposes no functionality to estimate
         variability around the point estimates at ultimate.
 
         Parameters
@@ -72,6 +72,7 @@ class _BaseChainLadder:
         reserves_ = self._reserves(ultimates=ultimates_)
         maturity_ = self.tri.maturity.astype(np.str)
         latest_ = self.tri.latest_by_origin
+        trisqrd_ = self._trisqrd(ldfs=ldfs_)
 
         # Compile chain ladder point estimate summary.
         dfmatur_ = maturity_.to_frame().reset_index(drop=False).rename({"index":"origin"}, axis=1)
@@ -93,10 +94,10 @@ class _BaseChainLadder:
         kwds = {"sel":sel, "tail":tail}
 
         # Initialize and return _ChainLadderResult instance.
-        clresult_ = _BaseChainLadderResult(
+        clresult_ = BaseChainLadderResult(
             summary=dfsumm, tri=self.tri, ldfs=ldfs_, cldfs=cldfs_,
             latest=latest_, maturity=maturity_, ultimates=ultimates_,
-            reserves=reserves_, **kwds)
+            reserves=reserves_, trisqrd=trisqrd_, **kwds)
         return(clresult_)
 
 
@@ -164,7 +165,7 @@ class _BaseChainLadder:
         ----------
         cldfs: pd.Series
             Cumulative loss development factors, conventionally obtained
-            via _BaseChainLadder's ``_cldfs`` method.
+            via BaseChainLadder's ``_cldfs`` method.
 
         Returns
         -------
@@ -194,7 +195,7 @@ class _BaseChainLadder:
         ----------
         ultimates: pd.Series
             Estimated ultimate losses, conventionally obtained from
-            _BaseChainLadder's ``_ultimates`` method.
+            BaseChainLadder's ``_ultimates`` method.
 
         Returns
         -------
@@ -206,16 +207,41 @@ class _BaseChainLadder:
         return(reserves_.astype(np.float_).sort_index())
 
 
+    def _trisqrd(self, ldfs):
+        """
+        Project claims growth for each future development period. Returns a
+        DataFrame of loss projections for each subsequent development period
+        for each accident year. Populates the triangle's lower-right or
+        southeast portion (i.e., "squaring the triangle").
 
-class _BaseChainLadderResult:
+        Returns
+        -------
+        pd.DataFrame
+        """
+        trisqrd_ = self.tri.copy(deep=True)
+        rposf = self.tri.index.size
+        clvi = self.tri.clvi["row_offset"]
+        for i in enumerate(trisqrd_.columns[1:], start=1):
+            ii  , devp  = i[0], i[1]
+            ildf, rposi = ldfs.values[ii - 1], clvi[devp] + 1
+            trisqrd_.iloc[rposi:rposf, ii] = \
+                trisqrd_.iloc[rposi:rposf, ii - 1] * ildf
+        # Multiply right-most column by tail factor.
+        max_devp = trisqrd_.columns[-1]
+        trisqrd_["ultimate"] = trisqrd_.loc[:,max_devp].values * ldfs.values[-1]
+        return(trisqrd_.astype(np.float_).sort_index())
+
+
+
+class BaseChainLadderResult:
     """
     Container class consisting of output resulting from invocation of
-    ``_BaseChainLadder``'s ``__call__`` method.
+    ``BaseChainLadder``'s ``__call__`` method.
     """
     def __init__(self, summary, tri, ldfs, cldfs, latest, maturity,
                  ultimates, reserves, **kwargs):
         """
-        Container object for ``_BaseChainLadder`` output.
+        Container object for ``BaseChainLadder`` output.
 
         Parameters
         ----------
@@ -247,7 +273,7 @@ class _BaseChainLadderResult:
             loss amount for the origin period (reserve = ultimate - latest).
 
         kwargs: dict
-            Additional keyword arguments passed into ``_BaseChainLadder``'s
+            Additional keyword arguments passed into ``BaseChainLadder``'s
             ``run`` method.
         """
         self.ultimates = ultimates
@@ -268,32 +294,32 @@ class _BaseChainLadderResult:
                            "latest":"{:.0f}".format, "cldf":"{:.5f}".format,}
 
 
-    @property
-    def trisqrd(self):
-        """
-        Project claims growth for each future development period. Returns a
-        DataFrame of loss projections for each subsequent development period
-        for each accident year. Populates the triangle's lower-right or
-        southeast portion (i.e., "squaring the triangle").
-
-        Returns
-        -------
-        pd.DataFrame
-        """
-        if self._trisqrd is None:
-            self._trisqrd = self.tri.copy(deep=True)
-            ldfs = self.ldfs.values
-            rposf = self.tri.index.size
-            clvi = self.tri.clvi["row_offset"]
-            for i in enumerate(self._trisqrd.columns[1:], start=1):
-                ii  , devp  = i[0], i[1]
-                ildf, rposi = ldfs[ii - 1], clvi[devp] + 1
-                self._trisqrd.iloc[rposi:rposf, ii] = \
-                    self._trisqrd.iloc[rposi:rposf, ii - 1] * ildf
-            # Multiply right-most column by tail factor.
-            max_devp = self._trisqrd.columns[-1]
-            self._trisqrd["ultimate"] = self._trisqrd.loc[:,max_devp].values * self.tail
-        return(self._trisqrd.astype(np.float_).sort_index())
+    # @property
+    # def trisqrd(self):
+    #     """
+    #     Project claims growth for each future development period. Returns a
+    #     DataFrame of loss projections for each subsequent development period
+    #     for each accident year. Populates the triangle's lower-right or
+    #     southeast portion (i.e., "squaring the triangle").
+    #
+    #     Returns
+    #     -------
+    #     pd.DataFrame
+    #     """
+    #     if self._trisqrd is None:
+    #         self._trisqrd = self.tri.copy(deep=True)
+    #         ldfs = self.ldfs.values
+    #         rposf = self.tri.index.size
+    #         clvi = self.tri.clvi["row_offset"]
+    #         for i in enumerate(self._trisqrd.columns[1:], start=1):
+    #             ii  , devp  = i[0], i[1]
+    #             ildf, rposi = ldfs[ii - 1], clvi[devp] + 1
+    #             self._trisqrd.iloc[rposi:rposf, ii] = \
+    #                 self._trisqrd.iloc[rposi:rposf, ii - 1] * ildf
+    #         # Multiply right-most column by tail factor.
+    #         max_devp = self._trisqrd.columns[-1]
+    #         self._trisqrd["ultimate"] = self._trisqrd.loc[:,max_devp].values * self.tail
+    #     return(self._trisqrd.astype(np.float_).sort_index())
 
 
 

@@ -1,5 +1,5 @@
 """
-_BootstrapChainLadder Implementation.
+BootstrapChainLadder Implementation.
 
 ===========================================================
 FUTURE ENHANCEMENTS                                       |
@@ -30,7 +30,7 @@ from scipy import stats
 import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
-from ..chainladder import _BaseChainLadder, _BaseChainLadderResult
+from ..chainladder import BaseChainLadder, BaseChainLadderResult
 
 
 
@@ -38,7 +38,7 @@ from ..chainladder import _BaseChainLadder, _BaseChainLadderResult
 
 
 
-class _BootstrapChainLadder(_BaseChainLadder):
+class BootstrapChainLadder(BaseChainLadder):
     """
     The purpose of the bootstrap technique is to estimate the predicition
     error of the total reserve estimate and to approximate the predictive
@@ -103,7 +103,7 @@ class _BootstrapChainLadder(_BaseChainLadder):
     """
     def __init__(self, cumtri):
         """
-        The _BootstrapChainLadder class definition.
+        The BootstrapChainLadder class definition.
 
         Parameters
         ----------
@@ -118,10 +118,10 @@ class _BootstrapChainLadder(_BaseChainLadder):
                  parametric=False, symmetric=False, interpolation="linear",
                  random_state=None):
         """
-        ``_BootstrapChainLadder`` simulation initializer. Generates predictive
+        ``BootstrapChainLadder`` simulation initializer. Generates predictive
         distribution of ultimate reserve outcomes.
 
-        As stated in ``_BootstrapChainLadder``'s documentation, the estimated
+        As stated in ``BootstrapChainLadder``'s documentation, the estimated
         distribution of losses assumes development is complete by the final
         development period in order to avoid the complication of modeling a
         tail factor. In addition, the ldf selection is set to "all-weighted".
@@ -258,14 +258,14 @@ class _BootstrapChainLadder(_BaseChainLadder):
                 "procdist":procdist, "parametric":parametric,
                 "q":q, "interpolation":interpolation,}
         sampling_dist_res = None if parametric==True else sampling_dist_
-        clresult_ = _BootstrapChainLadderResult(
+        clresult_ = BootstrapChainLadderResult(
             summary=dfsumm, reserve_dist=dfreserves, sims_data=dfprocerror,
             tri=self.tri, ldfs=ldfs_, cldfs=cldfs_, latest=latest_,
             maturity=maturity_, ultimates=ultimates_, reserves=reserves_,
             scale_param=scale_param_, unscaled_residuals=unscld_residuals_,
             adjusted_residuals=adjust_residuals_, sampling_dist=sampling_dist_res,
-            fitted_tri_cum=tri_fit_cum_, fitted_tri_incr=tri_fit_incr_,
-            **kwds)
+            fitted_tri_cum=tri_fit_cum_, fitted_tri_incr=tri_fit_incr_, **kwds
+            )
         return(clresult_)
 
 
@@ -711,9 +711,9 @@ class _BootstrapChainLadder(_BaseChainLadder):
 
 
 
-class _BootstrapChainLadderResult(_BaseChainLadderResult):
+class BootstrapChainLadderResult(BaseChainLadderResult):
     """
-    Curated output resulting from ``_BootstrapChainLadder``'s ``run`` method.
+    Curated output resulting from ``BootstrapChainLadder``'s ``run`` method.
     """
     def __init__(self, summary, reserve_dist, sims_data, tri, ldfs, cldfs,
                  latest, maturity, ultimates, reserves, scale_param,
@@ -811,7 +811,7 @@ class _BootstrapChainLadderResult(_BaseChainLadderResult):
 
         kwargs: dict
             Additional keyword arguments passed into
-            ``_BootstrapChainLadder``'s ``run`` method.
+            ``BootstrapChainLadder``'s ``run`` method.
         """
         super().__init__(summary=summary, tri=tri, ldfs=ldfs, cldfs=cldfs,
                          latest=latest, maturity=maturity, ultimates=ultimates,
@@ -1018,9 +1018,9 @@ class _BootstrapChainLadderResult(_BaseChainLadderResult):
 
     def _bs_data_transform(self, which, q):
         """
-        Starts with ``_BaseChainLadderResult``'s ``_data_transform``, and
-        performs additional pre-processing in order to generate bootstrapped
-        reserve ranges by origin period.
+        Starts with ``BaseChainLadderResult``'s ``_data_transform``, and
+        performs additional pre-processing in order to generate plot of
+        bootstrapped reserve ranges by origin period.
 
         Returns
         -------
@@ -1215,9 +1215,8 @@ class _BootstrapChainLadderResult(_BaseChainLadderResult):
 
 
 
-    def hist(self, which="ultimate", kde=False, rug=False, hist=False,
-             axes_style="darkgrid", context="notebook", col_wrap=5,
-             **kwargs):
+    def hist(self, which="ultimate", color="#f33455", axes_style="darkgrid",
+             context="notebook", col_wrap=5, **kwargs):
         """
         Generate visual representation of full predicitive distribtion
         of ultimates/reserves by origin and in aggregate. Additional
@@ -1230,18 +1229,9 @@ class _BootstrapChainLadderResult(_BaseChainLadderResult):
             Specifies whether exhibit should reflect ultimate or reserve
             variability. Defaults to "ultimate".
 
-        kde: bool
-            Whether to plot a gaussian kernel density estimate. Defaults to
-            False.
-
-        rug: bool
-            Whether to draw a rugplot on the support axis. Defaults to False.
-
-
-        hist: bool
-            Whether to plot a (normed) histogram. Defaults to False.
-
-
+        color: str
+            Determines histogram color in each facet. Can also be specified as
+            a key-value pair in ``kwargs``.
         axes_style: str
             Aesthetic style of plots. Defaults to "darkgrid". Other options
             include {whitegrid, dark, white, ticks}.
@@ -1265,21 +1255,25 @@ class _BootstrapChainLadderResult(_BaseChainLadderResult):
         # axes_style      = "darkgrid"                               #
         # context         = "notebook"                               #
         # col_wrap        = 5                                        #
-        # data            = bcl.sims_data[["origin", "dev", "latest", "reserve", which]] #
+        # kde             = True                                     #
+        # rug             = True                                     #
+        # norm            = True                                     #
+        # which_          = which.lower().strip()                    #
+        # kwargs          = {}                                       #
+        # data              = bcl.sims_data[["sim", "origin", "dev", "rectype", "latest", "ultimate", "reserve",]] #
         which_ = which.lower().strip()
-        data = bcl.sims_data[["sim", "origin", "dev", "rectype", "latest", "ultimate", "reserve",]]
+        data = self.sims_data[["sim", "origin", "dev", "rectype", "latest", "ultimate", "reserve",]]
         max_devp_ = data["dev"].max()
         data = data[(data["dev"]==max_devp_) & (data["rectype"]=="forecast")].reset_index(drop=True)
 
         sns.set_context(context)
         with sns.axes_style(axes_style):
 
-            defaults = {
-                "color":"#334488", "edgecolor":"#fbfbfb"
+            pltkwargs = {
+                "color":"#f33455", "edgecolor":"#484848", "alpha":.75, "linewidth":.45,
                 }
 
             titlestr_ = "Bootstrap Chain Ladder Predictive Distribution of {} by Origin".format(which.title())
-            pltkwargs = {}
             if kwargs is not None:
                 pltkwargs.update(kwargs)
 
@@ -1287,38 +1281,23 @@ class _BootstrapChainLadderResult(_BaseChainLadderResult):
                 data, col="origin", col_wrap=col_wrap, margin_titles=False,
                 despine=True, sharex=True, sharey=True,
                 )
+            hists_ = grid_.map(plt.hist, which_, **pltkwargs)
 
-            hists_ = grid_.map(
-                sns.distplot, data[which_].values, kde=kde, rug=rug, hist=hist,
-                **pltkwargs
-                )
 
             grid_.set_axis_labels("", "")
             grid_.set(xticks=data["dev"].unique().tolist())
             grid_.set_titles("{col_name}", size=9)
-            grid_.set_xticklabels(data["dev"].unique().tolist(), size=8)
+            grid_.set_xticklabels("")
 
             # Change ticklabel font size and place legend on each facet.
             for i, _ in enumerate(grid_.axes):
                 ax_ = grid_.axes[i]
-                legend_ = ax_.legend(
-                    loc="upper left", fontsize="x-small", frameon=True,
-                    fancybox=True, shadow=False, edgecolor="#909090",
-                    framealpha=1, markerfirst=True,)
-                legend_.get_frame().set_facecolor("#FFFFFF")
                 ylabelss_ = [i.get_text() for i in list(ax_.get_yticklabels())]
                 ylabelsn_ = [float(i.replace(u"\u2212", "-")) for i in ylabelss_]
                 ylabelsn_ = [i for i in ylabelsn_ if i>=0]
                 ylabels_ = ["{:,.0f}".format(i) for i in ylabelsn_]
                 ax_.set_yticklabels(ylabels_, size=8)
-
-                # Fill between upper and lower range bounds.
-                axc_ = ax_.get_children()
-                lines_ = [i for i in axc_ if isinstance(i, matplotlib.lines.Line2D)]
-                xx = [i._x for i in lines_ if len(i._x)>0]
-                yy = [i._y for i in lines_ if len(i._y)>0]
-                x_, lb_, ub_ = xx[0], yy[-2], yy[-1]
-                ax_.fill_between(x_, lb_, ub_, color=fill_color, alpha=fill_alpha)
+                ax_.grid(False)
 
                 # Draw border around each facet.
                 for _, spine_ in ax_.spines.items():
