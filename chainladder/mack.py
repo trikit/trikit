@@ -90,9 +90,6 @@ class MackChainLadder(BaseChainLadder):
         # return(None)
 
 
-
-
-
     def _ldfs(self, alpha=1, tail=1.0):
         """
         Compute Mack LDFs based on provided ``alpha`` and ``tail``.
@@ -115,16 +112,38 @@ class MackChainLadder(BaseChainLadder):
         -------
         pd.Series
         """
+        # alpha = 1
+        # tail = 1
         if alpha not in (0, 1 ,2,):
             raise ValueError("Invalid alpha specification: {}".format(alpha))
         else:
             common_ = (self.tri.pow(alpha) * self.tri.a2aind)
             common_ = common_.dropna(axis=0, how="all").dropna(axis=1, how="all")
             ldfs_ = (common_ * self.tri.a2a).sum() / common_.sum()
-            tindx_ = ldfs_.index.max() + 1
-            ldfs_ = ldfs_.append(pd.Series(data=[tail], index=[tindx_]))
+            taildevp_ = ldfs_.index[-1] + (ldfs_.index[-1] - ldfs_.index[-2])
+            ldfs_ = ldfs_.append(pd.Series(data=[tail], index=[taildevp_]))
         return(pd.Series(data=ldfs_, index=ldfs_.index, name="ldf"))
 
+
+    # def _devpvar(self, alpha=1, tail=1.0):
+    #     # alpha = 1
+    #     # tail =1
+    #     ldfs_ = mcl._ldfs(alpha=alpha, tail=tail)
+    #     diffs_ = mcl.tri.a2a.subtract(ldfs_, axis=1).pow(2).replace(0, np.NaN)
+    #     prod_ = (diffs_ * mcl.tri.pow(alpha))
+    #     prod_ = prod_.dropna(axis=0, how="all").dropna(axis=1, how="all").sum()
+    #     devpos_, _ = zip(*enumerate(prod_.index, start=1))
+    #     ratio_ = pd.Series(data=(1 / (mcl.tri.shape[0] - np.asarray(devpos_) - 1)), index=prod_.index)
+    #     devpvar_ = ratio_ * prod_
+    #
+    #     # Add  `n-1` development period variance term.
+    #     taildevp_ = ldfs_.index[-2]
+    #     final_ = np.min([
+    #         devpvar_.values[-1]**2 / devpvar_.values[-2],
+    #         np.min([devpvar_.values[-2], devpvar_.values[-1]])])
+    #     devpvar_ = devpvar_.append(pd.Series(data=[final_], index=[taildevp_]))
+    #     return(pd.Series(data=devpvar_, index=devpvar_.index, name="devpvar"))
+    #
 
     def _devpvar(self, alpha=1, tail=1.0):
         """
@@ -138,15 +157,16 @@ class MackChainLadder(BaseChainLadder):
         diffs_ = self.tri.a2a.subtract(ldfs_, axis=1).pow(2).replace(0, np.NaN)
         prod_ = (diffs_ * self.tri.pow(alpha))
         prod_ = prod_.dropna(axis=0, how="all").dropna(axis=1, how="all").sum()
-        ratio_ = pd.Series(data=(1 / (self.tri.shape[0] - prod_.index - 1)), index=prod_.index)
+        devpos_, _ = zip(*enumerate(prod_.index, start=1))
+        ratio_ = pd.Series(data=(1 / (self.tri.shape[0] - np.asarray(devpos_) - 1)), index=prod_.index)
         devpvar_ = ratio_ * prod_
 
         # Add  `n-1` development period variance term.
-        tindx_ = devpvar_.index.max() + 1
+        taildevp_ = ldfs_.index[-2]
         final_ = np.min([
             devpvar_.values[-1]**2 / devpvar_.values[-2],
             np.min([devpvar_.values[-2], devpvar_.values[-1]])])
-        devpvar_ = devpvar_.append(pd.Series(data=[final_], index=[tindx_]))
+        devpvar_ = devpvar_.append(pd.Series(data=[final_], index=[taildevp_]))
         return(pd.Series(data=devpvar_, index=devpvar_.index, name="devpvar"))
 
 
@@ -158,59 +178,163 @@ class MackChainLadder(BaseChainLadder):
         Returns a Series containing estimates of process variance by
         origin year.
         """
-        # ldfs_ = self._ldfs(alpha=alpha, tail=tail)
-        # cldfs_ = self._cldfs(ldfs=ldfs_)
-        # ultimates_ = self._ultimates(cldfs=cldfs_)
-        # devpvar_ = self._devpvar(alpha=alpha, tail=tail)
-        ta83 = trikit.load("ta83")
-        tri = trikit.totri(ta83)
-        mcl = mack.MackChainLadder(tri)
         alpha = 1
-        tail =1
+        tail = 1
+        ldfs_ = mcl._ldfs(alpha=alpha, tail=tail)
+        cldfs_ = mcl._cldfs(ldfs=ldfs_)
+        ultimates_ = mcl._ultimates(cldfs=cldfs_)
+        devpvar_ = mcl._devpvar(alpha=alpha, tail=tail)
+        alpha = 1
+        tail = 1
         ldfs_ = mcl._ldfs(alpha=alpha, tail=tail)
         cldfs_ = mcl._cldfs(ldfs=ldfs_)
         ultimates_ = mcl._ultimates(cldfs=cldfs_)
         devpvar_ = mcl._devpvar(alpha=alpha, tail=tail)
         trisqrd_ = mcl._trisqrd(ldfs=ldfs_).drop("ultimate", axis=1).round(0)
         tri_ = mcl.tri
+        ratio_ = devpvar_.divide(ldfs_.pow(2)).fillna(0)
+        dfratio_ = ratio_.to_frame().reset_index(drop=False).rename({"index":"dev", 0:"ratio"}, axis=1)
 
-        for i in range(tri_.latest.shape[0]):
-            origin_ = tri_.latest.loc[i, "origin"]
-            dev_ = tri_.latest.loc[i, "dev"]
-            latest_ = tri_.latest.loc[i, "latest"]
-            tri_.at[origin_, dev_]-=latest_
+        pelkp_ = tri_.latest.reset_index(drop=False).rename({"index":"origin_index"}, axis=1)
+        pelkp_ = pelkp_.sort_values("dev").reset_index(drop=True).reset_index(drop=False)
+        pelkp_ = pelkp_.rename({"index":"dev_index"}, axis=1).sort_values("origin_index")
+        pelkp_ = pelkp_.drop("latest", axis=1)
 
-        tridiff_ = trisqrd_ - tri_.fillna(0)
+        r = pelkp_.apply(
+            lambda rec: trisqrd_.iloc[rec.origin_index, rec.dev_index:].values /
 
-
-
-
-
-        ratio_ = devpvar_ / ldfs_.pow(2)
-
+            axis=1
+            )
 
 
-        v = trisqrd_.lookup(mcl.tri.rlvi.index, mcl.tri.rlvi.col_offset)
 
 
-        if self._process_error is None:
-            lastcol, pelist = self.tri.columns.size-1, list()
-            for rindx in self.tri.rlvi.index:
-                iult = self.ultimates[rindx]
-                ilvi = self.tri.rlvi.loc[rindx,:].col_offset
-                ilvc = self.tri.rlvi.loc[rindx,:].dev
-                ipe  = 0
-                if ilvi<lastcol:
-                    for dev in self.trisqrd.loc[rindx][ilvi:lastcol].index:
-                        ipe+=(self.devpref.loc[dev,'RATIO'] / self.trisqrd.loc[rindx,dev])
-                    ipe*=(iult**2)
-                pelist.append((rindx,ipe))
 
-            # Convert list of tuples into Series object.
-            indx, vals = zip(*pelist)
-            self._process_error = \
-                pd.Series(data=vals, index=indx, name="process_error")
-        return(self._process_error)
+        r = pelkp_.apply(lambda rec: trisqrd_.iloc[rec.origin_index, rec.dev_index:].sum(), axis=1)
+
+
+        pe_ = []
+        for originindx_, originval_ in enumerate(tri_.rlvi.index):
+            latestdevpval_ = tri_.latest.at[originindx_, "dev"]
+            latestdevpindx_ = np.argwhere(tri_.devp.values==latestdevpval_).ravel()[0]
+            trisqrdvals_ = trisqrd_.iloc[originindx_, latestdevpindx_:].values
+            ratiovals_ = ratio_.values[latestdevpindx_:]
+            pe_.append((originval_, (ratiovals_ / trisqrdvals_).sum() * ultimates_.iat[originindx_]))
+
+
+
+
+
+
+
+
+
+
+
+        # maxdevpindx_ = tri_.devp.index.max()
+        # maxdevpval_ = tri_.devp.loc[maxdevpindx_]
+        # dfpe_ = pd.DataFrame().reindex_like(tri_)
+        #
+        # for originindx_, originval_ in enumerate(tri_.origins):
+        #     # ll = list(enumerate(tri_.origins))
+        #     # originindx_ = 2
+        #     # originval_ = tri_.origins.loc[originindx_]
+        #     latestdevpval_ = tri_.latest.at[originindx_, "dev"]
+        #     latestdevpindx_ = np.argwhere(tri_.devp.values==latestdevpval_).ravel()[0]
+        #     dfpe_.iat[originindx_, latestdevpindx_] = 0 # Set latest diagonal to 0.
+        #     currtrival_ = tri_.iat[originindx_, latestdevpindx_]
+        #
+        #     if latestdevpval_!=maxdevpval_:
+        #         nextdevpindx_ = latestdevpindx_ + 1
+        #         nextdevpval_ = tri_.devp.iat[nextdevpindx_]
+        #
+        #         for devpindx_ in range(nextdevpindx_, maxdevpindx_ + 1):
+        #             # ll = list(range(nextdevpindx_, maxdevpindx_ + 1))
+        #             # devpindx_ = ll[1]
+        #
+        #             devpval_ = tri_.devp.iat[devpindx_]
+        #             prevdevpvar_ = devpvar_.iat[devpindx_ - 1]
+        #             prevldfval_ = ldfs_.iat[devpindx_ - 1]
+        #             prevpeval_ = dfpe_.iat[originindx_, devpindx_ - 1]
+        #             print("{}-{}: {} ({})".format(originindx_, devpindx_, prevpeval_, trisqrd_.iat[originindx_, devpindx_ - 1]))
+        #             dfpe_.iat[originindx_, devpindx_] = \
+        #                 (trisqrd_.iat[originindx_, devpindx_ - 1] * prevdevpvar_) + (prevldfval_ * prevpeval_)
+
+
+
+
+
+
+
+
+
+
+
+
+
+        # tridiff_ = trisqrd_ - tri_.fillna(0)
+
+
+
+        # for i in range(tri_.latest.shape[0]):
+        #     origin_ = tri_.latest.loc[i, "origin"]
+        #     dev_ = tri_.latest.loc[i, "dev"]
+        #     dfpe_.at[origin_, dev_] = 0
+        #
+        #     for j in range(
+
+
+
+
+
+
+
+
+        # f^{2}_{k-1}
+
+
+
+        #
+        # for i in range(tri_.latest.shape[0]):
+        #     origin_ = tri_.latest.loc[i, "origin"]
+        #     dev_ = tri_.latest.loc[i, "dev"]
+        #     latest_ = tri_.latest.loc[i, "latest"]
+        #     tri_.at[origin_, dev_]-=latest_
+        #
+        #
+        #
+        # # Bind reference to first future development period.
+        # ffdevp_ = tri_.devp.size + 2
+
+
+
+
+
+
+
+        #
+        # ratio_ = devpvar_ / ldfs_.pow(2)
+        #
+        #
+        #
+        # if self._process_error is None:
+        #     lastcol, pelist = self.tri.columns.size-1, list()
+        #     for rindx in self.tri.rlvi.index:
+        #         iult = self.ultimates[rindx]
+        #         ilvi = self.tri.rlvi.loc[rindx,:].col_offset
+        #         ilvc = self.tri.rlvi.loc[rindx,:].dev
+        #         ipe  = 0
+        #         if ilvi<lastcol:
+        #             for dev in self.trisqrd.loc[rindx][ilvi:lastcol].index:
+        #                 ipe+=(self.devpref.loc[dev,'RATIO'] / self.trisqrd.loc[rindx,dev])
+        #             ipe*=(iult**2)
+        #         pelist.append((rindx,ipe))
+        #
+        #     # Convert list of tuples into Series object.
+        #     indx, vals = zip(*pelist)
+        #     self._process_error = \
+        #         pd.Series(data=vals, index=indx, name="process_error")
+        # return(self._process_error)
 
 
 

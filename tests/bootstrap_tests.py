@@ -35,9 +35,9 @@ ta83 = trikit.load("ta83")
 
 # ============================================================================]
 tri = trikit.totri(RAA)
-cl  = tri.chladder(sel="all-weighted", tail=1.0)
+cl = tri.chladder(sel="all-weighted", tail=1.0)
 bcl = tri.chladder(range_method="bootstrap", sims=1000)
-bcl.hist()
+bcl.plot()
 
 
 d0 = bcl.origin_distribution

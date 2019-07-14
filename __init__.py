@@ -1,20 +1,20 @@
 """
-<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>
-|  _                                                                     |
-| | |_ _ __(_) | _(_) |_                                                 |
-| | __| '__| | |/ / | __|                                                |
-| | |_| |  | |   <| | |_                                                 |
-|  \__|_|  |_|_|\_\_|\__|                                                |
-|                                                                        |
-| Actuarial Reserving Methods in Python                                  |
-|_______________________________________________________________________ |
-|                                                                        |
-| Created by      => James D Triveri <<<james.triveri@gmail.com>>>       |
-| License         => 3-Clause BSD (See LICENSE in top-level directory    |
-| Repository Link => https://github.com/jtrive84/trikit                  |                                                                  |
-<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>
+<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>
+|  _                                                                           |
+| | |_ _ __(_) | _(_) |_                                                       |
+| | __| '__| | |/ / | __|                                                      |
+| | |_| |  | |   <| | |_                                                       |
+|  \__|_|  |_|_|\_\_|\__|                                                      |
+|                                                                              |
+| Actuarial Reserving Methods in Python                                        |
+|______________________________________________________________________________|
+|                                                                              |
+| Created by      : James D Triveri <<<james.triveri@gmail.com>>>              |
+| License         : 3-Clause BSD (See LICENSE in top-level directory           |
+| Repository Link : https://github.com/trikit/trikit.git                       |                                                                  |
+<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>=<>
 
-Outstanding Tasks =>
+Outstanding Tasks:
 
 [*] Find out how to suppress scientific notation without distorting the
      appearance of NaN's in DataFrames

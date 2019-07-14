@@ -1,4 +1,4 @@
-import sys; sys.path.append("G:\\Repos")   #"C:\\Users\\cac9159\\Repos\\")
+import sys; sys.path.append("C:\\Users\\cac9159\\Repos\\")
 import unittest
 import trikit
 import pandas as pd
@@ -15,14 +15,25 @@ import trikit
 from trikit.chainladder import mack
 
 """
- ### TODO ###
+### TODO ###
 - Check that cl.ultimates == trisqrd[-1]
 - Check that cl.trisqrd - cl.tri == 0
 - Check that cl0.ultimates-cl0.reserves-cl0.latest == 0
+- Review results when development periods are at increments other than year
 """
 
 RAA = trikit.load("raa")
 ta83 = trikit.load("ta83")
+
+originlkp = {i:j for i, j in zip(range(1, 11), range(2001, 2011))}
+devplkp = {i:j for i, j in zip(range(1, 11), range(12, 132, 12))}
+
+ta83["_origin"] = ta83["origin"].map(originlkp)
+ta83["_dev"] = ta83["dev"].map(devplkp)
+ta83 = ta83.drop(["origin", "dev"], axis=1).rename({"_origin":"origin", "_dev":"dev"}, axis=1)
+
+
+
 tri = trikit.totri(ta83)
 mcl = mack.MackChainLadder(tri)
 
@@ -33,33 +44,6 @@ devpvar = mcl._devpvar(alpha=1.0, tail=1.0)
 trisqrd = mcl._trisqrd(ldfs=ldfs)
 
 
-# Instantiate MackChainLadder instance =======================================]
-tri = trikit.totri(ta83)
-mcl = trikit._MackChainLadder(cumtri=tri)
-
-ldfs0 = mcl._ldfs(alpha=0, tail=1.0)
-ldfs1 = mcl._ldfs(alpha=1, tail=1.0)
-ldfs2 = mcl._ldfs(alpha=2, tail=1.0)
-
-
-dpv0 = mcl._devpvar(alpha=0, tail=1.0)
-dpv1 = mcl._devpvar(alpha=1, tail=1.0)
-dpv2 = mcl._devpvar(alpha=2, tail=1.0)
-
-
-
-
-
-cldfs   = mcl0.cldfs
-invsums = mcl0.inverse_sums
-devpvar  = mcl0.devpvar
-procerr = mcl0.process_error
-originref = mcl0.originref
-devpref = mcl0.devpref
-rmse    = mcl0.rmsepi
-
-def f(*args):
-    return([i for i in args])
 
 
 
@@ -70,13 +54,7 @@ def f(*args):
 
 
 
-
-
-
-
-
-
-#
+# ============================================================================]
 class MackChainLadderTestCase(unittest.TestCase):
     def setUp(self):
         self.cl = trikit.BaseChainLadder(data=raa, sel="all-weighted", tail=1.0)

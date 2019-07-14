@@ -239,7 +239,7 @@ class BaseChainLadderResult:
     ``BaseChainLadder``'s ``__call__`` method.
     """
     def __init__(self, summary, tri, ldfs, cldfs, latest, maturity,
-                 ultimates, reserves, **kwargs):
+                 ultimates, reserves, trisqrd, **kwargs):
         """
         Container object for ``BaseChainLadder`` output.
 
@@ -279,6 +279,7 @@ class BaseChainLadderResult:
         self.ultimates = ultimates
         self.reserves = reserves
         self.summary = summary
+        self.trisqrd = trisqrd
         self.cldfs = cldfs
         self.ldfs = ldfs
         self.tri = tri
@@ -287,40 +288,8 @@ class BaseChainLadderResult:
             for key_ in kwargs:
                 setattr(self, key_, kwargs[key_])
 
-        # Properties.
-        self._trisqrd = None
-
         self._summspecs = {"ultimate":"{:.0f}".format, "reserve":"{:.0f}".format,
                            "latest":"{:.0f}".format, "cldf":"{:.5f}".format,}
-
-
-    # @property
-    # def trisqrd(self):
-    #     """
-    #     Project claims growth for each future development period. Returns a
-    #     DataFrame of loss projections for each subsequent development period
-    #     for each accident year. Populates the triangle's lower-right or
-    #     southeast portion (i.e., "squaring the triangle").
-    #
-    #     Returns
-    #     -------
-    #     pd.DataFrame
-    #     """
-    #     if self._trisqrd is None:
-    #         self._trisqrd = self.tri.copy(deep=True)
-    #         ldfs = self.ldfs.values
-    #         rposf = self.tri.index.size
-    #         clvi = self.tri.clvi["row_offset"]
-    #         for i in enumerate(self._trisqrd.columns[1:], start=1):
-    #             ii  , devp  = i[0], i[1]
-    #             ildf, rposi = ldfs[ii - 1], clvi[devp] + 1
-    #             self._trisqrd.iloc[rposi:rposf, ii] = \
-    #                 self._trisqrd.iloc[rposi:rposf, ii - 1] * ildf
-    #         # Multiply right-most column by tail factor.
-    #         max_devp = self._trisqrd.columns[-1]
-    #         self._trisqrd["ultimate"] = self._trisqrd.loc[:,max_devp].values * self.tail
-    #     return(self._trisqrd.astype(np.float_).sort_index())
-
 
 
     def _data_transform(self):

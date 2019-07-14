@@ -189,6 +189,7 @@ class BootstrapChainLadder(BaseChainLadder):
         reserves_ = self._reserves(ultimates=ultimates_)
         maturity_ = self.tri.maturity.astype(np.str)
         latest_ = self.tri.latest_by_origin
+        trisqrd_ = self._trisqrd(ldfs=ldfs_)
 
         # Obtain reference to Bootstrap estimates.
         tri_fit_cum_ = self._tri_fit_cum(sel="all-weighted")
@@ -264,7 +265,8 @@ class BootstrapChainLadder(BaseChainLadder):
             maturity=maturity_, ultimates=ultimates_, reserves=reserves_,
             scale_param=scale_param_, unscaled_residuals=unscld_residuals_,
             adjusted_residuals=adjust_residuals_, sampling_dist=sampling_dist_res,
-            fitted_tri_cum=tri_fit_cum_, fitted_tri_incr=tri_fit_incr_, **kwds
+            fitted_tri_cum=tri_fit_cum_, fitted_tri_incr=tri_fit_incr_,
+            trisqrd=trisqrd_, **kwds
             )
         return(clresult_)
 
@@ -718,7 +720,7 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
     def __init__(self, summary, reserve_dist, sims_data, tri, ldfs, cldfs,
                  latest, maturity, ultimates, reserves, scale_param,
                  unscaled_residuals, adjusted_residuals, sampling_dist,
-                 fitted_tri_cum, fitted_tri_incr, **kwargs):
+                 fitted_tri_cum, fitted_tri_incr, trisqrd, **kwargs):
         """
         Container class for ``BootstrapChainLadder``'s output.
 
@@ -815,7 +817,7 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         """
         super().__init__(summary=summary, tri=tri, ldfs=ldfs, cldfs=cldfs,
                          latest=latest, maturity=maturity, ultimates=ultimates,
-                         reserves=reserves, **kwargs)
+                         reserves=reserves, trisqrd=trisqrd, **kwargs)
 
         self.unscaled_residuals = unscaled_residuals
         self.adjusted_residuals = adjusted_residuals
@@ -829,6 +831,7 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         self.reserves = reserves
         self.maturity = maturity
         self.summary = summary
+        self.trisqrd = trisqrd
         self.latest = latest
         self.cldfs = cldfs
         self.ldfs = ldfs
