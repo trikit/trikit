@@ -166,6 +166,49 @@ class MackChainLadder(BaseChainLadder):
         return(pd.Series(data=devpvar_, index=devpvar_.index, name="devpvar"))
 
 
+    def _devpvar_ldf_ratio(self, ldfs, devpvar):
+        """
+        Compute and return the ratio of the development period variance
+        estimator by the square of the selected loss development factors
+        by development period. The ratio is used in calculating Mack chain
+        ladder process and parameter error.
+
+        Parameters
+        ----------
+        alpha: {0, 1, 2}
+            The parameter specifying the approach used to compute the LDF
+            patterns used in the Mack Chain Ladder. ``alpha=1`` gives the
+            historical chain ladder age-to-age factors, ``alpha=0`` gives the
+            straight average of the observed individual development factors
+            and ``alpha=2`` is the result of an ordinary
+            regression of $C_{i, k + 1}$ against $C_{i, k}$ with intercept
+            0.
+
+        tail: float
+            Tail factor. Defaults to 1.0.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        ratio_ = devpvar.divide(ldfs.pow(2)).fillna(0)
+        dfratio_ = ratio_.to_frame().reset_index(drop=False)
+        dfratio_ = dfratio_.rename({"index":"dev", 0:"ratio"}, axis=1)
+        return(dfratio_.reset_index(drop=True))
+
+
+    def _index_reference(self):
+        """
+        Compute and return a DataFrame of origin and development period
+        information useful in computing process and parameter error in the
+        Mack chain ladder method.
+        """
+        pelkp_ = self.tri.latest.drop("latest", axis=1).sort_values("origin")
+        pelkp_["origin_index"] = range(self.tri.origins.size)
+        pelkp_["dev_index"] = pelkp_["origin_index"].values[::-1]
+        return(pelkp_.reset_index(drop=True))
+
+
     def _process_error(self, ldfs, devpvar):
         """
         Process error (forecast error) calculation. The process error
@@ -192,15 +235,11 @@ class MackChainLadder(BaseChainLadder):
         trisqrd_ = self._trisqrd(ldfs=ldfs)
         ultimates_ = trisqrd_["ultimate"].sort_index()
         trisqrd_ = trisqrd_.drop("ultimate", axis=1)
-        ratio_ = devpvar.divide(ldfs.pow(2)).fillna(0)
-        dfratio_ = ratio_.to_frame().reset_index(drop=False)
-        dfratio_ = dfratio_.rename({"index":"dev", 0:"ratio"}, axis=1)
+        dfratio_ = self._devpvar_ldf_ratio(ldfs=ldfs, devpvar=devpvar)
         dfratio_ = dfratio_[dfratio_.index<dfratio_.index.max()].reset_index(drop=True)
         dfults_ = ultimates_.to_frame().reset_index(drop=False)
         dfults_ = dfults_.rename({"index":"origin", 0:"ultimate"}, axis=1)
-        pelkp_ = self.tri.latest.drop("latest", axis=1).sort_values("origin")
-        pelkp_["origin_index"] = range(self.tri.origins.size)
-        pelkp_["dev_index"] = pelkp_["origin_index"].values[::-1]
+        pelkp_ = self._index_reference()
         pelkp_ = pelkp_[pelkp_["origin_index"]!=0].reset_index(drop=True)
         devlmt = self.tri.devp.index.max()
 
@@ -217,11 +256,48 @@ class MackChainLadder(BaseChainLadder):
             name="process_error"))
 
 
-    def _parameter_error(self):
+    def _parameter_error(self, ldfs, devpvar):
         """
         Estimation error (parameter error) reflects the uncertainty in
         the estimation of the parameters.
+
+        Parameters
+        ----------
+
+        ldfs: pd.Series
+            Loss development factors. Obtained from ``self._ldfs`` method.
+
+        devpvar: pd.Series
+            The development period variance estimator, the sum of the squared
+            deviations of losses at the end of the development period from
+            the chain ladder predictions given the losses at the beginning of
+            the period. Obtained from ``self._devpvar``.
+
+        Returns
+        -------
+        pd.Series
         """
+        # ldfs = mcl._ldfs(alpha=1, tail=1)
+        # devpvar = mcl._devpvar(alpha=1.0, tail=1.0)
+
+        cldfs_ = mcl._cldfs(ldfs=ldfs)
+        ultimates_ = mcl._ultimates(cldfs=cldfs_)
+        dfratio_ = mcl._devpvar_ldf_ratio(ldfs=ldfs, devpvar=devpvar)
+        dfratio_ = dfratio_[dfratio_.index<dfratio_.index.max()].reset_index(drop=True)
+
+        dfults_ = ultimates_.to_frame().reset_index(drop=False)
+        dfults_ = dfults_.rename({"index":"origin", 0:"ultimate"}, axis=1)
+
+        pelkp_ = mcl._index_reference()
+        pelkp_ = pelkp_[pelkp_["origin_index"]!=0].reset_index(drop=True)
+        devlmt = mcl.tri.devp.index.max()
+
+
+
+
+
+
+
 
         pass
 

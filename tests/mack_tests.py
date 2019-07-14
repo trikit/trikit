@@ -41,6 +41,8 @@ cldfs = mcl._cldfs(ldfs=ldfs)
 ults = mcl._ultimates(cldfs=cldfs)
 devpvar = mcl._devpvar(alpha=1.0, tail=1.0)
 trisqrd = mcl._trisqrd(ldfs=ldfs)
+dfratio = mcl._devpvar_ldf_ratio(ldfs=ldfs, devpvar=devpvar)
+pelkp = mcl._index_reference()
 proc_error = mcl._process_error(ldfs=ldfs, devpvar=devpvar)
 
 
