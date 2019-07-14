@@ -60,7 +60,7 @@ import scipy
 from .datasets import dataref
 from .utils import (
     _load, _get_datasets, _get_lrdb_lobs, _get_lrdb_groups, _get_lrdb_specs,
-    totri, _cumtoincr, _incrtocum, _tritotbl, _get_datasets #,plot_devp
+    totri, _cumtoincr, _incrtocum, _tritotbl, _get_datasets
     )
 
 # Initialize load function using dataref mapping.

@@ -38,9 +38,6 @@ class MackChainLadder(BaseChainLadder):
 
         super().__init__(cumtri)
 
-        # properties
-        self._parameter_error = None
-        self._process_error = None
         self._inverse_sums = None
         self._originref = None
         self._devpref = None
@@ -61,6 +58,9 @@ class MackChainLadder(BaseChainLadder):
         reserves_ = self._reserves(ultimates=ultimates_)
         maturity_ = self.tri.maturity.astype(np.str)
         latest_ = self.tri.latest_by_origin
+        trisqrd_ = self._trisqrd(ldfs=ldfs)
+        devpvar_ = self._devpvar(alpha=alpha, tail=tail)
+        # proc_error_ = self._process_error(ldfs=ldfs_, devpvar=devpvar)
 
 
 
@@ -112,8 +112,6 @@ class MackChainLadder(BaseChainLadder):
         -------
         pd.Series
         """
-        # alpha = 1
-        # tail = 1
         if alpha not in (0, 1 ,2,):
             raise ValueError("Invalid alpha specification: {}".format(alpha))
         else:
@@ -125,26 +123,6 @@ class MackChainLadder(BaseChainLadder):
         return(pd.Series(data=ldfs_, index=ldfs_.index, name="ldf"))
 
 
-    # def _devpvar(self, alpha=1, tail=1.0):
-    #     # alpha = 1
-    #     # tail =1
-    #     ldfs_ = mcl._ldfs(alpha=alpha, tail=tail)
-    #     diffs_ = mcl.tri.a2a.subtract(ldfs_, axis=1).pow(2).replace(0, np.NaN)
-    #     prod_ = (diffs_ * mcl.tri.pow(alpha))
-    #     prod_ = prod_.dropna(axis=0, how="all").dropna(axis=1, how="all").sum()
-    #     devpos_, _ = zip(*enumerate(prod_.index, start=1))
-    #     ratio_ = pd.Series(data=(1 / (mcl.tri.shape[0] - np.asarray(devpos_) - 1)), index=prod_.index)
-    #     devpvar_ = ratio_ * prod_
-    #
-    #     # Add  `n-1` development period variance term.
-    #     taildevp_ = ldfs_.index[-2]
-    #     final_ = np.min([
-    #         devpvar_.values[-1]**2 / devpvar_.values[-2],
-    #         np.min([devpvar_.values[-2], devpvar_.values[-1]])])
-    #     devpvar_ = devpvar_.append(pd.Series(data=[final_], index=[taildevp_]))
-    #     return(pd.Series(data=devpvar_, index=devpvar_.index, name="devpvar"))
-    #
-
     def _devpvar(self, alpha=1, tail=1.0):
         """
         Return the development period variance estimator, the sum of the
@@ -152,6 +130,24 @@ class MackChainLadder(BaseChainLadder):
         the Chain ladder predictions given the losses at the beginning of the
         period, all divided by n - 1, where n is the number of terms in the
         summation.
+
+        Parameters
+        ----------
+        alpha: {0, 1, 2}
+            The parameter specifying the approach used to compute the LDF
+            patterns used in the Mack Chain Ladder. ``alpha=1`` gives the
+            historical chain ladder age-to-age factors, ``alpha=0`` gives the
+            straight average of the observed individual development factors
+            and ``alpha=2`` is the result of an ordinary
+            regression of $C_{i, k + 1}$ against $C_{i, k}$ with intercept
+            0.
+
+        tail: float
+            Tail factor. Defaults to 1.0.
+
+        Returns
+        -------
+        pd.Series
         """
         ldfs_ = self._ldfs(alpha=alpha, tail=tail)
         diffs_ = self.tri.a2a.subtract(ldfs_, axis=1).pow(2).replace(0, np.NaN)
@@ -161,7 +157,7 @@ class MackChainLadder(BaseChainLadder):
         ratio_ = pd.Series(data=(1 / (self.tri.shape[0] - np.asarray(devpos_) - 1)), index=prod_.index)
         devpvar_ = ratio_ * prod_
 
-        # Add  `n-1` development period variance term.
+        # Add  n-1 development period variance term.
         taildevp_ = ldfs_.index[-2]
         final_ = np.min([
             devpvar_.values[-1]**2 / devpvar_.values[-2],
@@ -170,171 +166,69 @@ class MackChainLadder(BaseChainLadder):
         return(pd.Series(data=devpvar_, index=devpvar_.index, name="devpvar"))
 
 
-
-    def process_error(self, alpha=1, tail=1.0):
+    def _process_error(self, ldfs, devpvar):
         """
         Process error (forecast error) calculation. The process error
         component arises from the stochastic movement of the process.
         Returns a Series containing estimates of process variance by
         origin year.
+
+        Parameters
+        ----------
+
+        ldfs: pd.Series
+            Loss development factors. Obtained from ``self._ldfs`` method.
+
+        devpvar: pd.Series
+            The development period variance estimator, the sum of the squared
+            deviations of losses at the end of the development period from
+            the chain ladder predictions given the losses at the beginning of
+            the period. Obtained from ``self._devpvar``.
+
+        Returns
+        -------
+        pd.Series
         """
-        alpha = 1
-        tail = 1
-        ldfs_ = mcl._ldfs(alpha=alpha, tail=tail)
-        cldfs_ = mcl._cldfs(ldfs=ldfs_)
-        ultimates_ = mcl._ultimates(cldfs=cldfs_)
-        devpvar_ = mcl._devpvar(alpha=alpha, tail=tail)
-        alpha = 1
-        tail = 1
-        ldfs_ = mcl._ldfs(alpha=alpha, tail=tail)
-        cldfs_ = mcl._cldfs(ldfs=ldfs_)
-        ultimates_ = mcl._ultimates(cldfs=cldfs_)
-        devpvar_ = mcl._devpvar(alpha=alpha, tail=tail)
-        trisqrd_ = mcl._trisqrd(ldfs=ldfs_).drop("ultimate", axis=1).round(0)
-        tri_ = mcl.tri
-        ratio_ = devpvar_.divide(ldfs_.pow(2)).fillna(0)
-        dfratio_ = ratio_.to_frame().reset_index(drop=False).rename({"index":"dev", 0:"ratio"}, axis=1)
+        trisqrd_ = self._trisqrd(ldfs=ldfs)
+        ultimates_ = trisqrd_["ultimate"].sort_index()
+        trisqrd_ = trisqrd_.drop("ultimate", axis=1)
+        ratio_ = devpvar.divide(ldfs.pow(2)).fillna(0)
+        dfratio_ = ratio_.to_frame().reset_index(drop=False)
+        dfratio_ = dfratio_.rename({"index":"dev", 0:"ratio"}, axis=1)
+        dfratio_ = dfratio_[dfratio_.index<dfratio_.index.max()].reset_index(drop=True)
+        dfults_ = ultimates_.to_frame().reset_index(drop=False)
+        dfults_ = dfults_.rename({"index":"origin", 0:"ultimate"}, axis=1)
+        pelkp_ = self.tri.latest.drop("latest", axis=1).sort_values("origin")
+        pelkp_["origin_index"] = range(self.tri.origins.size)
+        pelkp_["dev_index"] = pelkp_["origin_index"].values[::-1]
+        pelkp_ = pelkp_[pelkp_["origin_index"]!=0].reset_index(drop=True)
+        devlmt = self.tri.devp.index.max()
 
-        pelkp_ = tri_.latest.reset_index(drop=False).rename({"index":"origin_index"}, axis=1)
-        pelkp_ = pelkp_.sort_values("dev").reset_index(drop=True).reset_index(drop=False)
-        pelkp_ = pelkp_.rename({"index":"dev_index"}, axis=1).sort_values("origin_index")
-        pelkp_ = pelkp_.drop("latest", axis=1)
+        pe_nz_ = pelkp_.apply(
+            lambda rec:
+                np.sum(dfratio_[dfratio_.index>=rec.dev_index]["ratio"].values /
+                trisqrd_.iloc[rec.origin_index, rec.dev_index:devlmt].values) *
+                dfults_[dfults_["origin"]==rec.origin]["ultimate"].pow(2).values[0],
+                axis=1
+                )
 
-        r = pelkp_.apply(
-            lambda rec: trisqrd_.iloc[rec.origin_index, rec.dev_index:].values /
-
-            axis=1
-            )
-
+        return(pd.Series(
+            np.append([0], pe_nz_.values), index=self.tri.origins.values,
+            name="process_error"))
 
 
+    def _parameter_error(self):
+        """
+        Estimation error (parameter error) reflects the uncertainty in
+        the estimation of the parameters.
+        """
 
-
-        r = pelkp_.apply(lambda rec: trisqrd_.iloc[rec.origin_index, rec.dev_index:].sum(), axis=1)
-
-
-        pe_ = []
-        for originindx_, originval_ in enumerate(tri_.rlvi.index):
-            latestdevpval_ = tri_.latest.at[originindx_, "dev"]
-            latestdevpindx_ = np.argwhere(tri_.devp.values==latestdevpval_).ravel()[0]
-            trisqrdvals_ = trisqrd_.iloc[originindx_, latestdevpindx_:].values
-            ratiovals_ = ratio_.values[latestdevpindx_:]
-            pe_.append((originval_, (ratiovals_ / trisqrdvals_).sum() * ultimates_.iat[originindx_]))
+        pass
 
 
 
 
 
-
-
-
-
-
-
-        # maxdevpindx_ = tri_.devp.index.max()
-        # maxdevpval_ = tri_.devp.loc[maxdevpindx_]
-        # dfpe_ = pd.DataFrame().reindex_like(tri_)
-        #
-        # for originindx_, originval_ in enumerate(tri_.origins):
-        #     # ll = list(enumerate(tri_.origins))
-        #     # originindx_ = 2
-        #     # originval_ = tri_.origins.loc[originindx_]
-        #     latestdevpval_ = tri_.latest.at[originindx_, "dev"]
-        #     latestdevpindx_ = np.argwhere(tri_.devp.values==latestdevpval_).ravel()[0]
-        #     dfpe_.iat[originindx_, latestdevpindx_] = 0 # Set latest diagonal to 0.
-        #     currtrival_ = tri_.iat[originindx_, latestdevpindx_]
-        #
-        #     if latestdevpval_!=maxdevpval_:
-        #         nextdevpindx_ = latestdevpindx_ + 1
-        #         nextdevpval_ = tri_.devp.iat[nextdevpindx_]
-        #
-        #         for devpindx_ in range(nextdevpindx_, maxdevpindx_ + 1):
-        #             # ll = list(range(nextdevpindx_, maxdevpindx_ + 1))
-        #             # devpindx_ = ll[1]
-        #
-        #             devpval_ = tri_.devp.iat[devpindx_]
-        #             prevdevpvar_ = devpvar_.iat[devpindx_ - 1]
-        #             prevldfval_ = ldfs_.iat[devpindx_ - 1]
-        #             prevpeval_ = dfpe_.iat[originindx_, devpindx_ - 1]
-        #             print("{}-{}: {} ({})".format(originindx_, devpindx_, prevpeval_, trisqrd_.iat[originindx_, devpindx_ - 1]))
-        #             dfpe_.iat[originindx_, devpindx_] = \
-        #                 (trisqrd_.iat[originindx_, devpindx_ - 1] * prevdevpvar_) + (prevldfval_ * prevpeval_)
-
-
-
-
-
-
-
-
-
-
-
-
-
-        # tridiff_ = trisqrd_ - tri_.fillna(0)
-
-
-
-        # for i in range(tri_.latest.shape[0]):
-        #     origin_ = tri_.latest.loc[i, "origin"]
-        #     dev_ = tri_.latest.loc[i, "dev"]
-        #     dfpe_.at[origin_, dev_] = 0
-        #
-        #     for j in range(
-
-
-
-
-
-
-
-
-        # f^{2}_{k-1}
-
-
-
-        #
-        # for i in range(tri_.latest.shape[0]):
-        #     origin_ = tri_.latest.loc[i, "origin"]
-        #     dev_ = tri_.latest.loc[i, "dev"]
-        #     latest_ = tri_.latest.loc[i, "latest"]
-        #     tri_.at[origin_, dev_]-=latest_
-        #
-        #
-        #
-        # # Bind reference to first future development period.
-        # ffdevp_ = tri_.devp.size + 2
-
-
-
-
-
-
-
-        #
-        # ratio_ = devpvar_ / ldfs_.pow(2)
-        #
-        #
-        #
-        # if self._process_error is None:
-        #     lastcol, pelist = self.tri.columns.size-1, list()
-        #     for rindx in self.tri.rlvi.index:
-        #         iult = self.ultimates[rindx]
-        #         ilvi = self.tri.rlvi.loc[rindx,:].col_offset
-        #         ilvc = self.tri.rlvi.loc[rindx,:].dev
-        #         ipe  = 0
-        #         if ilvi<lastcol:
-        #             for dev in self.trisqrd.loc[rindx][ilvi:lastcol].index:
-        #                 ipe+=(self.devpref.loc[dev,'RATIO'] / self.trisqrd.loc[rindx,dev])
-        #             ipe*=(iult**2)
-        #         pelist.append((rindx,ipe))
-        #
-        #     # Convert list of tuples into Series object.
-        #     indx, vals = zip(*pelist)
-        #     self._process_error = \
-        #         pd.Series(data=vals, index=indx, name="process_error")
-        # return(self._process_error)
 
 
 

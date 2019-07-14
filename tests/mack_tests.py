@@ -1,4 +1,4 @@
-import sys; sys.path.append("C:\\Users\\cac9159\\Repos\\")
+import sys; sys.path.append("G:\\Repos") #sys.path.append("C:\\Users\\cac9159\\Repos\\")
 import unittest
 import trikit
 import pandas as pd
@@ -10,7 +10,6 @@ import logging
 import timeit
 import matplotlib.pyplot as plt
 import seaborn as sns
-import trikit
 
 from trikit.chainladder import mack
 
@@ -42,6 +41,7 @@ cldfs = mcl._cldfs(ldfs=ldfs)
 ults = mcl._ultimates(cldfs=cldfs)
 devpvar = mcl._devpvar(alpha=1.0, tail=1.0)
 trisqrd = mcl._trisqrd(ldfs=ldfs)
+proc_error = mcl._process_error(ldfs=ldfs, devpvar=devpvar)
 
 
 
