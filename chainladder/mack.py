@@ -60,7 +60,8 @@ class MackChainLadder(BaseChainLadder):
         latest_ = self.tri.latest_by_origin
         trisqrd_ = self._trisqrd(ldfs=ldfs)
         devpvar_ = self._devpvar(alpha=alpha, tail=tail)
-        # proc_error_ = self._process_error(ldfs=ldfs_, devpvar=devpvar)
+        proc_error_ = self._process_error(ldfs=ldfs_, devpvar=devpvar_)
+        param_error_ = self._parameter_error(ldfs=ldfs_, devpvar=devpvar_)
 
 
 
@@ -280,26 +281,55 @@ class MackChainLadder(BaseChainLadder):
         # ldfs = mcl._ldfs(alpha=1, tail=1)
         # devpvar = mcl._devpvar(alpha=1.0, tail=1.0)
 
-        cldfs_ = mcl._cldfs(ldfs=ldfs)
-        ultimates_ = mcl._ultimates(cldfs=cldfs_)
-        dfratio_ = mcl._devpvar_ldf_ratio(ldfs=ldfs, devpvar=devpvar)
-        dfratio_ = dfratio_[dfratio_.index<dfratio_.index.max()].reset_index(drop=True)
-
+        cldfs_ = self._cldfs(ldfs=ldfs)
+        ultimates_ = self._ultimates(cldfs=cldfs_)
         dfults_ = ultimates_.to_frame().reset_index(drop=False)
         dfults_ = dfults_.rename({"index":"origin", 0:"ultimate"}, axis=1)
-
-        pelkp_ = mcl._index_reference()
+        dfratio_ = self._devpvar_ldf_ratio(ldfs=ldfs, devpvar=devpvar)
+        dfratio_ = dfratio_[dfratio_.index<dfratio_.index.max()].reset_index(drop=True)
+        devp_sums_ = self.tri.sum() - self.tri.latest_by_devp
+        dfsums_ = devp_sums_.to_frame().reset_index(drop=False)
+        dfsums_ = dfsums_.rename({"index":"dev", 0:"sum"}, axis=1)
+        dfsums_ = dfsums_[dfsums_.index<dfsums_.index.max()].reset_index(drop=True)
+        pelkp_ = self._index_reference()
         pelkp_ = pelkp_[pelkp_["origin_index"]!=0].reset_index(drop=True)
-        devlmt = mcl.tri.devp.index.max()
+
+        pe_nz_ = pelkp_.apply(
+            lambda rec:
+                np.sum(dfratio_[dfratio_.index>=rec.dev_index]["ratio"].values /
+                dfsums_[dfsums_.index>=rec.dev_index]["sum"].values) *
+                dfults_[dfults_["origin"]==rec.origin]["ultimate"].pow(2).values[0],
+                axis=1
+                )
+
+        return(pd.Series(
+            np.append([0], pe_nz_.values), index=self.tri.origins.values,
+            name="parameter_error"))
 
 
+    def _mean_square_error(self, process_error, parameter_error):
+        """
+        Compute and return an estimate of the mean square error (MSE) of
+        the chain ladder projected ultimate losses. The mean square
+        error is the expected squared deviation of the random variable
+        predictor from the value of the random variable being predicted.
 
+        Parameters
+        ----------
+        process_error: pd.Series
+            The process error component arises from the stochastic movement
+            of the process. Typically obtained via ``self._process_error``.
 
+        parameter_error: pd.Series
+            Parameter error reflects the uncertainty in the estimation of
+            the model parameters. Typically obtained via `
+            `self._parameter_error``.
 
-
-
-
-        pass
+        Returns
+        -------
+        pd.Series
+        """
+        return(process_error.add(param_error))
 
 
 

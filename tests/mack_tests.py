@@ -44,7 +44,7 @@ trisqrd = mcl._trisqrd(ldfs=ldfs)
 dfratio = mcl._devpvar_ldf_ratio(ldfs=ldfs, devpvar=devpvar)
 pelkp = mcl._index_reference()
 proc_error = mcl._process_error(ldfs=ldfs, devpvar=devpvar)
-
+param_error = mcl._parameter_error(ldfs=ldfs, devpvar=devpvar)
 
 
 
