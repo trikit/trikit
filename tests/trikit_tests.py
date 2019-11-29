@@ -1,4 +1,4 @@
-import sys; sys.path.append("C:\\Users\\cac9159\\Repos\\")
+import sys; sys.path.append("G:\\Repos")
 import unittest
 import pandas as pd
 import numpy as np
@@ -60,7 +60,7 @@ triDF1 = pd.DataFrame({
 # Test load function =========================================================]
 if DATASETS_TEST:
 
-    lrdb = pd.read_csv("E:/Repos/trikit/datasets/lrdb.csv", sep=",")
+    lrdb = pd.read_csv("G:/Repos/trikit/datasets/lrdb.csv", sep=",")
     raa  = trikit.load(dataset="raa")
     ta83 = trikit.load(dataset="ta83")
     datasets = trikit.get_datasets()
@@ -320,14 +320,6 @@ if TRIANGLE_TEST:
     linkra  = tri7.a2a_avgs
     matur   = tri1.maturity
 
-
-
-cl_init = trikit.chladder(data=DATA)
-ldfs = cl_init._ldfs(sel="all-weighted", tail=1.)
-cldfs = cl_init._cldfs(ldfs=ldfs)
-ults = cl_init._ultimates(cldfs=cldfs)
-res = cl_init._reserves(ultimates=ults)
-# r = cl_init(sel="all-weighted", tail=1.0)
 #
 # cldfs0a = r.cldfs
 # ults0a  = r.ultimates

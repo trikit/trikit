@@ -9,9 +9,13 @@ import os.path
 datasets_dir = os.path.dirname(__file__)
 
 dataref = {
-    "nonstd": datasets_dir + os.path.sep + "nonstd.csv",
-    "raa"   : datasets_dir + os.path.sep + "RAA.csv",
-    "ta83"  : datasets_dir + os.path.sep + "TaylorAshe83.csv",
-    "lrdb"  : datasets_dir + os.path.sep + "lrdb.csv",
+    "nonstd": os.path.join(datasets_dir,  "nonstd.csv"),
+    "raa": os.path.join(datasets_dir,  "RAA.csv"),
+    "ta83": os.path.join(datasets_dir,  "TaylorAshe83.csv"),
+    "lrdb": os.path.join(datasets_dir,  "lrdb.csv"),
+    "autoliab": os.path.join(datasets_dir,  "AutoLiabMedical.csv"),
+    "glre": os.path.join(datasets_dir,  "GLReinsurance2004.csv"),
+    "singinjury": os.path.join(datasets_dir,  "SingaporeInjury.csv"),
+    "singproperty": os.path.join(datasets_dir,  "SingaporeProperty.csv"),
     }
 

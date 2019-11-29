@@ -124,7 +124,7 @@ class BootstrapChainLadder(BaseChainLadder):
         As stated in ``BootstrapChainLadder``'s documentation, the estimated
         distribution of losses assumes development is complete by the final
         development period in order to avoid the complication of modeling a
-        tail factor. In addition, the ldf selection is set to "all-weighted".
+        tail factor.
 
         Parameters
         ----------
@@ -294,7 +294,7 @@ class BootstrapChainLadder(BaseChainLadder):
         """
         Return the cumulative fitted triangle using backwards recursion,
         starting with the observed cumulative paid/incurred-to-date along the
-        latest diagonal. This method is intended for internal use only.
+        latest diagonal.
 
         Parameters
         ----------
@@ -332,8 +332,7 @@ class BootstrapChainLadder(BaseChainLadder):
     @staticmethod
     def _tri_fit_incr(fitted_tri_cum):
         """
-        Return the fitted incremental triangle. This method is intended for
-        internal use only.
+        Return the fitted incremental triangle.
 
         Parameters
         ----------
@@ -355,8 +354,7 @@ class BootstrapChainLadder(BaseChainLadder):
         Return unscaled Pearson residuals, given by
         $r_{us} = \frac{I - m}{\sqrt{|m|}}$, where $r_{us}$ represents the
         unscaled Pearson residuals, $I$ the actual incremental losses and $m$
-        the fitted incremental losses. This method is intended for internal
-        use only.
+        the fitted incremental losses.
 
         Parameters
         ----------
@@ -378,7 +376,7 @@ class BootstrapChainLadder(BaseChainLadder):
         $r_{adj} = \sqrt{\frac{N}{dof}} * r_{us}$, where $r_adj$ represents
         the adjusted Pearson residuals, $N$ the number of triangle cells,
         $dof$ the degress of freedom and $r_{us}$ the unscaled Pearson
-        residuals. This method is intended for internal use only.
+        residuals.
 
         Parameters
         ----------
@@ -399,8 +397,7 @@ class BootstrapChainLadder(BaseChainLadder):
         Return ``resid_adj`` as a 1-dimensional array, which will be sampled
         from with replacement in order to produce synthetic triangles for
         bootstrapping. Any NaN's and 0's present in ``resid_adj`` will not be
-        present in the returned array. This method is intended for internal
-        use only.
+        present in the returned array.
 
         Parameters
         ----------
@@ -422,9 +419,9 @@ class BootstrapChainLadder(BaseChainLadder):
         Return DataFrame containing sims resampled-with-replacement
         incremental loss triangles if ``parametric=False``, otherwise
         random variates from a normal distribution with mean zero and
-        variance based on ``resid_adj``. Randomly generated incremental
+        variance derived from ``resid_adj``. Randomly generated incremental
         data gets cumulated in preparation for ldf calculation in next
-        step. This method is intended for internal use only.
+        step.
 
         Parameters
         ----------
@@ -521,7 +518,7 @@ class BootstrapChainLadder(BaseChainLadder):
         sample_size_ = dfr.shape[0]
 
         if parametric:
-            # Sample random residual from normal distribution with zero mean.
+            # Sample random residuals from normal distribution with zero mean.
             stddev_ = sampling_dist_.std(ddof=1)
             dfr["resid"] = prng.normal(loc=0, scale=stddev_, size=sample_size_)
         else:
@@ -551,12 +548,12 @@ class BootstrapChainLadder(BaseChainLadder):
         -------
         pd.DataFrame
         """
-        keepcols_ = ["sim", "origin", "dev", "samp_cum", "last_origin"]
+        keepcols = ["sim", "origin", "dev", "samp_cum", "last_origin"]
         dflvi = self.tri.clvi.reset_index(drop=False)
         dflvi = dflvi.rename(
             {"index":"dev", "origin":"last_origin", "row_offset":"origin_offset"}, axis=1)
         dfinit = dfsamples.merge(dflvi, how="left", on=["dev"])
-        dfinit = dfinit[keepcols_].sort_values(by=["sim", "dev", "origin"])
+        dfinit = dfinit[keepcols].sort_values(by=["sim", "dev", "origin"])
         df = dfinit[~np.isnan(dfinit["samp_cum"])].reset_index(drop=True)
         df["_aggdev1"] = df.groupby(["sim", "dev"])["samp_cum"].transform("sum")
         df["_aggdev2"] = np.where(df["origin"].values==df["last_origin"].values, 0, df["samp_cum"].values)
@@ -616,7 +613,7 @@ class BootstrapChainLadder(BaseChainLadder):
     @staticmethod
     def _bs_process_error(dfforecasts, scale_param, procdist="gamma", random_state=None):
         """
-        Incorporate process variance by simulating each incremental future
+        Incorporate process error by simulating each incremental future
         loss from ``procdist``. The mean is set to the forecast incremental
         loss amount and variance to `mean * self.scale_param`.
         The parameters for ``procdist`` must be positive. Since the mean

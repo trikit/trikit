@@ -8,9 +8,6 @@ liabilities and optionally ranges can be obtained.
 import functools
 import pandas as pd
 import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 
 
@@ -127,6 +124,28 @@ class BaseChainLadder:
                 print("Invalid age-to-age selection: `{}`".format(sel))
         ldfs_ =pd.Series(data=ldfs_, index=ldfs_.index, dtype=np.float_, name="ldf")
         return(ldfs_.sort_index())
+
+
+
+    def _ldfs_alt(selfself):
+        # keepcols = ["sim", "origin", "dev", "samp_cum", "last_origin"]
+        # dflvi = self.tri.clvi.reset_index(drop=False)
+        # dflvi = dflvi.rename(
+        #     {"index":"dev", "origin":"last_origin", "row_offset":"origin_offset"}, axis=1)
+        # dfinit = dfsamples.merge(dflvi, how="left", on=["dev"])
+        # dfinit = dfinit[keepcols].sort_values(by=["sim", "dev", "origin"])
+        # df = dfinit[~np.isnan(dfinit["samp_cum"])].reset_index(drop=True)
+        # df["_aggdev1"] = df.groupby(["sim", "dev"])["samp_cum"].transform("sum")
+        # df["_aggdev2"] = np.where(df["origin"].values==df["last_origin"].values, 0, df["samp_cum"].values)
+        # df["_aggdev2"] = df.groupby(["sim", "dev"])["_aggdev2"].transform("sum")
+        # dfuniq = df[["sim", "dev", "_aggdev1", "_aggdev2"]].drop_duplicates().reset_index(drop=True)
+        # dfuniq["_aggdev2"] = dfuniq["_aggdev2"].shift(periods=1)
+        # dfuniq["dev"] = dfuniq["dev"].shift(periods=1)
+        # dfldfs = dfuniq[dfuniq["_aggdev2"]!=0].dropna(how="any")
+        # dfldfs["ldf"] = dfldfs["_aggdev1"] / dfldfs["_aggdev2"]
+        # dfldfs["dev"] = dfldfs["dev"].astype(np.int_)
+        # return(dfldfs[["sim", "dev", "ldf"]].reset_index(drop=True)))
+        pass
 
 
     def _cldfs(self, ldfs):
@@ -407,6 +426,8 @@ class BaseChainLadderResult:
         >>> kwds = dict(marker="s", markersize=6)
         >>> cl.plot(**kwds)
         """
+        import matplotlib.pyplot as plt
+        import seaborn as sns
         data = self._data_transform()
 
         # Plot chain ladder projections by development period for each

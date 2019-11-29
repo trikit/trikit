@@ -1,16 +1,13 @@
 """
 Various trikit utilities. Contains convenience functions in support of
-the CAS Loss Reserving Database, as well as the intended primary interface
-with which to transform tabular data to Triangle objects (``totri``).
+the CAS Loss Reserving Database and other sample datasets.
 """
 import sys
 import os.path
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 from numpy.random import RandomState
-from .triangle import IncrTriangle, CumTriangle
+
 
 
 
@@ -318,150 +315,3 @@ def _get_lrdb_specs(lrdb_path:str):
         """
         return(lrdb)
     return(func)
-
-
-
-
-def totri(data=None, type_="cumulative", origin="origin", dev="dev",
-          value="value", trifmt=None, datafmt="incremental"):
-    """
-    Transform ``data`` to a triangle object. ``type_`` can be one of
-    "incremental" or "cumulative". If ``trifmt==None``, it is assumed
-    ``data`` is tabular loss data (e.g., pd.DataFrame) containing at
-    minimum the fields "origin", "dev" and "value". If ``trifmt`` is set
-    to "incremental" or "cumulative", ``data`` is assumed to be formatted
-    as a loss triangle, but hasn't yet been transformed into a ``_CumTriangle``
-    or _IncrTriangle instance. Returns either a ``_CumTriangle`` or
-    ``_IncrTriangle`` instance, depending on the value passed to ``type_``.
-
-    Parameters
-    ----------
-    data: pd.DataFrame
-        The dataset to be coerced into a *Triangle instance. ``data`` can be
-        tabular loss data or a pandas DataFrame formatted as a triangle but
-        not typed as such. In the latter case, ``trifmt`` must be specified to
-        indicate the representation of ``data`` (either "cumulative" or
-        "incremental").
-
-    type_: str
-        Either "cumulative" or "incremental". Alternatively, ``type_`` can be
-        specified as "i" for "incremental" or "c" for "cumulative". Dictates
-        the type of triangle returned. Default value is "cumulative".
-
-    trifmt: str
-        One of "cumulative", "incremental" or None (None by default).
-        ``trifmt`` should only be set to something other than None if ``data``
-        is a DataFrame formatted as a loss triangle, but hasn't yet been
-        converted to a ``CumTriangle`` or ``IncrTriangle`` instance. When
-        ``datafmt`` is not None, ``trifmt`` is ignored.
-
-    datafmt: str
-        When ``data`` is in tabular form, ``datafmt`` indicates whether the
-        records comprising ``data`` represent cumulative or incremental
-        losses.  When ``trifmt`` is not None, ``datafmt`` is ignored. Default
-        value is "incremental".
-
-    origin: str
-        The field in ``data`` representing the origin year. When
-        ``trifmt`` is not None, ``origin`` is ignored. Defaults to None.
-
-    dev: str
-        The field in ``data`` representing the development period. When
-        ``trifmt`` is not None, ``dev`` is ignored. Defaults to None.
-
-    value: str
-        The field in ``data`` representing loss amounts. When ``trifmt`` is
-        not None, ``value`` is ignored. Defaults to None.
-
-    Returns
-    -------
-    {trikit.triangle._IncrTriangle, trikit.triangle._CumTriangle}
-    """
-    if trifmt:
-        if trifmt.lower().startswith("i"):
-            # `data` is in incremental triangle format (but not typed as such).
-            data2 = _tritotbl(data)
-        elif trifmt.lower().startswith("c"):
-            # `data` is in cumulative triangle format (but not typed as such).
-            data2 = _tritotbl(_cumtoincr(data))
-        else:
-            raise NameError("Invalid type_ argument: `{}`.".format(type_))
-
-    else:
-        if datafmt.lower().startswith("c"): # `data` is in cumulative tabular format.
-            data2 = data.copy(deep=True)
-            data2["incr"] = data2.groupby([origin])[value].diff(periods=1)
-            data2["incr"] = np.where(np.isnan(data2["incr"]), data2[value], data2["incr"])
-            data2 = data2.drop(value, axis=1).rename({"incr":value}, axis=1)
-
-        else: # `data` is in incremental tabular format.
-            data2 = data
-
-    if type_.lower().startswith("i"):
-        tri = IncrTriangle(data=data2, origin=origin, dev=dev, value=value)
-    elif type_.lower().startswith("c"):
-        tri = CumTriangle(data=data2, origin=origin, dev=dev, value=value)
-    return(tri)
-
-
-
-def _cumtoincr(cumtri):
-        """
-        Convert a cumulative triangle to incremental representation.
-        Not intended for public use.
-
-        Parameters
-        ----------
-        cumtri: cumulative.CumTriangle
-            An instance of cumulative.CumTriangle.
-
-        Returns
-        -------
-        pd.DataFrame
-        """
-        tri = pd.DataFrame().reindex_like(cumtri)
-        tri.iloc[:,0] = cumtri.iloc[:,0]
-        for i in enumerate(tri.columns[1:], start=1):
-            indx, col = i[0], i[1]
-            tri.iloc[:,indx] = cumtri.iloc[:,indx] - cumtri.iloc[:,(indx - 1)]
-        return(tri)
-
-
-
-def _incrtocum(incrtri):
-    """
-    Convert incremental triangle to cumulative representation. Not
-    intended for public use.
-
-    Parameters
-    ----------
-    incrtri: incremental.IncrTriangle
-        An instance of incremental.IncrTriangle.
-
-    Returns
-    -------
-    pd.DataFrame
-    """
-    return(incrtri.cumsum(axis=1))
-
-
-
-def _tritotbl(tri):
-    """
-    Convert data formatted as triangle to tabular representation. Fields
-    will be identified as "origin", "dev" and "value". Not intended for
-    public use.
-
-    Parameters
-    ----------
-    tri: pd.DataFrame
-        The Triangle object or DataFrame to transform to tabular data.
-
-    Returns
-    -------
-    pd.DataFrame
-    """
-    tri = tri.reset_index(drop=False).rename({"index":"origin"}, axis=1)
-    df = pd.melt(tri, id_vars=["origin"], var_name="dev", value_name="value")
-    df = df[~np.isnan(df["value"])].astype({"origin":np.int_, "dev":np.int_, "value":np.float_})
-    return(df.sort_values(by=["origin", "dev"]).reset_index(drop=True))
