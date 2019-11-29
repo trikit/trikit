@@ -1,6 +1,7 @@
 """
 MackChainLadder class definition.
 """
+import functools
 import numpy as np
 import pandas as pd
 from scipy.stats import norm, lognorm
@@ -48,10 +49,39 @@ class MackChainLadder(BaseChainLadder):
 
 
 
-    def __call__(self, alpha=1, tail=1.0):
+
+
+
+
+    def __call__(self, alpha=1, tail=1.0, q=[.75, .95], symmetric=False,
+                 lognormal=True, trace_calc=False):
         """
-        Compute the reserve risk associated with Chain Ladder estimates.
+        Compute the reserve risk associated with Mack Chain Ladder estimates.
         """
+        # import sys; sys.path.append("G:\\Repos")
+        # import trikit
+        # ta83  = trikit.load(dataset="ta83")
+        # tri = trikit.totri(data=ta83)
+        # mcl_ = MackChainLadder(tri)
+        # alpha=1; tail=1
+        # q = [.75, .95]
+        # symmetric = True
+        # lognormal = True
+        # ldfs_ = mcl_._ldfs(alpha=alpha, tail=tail)
+        # cldfs_ = mcl_._cldfs(ldfs=ldfs_)
+        # ultimates_ = mcl_._ultimates(cldfs=cldfs_)
+        # reserves_ = mcl_._reserves(ultimates=ultimates_)
+        # maturity_ = mcl_.tri.maturity.astype(np.str)
+        # latest_ = mcl_.tri.latest_by_origin
+        # trisqrd_ = mcl_._trisqrd(ldfs=ldfs_)
+        # devpvar_ = mcl_._devpvar(alpha=alpha, tail=tail)
+        # proc_error_ = mcl_._process_error(ldfs=ldfs_, devpvar=devpvar_)
+        # param_error_ = mcl_._parameter_error(ldfs=ldfs_, devpvar=devpvar_)
+        # mack_mse_ = mcl_._mean_square_error(proc_error_, param_error_)
+        # mack_se_ = pd.Series(
+        #     data=mack_mse_.pow(.50), index=mack_mse_.index, name="s.e."
+        #     )
+
         ldfs_ = self._ldfs(alpha=alpha, tail=tail)
         cldfs_ = self._cldfs(ldfs=ldfs_)
         ultimates_ = self._ultimates(cldfs=cldfs_)
@@ -62,8 +92,95 @@ class MackChainLadder(BaseChainLadder):
         devpvar_ = self._devpvar(alpha=alpha, tail=tail)
         proc_error_ = self._process_error(ldfs=ldfs_, devpvar=devpvar_)
         param_error_ = self._parameter_error(ldfs=ldfs_, devpvar=devpvar_)
+        mack_mse_ = self._mean_square_error(proc_error_, param_error_)
+        mack_se_ = pd.Series(
+            data=mack_mse_.pow(.50), index=mack_mse_.index, name="s.e."
+            )
 
 
+        # Compile Mack Chain Ladder summary DataFrame.
+        dfmatur_ = maturity_.to_frame().reset_index(drop=False).rename({"index":"origin"}, axis=1)
+        dfcldfs_ = cldfs_.to_frame().reset_index(drop=False).rename({"index":"maturity"}, axis=1)
+        dfcldfs_["maturity"] = dfcldfs_["maturity"].astype(np.str)
+        dfsumm = dfmatur_.merge(dfcldfs_, on=["maturity"], how="left").set_index("origin")
+        dfsumm.index.name = None
+        dflatest_ = latest_.to_frame().rename({"latest_by_origin":"latest"}, axis=1)
+        dfultimates_ = ultimates_.to_frame()
+        dfreserves_ = reserves_.to_frame()
+        dfmse_ = mack_mse_.to_frame()
+        dfse_ = mack_se_.to_frame()
+        dfsumm = functools.reduce(
+            lambda df1, df2: df1.join(df2),
+            (dflatest_, dfultimates_, dfreserves_, dfmse_, dfse_), dfsumm
+            )
+        dfsumm["cv"] = dfsumm["s.e."] / dfsumm["reserve"]
+
+        pctl_ = np.asarray([q] if isinstance(q, (float, int)) else q)
+        if np.any(np.logical_or(pctl_ <= 1, pctl_ >= 0)):
+            if symmetric:
+                pctlarr = np.sort(np.unique(np.append(pctl_, np.abs(1 - pctl_))))
+            else:
+                pctlarr = np.sort(np.unique(pctl_))
+        else:
+            raise ValueError("Quantiles must fall within [0, 1].")
+
+        pctlfmt = [
+            "{:.5f}".format(i).rstrip("0").rstrip(".") + "%" for i in 100 * pctlarr
+            ]
+
+        if lognormal:
+            dfsumm["_s2"] = np.log(1 + dfsumm["mse"] / dfsumm["reserve"].pow(2))
+            dfsumm["_mu"] = np.log(dfsumm["reserve"]) - .50 * dfsumm["_s2"]
+        else:
+            dfsumm["_s2"] = dfsumm["mse"]
+            dfsumm["_mu"] = dfsumm["reserve"]
+
+        dfsumm["_s"] = dfsumm["_s2"].pow(.5)
+
+        for q_, qstr_ in zip(pctlarr, pctlfmt):
+            Z = stats.norm.ppf(q_)
+            dfsumm[qstr_] = dfsumm.apply(
+                lambda rec: np.exp(rec._mu + Z * rec._s) if lognormal
+                    else rec._mu + Z * rec._s, axis=1
+                )
+
+        dfsumm = dfsumm.drop(["_mu", "_s2", "_s"], axis=1)
+
+        # Add "Total" index and set to NaN fields that shouldn't be aggregated.
+        dfsumm.loc["total"] = dfsumm.sum()
+        dfsumm.loc["total", "maturity"] = ""
+        dfsumm.loc["total", "mse"] = np.NaN
+        dfsumm.loc["total", "s.e."] = np.NaN
+        dfsumm.loc["total", "cv"] = np.NaN
+        dfsumm.loc["total", "cldf"] = np.NaN
+
+        dfsumm = dfsumm.reset_index(drop=False).rename({"index":"origin"}, axis=1)
+
+
+        # def __init__(self, summary, reserve_dist, sims_data, tri, ldfs, cldfs,
+        #          latest, maturity, ultimates, reserves, scale_param,
+        #          unscaled_residuals, adjusted_residuals, sampling_dist,
+        #          fitted_tri_cum, fitted_tri_incr, **kwargs):
+        #
+        #
+        # # Add "Total" index and set to NaN fields that shouldn't be aggregated.
+        # dfsumm.loc["total"] = dfsumm.sum()
+        # dfsumm.loc["total", "maturity"] = ""
+        # dfsumm.loc["total", "cldf"] = np.NaN
+        # dfsumm = dfsumm.reset_index(drop=False).rename({"index":"origin"}, axis=1)
+        # kwds = {"sel":"all-weighted", "sims": sims, "neg_handler":neg_handler,
+        #         "procdist":procdist, "parametric":parametric,
+        #         "q":q, "interpolation":interpolation,}
+        # sampling_dist_res = None if parametric==True else sampling_dist_
+        # clresult_ = BootstrapChainLadderResult(
+        #     summary=dfsumm, reserve_dist=dfreserves, sims_data=dfprocerror,
+        #     tri=self.tri, ldfs=ldfs_, cldfs=cldfs_, latest=latest_,
+        #     maturity=maturity_, ultimates=ultimates_, reserves=reserves_,
+        #     scale_param=scale_param_, unscaled_residuals=unscld_residuals_,
+        #     adjusted_residuals=adjust_residuals_, sampling_dist=sampling_dist_res,
+        #     fitted_tri_cum=tri_fit_cum_, fitted_tri_incr=tri_fit_incr_,
+        #     trisqrd=trisqrd_, **kwds
+        #     )
 
 
 
@@ -88,7 +205,8 @@ class MackChainLadder(BaseChainLadder):
         # summDF.loc["total", "maturity"] = ""
         # summDF.loc["total", "cldf"]     = np.NaN
         # summDF = summDF.reset_index().rename({"index":"origin"}, axis="columns")
-        # return(None)
+        return(dfsumm)
+
 
 
     def _ldfs(self, alpha=1, tail=1.0):
@@ -128,7 +246,7 @@ class MackChainLadder(BaseChainLadder):
         """
         Return the development period variance estimator, the sum of the
         squared deviations of losses at the end of the development period from
-        the Chain ladder predictions given the losses at the beginning of the
+        the Chain ladder predictions, given the losses at the beginning of the
         period, all divided by n - 1, where n is the number of terms in the
         summation.
 
@@ -259,8 +377,8 @@ class MackChainLadder(BaseChainLadder):
 
     def _parameter_error(self, ldfs, devpvar):
         """
-        Estimation error (parameter error) reflects the uncertainty in
-        the estimation of the parameters.
+        Compute the estimation error (parameter error), which reflects the
+        uncertainty in the estimation of the parameters.
 
         Parameters
         ----------
@@ -293,7 +411,6 @@ class MackChainLadder(BaseChainLadder):
         dfsums_ = dfsums_[dfsums_.index<dfsums_.index.max()].reset_index(drop=True)
         pelkp_ = self._index_reference()
         pelkp_ = pelkp_[pelkp_["origin_index"]!=0].reset_index(drop=True)
-
         pe_nz_ = pelkp_.apply(
             lambda rec:
                 np.sum(dfratio_[dfratio_.index>=rec.dev_index]["ratio"].values /
@@ -301,7 +418,6 @@ class MackChainLadder(BaseChainLadder):
                 dfults_[dfults_["origin"]==rec.origin]["ultimate"].pow(2).values[0],
                 axis=1
                 )
-
         return(pd.Series(
             np.append([0], pe_nz_.values), index=self.tri.origins.values,
             name="parameter_error"))
@@ -329,7 +445,11 @@ class MackChainLadder(BaseChainLadder):
         -------
         pd.Series
         """
-        return(process_error.add(param_error))
+        return(pd.Series(
+            data=process_error.add(parameter_error),
+            index=process_error.index, name="mse"))
+
+
 
 
 

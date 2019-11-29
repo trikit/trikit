@@ -27,9 +27,6 @@ import numpy as np
 import pandas as pd
 from numpy.random import RandomState
 from scipy import stats
-import matplotlib
-import matplotlib.pyplot as plt
-import seaborn as sns
 from ..chainladder import BaseChainLadder, BaseChainLadderResult
 
 
@@ -1139,6 +1136,8 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         # col_wrap        = 5                                        #
         # hue_kws          = None                                    #
         # data            = bcl._bs_data_transform(which=which, q=q) #
+        import matplotlib.pyplot as plt
+        import seaborn as sns
         which_ = which.lower().strip()
         data = self._bs_data_transform(which=which_, q=q)
         pctl_hdrs = sorted([i for i in data["rectype"].unique() if i not in ("actual", "forecast")])
@@ -1261,6 +1260,9 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         # which_          = which.lower().strip()                    #
         # kwargs          = {}                                       #
         # data              = bcl.sims_data[["sim", "origin", "dev", "rectype", "latest", "ultimate", "reserve",]] #
+        import matplotlib
+        import matplotlib.pyplot as plt
+        import seaborn as sns
         which_ = which.lower().strip()
         data = self.sims_data[["sim", "origin", "dev", "rectype", "latest", "ultimate", "reserve",]]
         max_devp_ = data["dev"].max()
@@ -1337,6 +1339,8 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
             Dictionary of optional matplotlib styling parameters.
 
         """
+        import matplotlib.pyplot as plt
+        import seaborn as sns
         plt_params = {"alpha":.995, "color":"#FFFFFF", "align":"mid",
                       "edgecolor":"black", "histtype":"bar",
                       "linewidth":1.1, "orientation":"vertical",}
@@ -1389,7 +1393,7 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         symmetric: bool
             Whether the symmetric interval should be returned. For example, if
             ``symmetric==True`` and ``q=.95``, then the 2.5th and 97.5th
-            quantiles of the bootstrapped reserve distribution will be returned
+            quantiles of the predictive reserve distribution will be returned
             [(1 - .95) / 2, (1 + .95) / 2]. When False, only the specified
             quantile(s) will be computed.
 

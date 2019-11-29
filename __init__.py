@@ -62,6 +62,7 @@ import numpy as np
 import pandas as pd
 import scipy
 from .datasets import dataref
+from .triangle import totri
 from .utils import (
     _load, _get_datasets, _get_lrdb_lobs, _get_lrdb_groups, _get_lrdb_specs,
     )
