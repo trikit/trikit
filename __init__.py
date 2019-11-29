@@ -37,6 +37,7 @@ Outstanding Tasks:
 
 [*] Fix names in triangle.origins/triangle.devp
 
+[*] Add a non-standard triangle such that rows and columns are not identical.
 
 [*] Fix this error:
 # tri2 = DataFrame
@@ -61,19 +62,18 @@ import numpy as np
 import pandas as pd
 import scipy
 from .datasets import dataref
-from .utils import *
-# from .utils import (
-#     _load, _get_datasets#, _get_lrdb_lobs, _get_lrdb_groups, _get_lrdb_specs,
-#     totri, _cumtoincr, _incrtocum, _tritotbl, _get_datasets
-#     )
+from .utils import (
+    _load, _get_datasets, _get_lrdb_lobs, _get_lrdb_groups, _get_lrdb_specs,
+    )
+
 
 # Initialize load function using dataref mapping.
-# lrdb_path = dataref["lrdb"]
-# load = _load(dataref=dataref)
-# get_datasets = _get_datasets(dataref=dataref)
-# get_lrdb_lobs = _get_lrdb_lobs(lrdb_path=lrdb_path)
-# get_lrdb_groups = _get_lrdb_groups(lrdb_path=lrdb_path)
-# get_lrdb_specs = _get_lrdb_specs(lrdb_path=lrdb_path)
+lrdb_path = dataref["lrdb"]
+load = _load(dataref=dataref)
+get_datasets = _get_datasets(dataref=dataref)
+get_lrdb_lobs = _get_lrdb_lobs(lrdb_path=lrdb_path)
+get_lrdb_groups = _get_lrdb_groups(lrdb_path=lrdb_path)
+get_lrdb_specs = _get_lrdb_specs(lrdb_path=lrdb_path)
 
 pd.options.mode.chained_assignment = None # 'warn'
 pd.set_option('display.max_columns', 1000)

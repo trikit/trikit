@@ -57,8 +57,8 @@ def _load(dataref):
             ``dataset`` ="lrdb", otherwise parameter is ignored.
 
         loss_type: str
-            Specifies which loss data to load. Can be one of "paid",
-            "incurred" or "bulk". Defaults to "paid". Applies only when
+            Specifies which loss data to load. Can be one of "paid" or
+            "incurred". Defaults to "paid". Applies only when
             ``dataset`` ="lrdb", otherwise parameter is ignored.
 
         upper_left_ind: bool

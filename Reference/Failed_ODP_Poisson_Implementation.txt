@@ -1,8 +1,0 @@
-elif procdist.strip().lower()=="odp":
-             # For odp: param1=n (`n`), param2=prob (`p`).
-            fcstdf["param2"] = ((self.scale_param - 1) / self.scale_param)
-            fcstdf["param1"] = (fcstdf["samp_incr"].values * (1 - fcstdf["param2"].values)) / fcstdf["param2"].values
-
-            def fdist(param1, param2):
-                """nbinom.rvs(n=param1, p=param2, size=1, random_state=None)"""
-                return(prng.negative_binomial(param1, param2))

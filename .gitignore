@@ -63,3 +63,6 @@ build
 build/*
 ./build
 trikit.egg-info
+Archive
+Archive/
+./Archive/*
