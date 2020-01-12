@@ -113,18 +113,7 @@ class IncrTriangle(pd.DataFrame):
         return(self._nbr_cells)
 
 
-    @property
-    def dof(self):
-        """
-        Return the degress of freedom.
 
-        Returns
-        -------
-        int
-        """
-        if self._dof is None:
-            self._dof = self.nbr_cells - (self.columns.size-1) + self.index.size
-        return(self._dof)
 
 
     @property
@@ -288,10 +277,10 @@ class IncrTriangle(pd.DataFrame):
         pd.DataFrame
         """
         tri_ = self.reset_index(drop=False).rename({"index":"origin"}, axis=1)
-        df_ = pd.melt(tri_, id_vars=[self.origin], var_name=self.dev, value_name=self.value)
-        df_ = df_[~np.isnan(df_[self.value])]
-        df_ = df_.astype({self.origin:np.int_, self.dev:np.int_, self.value:np.float_})
-        return(df_.sort_values(by=[self.origin, self.dev]).reset_index(drop=True))
+        df = pd.melt(tri_, id_vars=[self.origin], var_name=self.dev, value_name=self.value)
+        df = df_[~np.isnan(df[self.value])]
+        df = df.astype({self.origin:np.int_, self.dev:np.int_, self.value:np.float_})
+        return(df.sort_values(by=[self.origin, self.dev]).reset_index(drop=True))
 
 
     def as_cum(self):

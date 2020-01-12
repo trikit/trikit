@@ -151,7 +151,7 @@ class MackChainLadder(BaseChainLadder):
         dfsumm.loc["total", "maturity"] = ""
         dfsumm.loc["total", "mse"] = np.NaN
         dfsumm.loc["total", "s.e."] = np.NaN
-        dfsumm.loc["total", "cv"] = np.NaN
+
         dfsumm.loc["total", "cldf"] = np.NaN
 
         dfsumm = dfsumm.reset_index(drop=False).rename({"index":"origin"}, axis=1)
