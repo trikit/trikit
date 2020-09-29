@@ -7,6 +7,9 @@ $ twine upload --repository testpypi dist/*
 $ pip install -i https://test.pypi.org/simple/ trikit
 
 
+https://packaging.python.org/guides/distributing-packages-using-setuptools/#source-distributions
+
+
 # For real PyPI:
 python setup.py sdist bdist_wheel --universal
 $ twine upload dist/*
@@ -53,8 +56,6 @@ $ python -m pip install --upgrade twine
     recursive-include chainladder *.py
     recursive-include tests *.py
     include datasets/*.csv
-    include docs/source/*.rst
-    include docs/source/*.md
     prune Reference
     prune docs/build
 
@@ -86,20 +87,12 @@ username: jtrive84
 password: Principia1687
 
 
-
-
 # Export build distribution as follows:
 $ twine upload --repository-url https://test.pypi.org/legacy/ dist/*
 
 
 # If .pypirc file exists, we can instead specify:
 $ twine upload --repository testpypi dist/*
-
-
-
-
-
-
 
 
 # Create new virtual environment with site-packages:
@@ -110,9 +103,6 @@ $ python -m venv U:/Dev/env37
 
 # To activate, from Windows run <path_to_env>\Scripts\activate.bat:
 $ U:/Dev/env37/Scripts/activate.bat
-
-
-
 
 # Install build distribution as follows (ensuring pip is the virtual instance):
 $ pip install -i https://test.pypi.org/simple/ trikit

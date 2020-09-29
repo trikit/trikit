@@ -1,0 +1,46 @@
+@import url('https://fonts.googleapis.com/css?family=Ubuntu+Mono');
+@import url('https://fonts.googleapis.com/css?family=Source+Code+Pro');
+@import url('https://fonts.googleapis.com/css?family=Droid+Sans');
+@import url('https://fonts.googleapis.com/css?family=Droid+Sans|Work+Sans');
+@import url('https://fonts.googleapis.com/css?family=PT+Mono');
+@import url('https://fonts.googleapis.com/css?family=Fira+Mono');
+@import url('https://fonts.googleapis.com/css?family=CamingoCode');
+@import url('https://fonts.googleapis.com/css?family=Roboto+Mono');
+
+.wy-nav-content {
+    max-width: 800px !important;
+}
+
+
+body{
+    /*font-family:"Open Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
+	font-size:15.0px;
+	line-height:1.45;
+	color:#202020;
+	background-color:#ffffff;
+	max-width:1225px;
+	text-align: justify;
+	border-color:#C8C8C8;
+	border-radius:1px;*/
+	max-width:600px;
+}
+
+code {
+	font-family:"Roboto Mono","Ubuntu Mono","DejaVu Sans Mono",monospace;
+	font-size:100%;
+	line-height:1.18;
+	color:#cc0000;
+	background-color:#FDFDFD;
+	max-width:1225px;
+	border-color:#383838;
+	border-radius:2px;
+}
+
+
+kbd, pre, samp {
+    font-size:100%; 
+	font-family:"Roboto Mono","Ubuntu Mono","Hack",monospace; 
+	color:#c7254e;
+	/*background-color:#f9f2f4;
+	border-radius:2px*/
+}

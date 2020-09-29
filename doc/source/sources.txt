@@ -1,0 +1,53 @@
+.. _quick-start:
+.. _work-env:
+.. _global-settings:
+.. _output-selection:
+.. _output-format:
+.. _perils:
+.. _bi-perils: 
+.. _bld-perils: 
+.. _cont-perils:
+.. _eb-perils:
+.. -gl-perils:
+.. _links:
+
+
+
+.. image:: ./images/CNA-logo.gif
+    :align: right
+    :width: 217px
+    :height: 144px
+    :alt: alternate text
+
+
+managed with `Subversion <http://svnbook.red-bean.com/en/1.6/svn.intro.whatis.html>`_.
+`vim <http://www.vim.org/about.php>`_
+`Emacs <http://www.gnu.org/software/emacs/>`_
+
+
+.. _my-reference-label:
+
+Section to cross-reference
+--------------------------
+
+This is the text of the section:     :ref:`my-reference-label`.    :ref:`Link title <label-name>`.
+
+
+:ref:`Creating a Working Environment <workenv>`
+
+:ref:`Scoring Program Functions<functions>`
+
+#download sourcefiles:
+:download:`get source <./other_docs/download/BASE_LC.R>`
+:download:`get source <./other_docs/download/BASE_LC.txt>`
+:ref:`Quick Start Guide<quick-start>`.
+:ref:`config<config>`.
+
+Sharepoint locations related to the Interim Pricing Solution:
+
+* `Interim Pricing Solution Shared Documents <https://share.cna.com/ccm/actuarial/predictive_analytics/Connect_2014.xlsx>`__
+* `Interim Pricing Solution Plan <https://share.cna.com/ccm/actuarial/predictive_analytics/Connect_2014/Shared%20Documents.txt>`__
+
+* :download:`2016-12-08 Roundtable Slides (.pptx) <./download/Auto-GL_20161208/Auto-GL_Roundtable_20161208.pptx>`   
+* :download:`2016-12-08 Roundtable Slides (.pdf)  <./download/Auto-GL_20161208/Auto-GL_Roundtable_20161208.pdf>`   
+

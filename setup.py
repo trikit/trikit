@@ -1,30 +1,58 @@
+#!/usr/bin/env python
+"""
+Copyright 2018 James D. Triveri
+
+trikit setup.py.
+"""
 import setuptools
+import pathlib
 
-with open("README.md", "r") as fh:
-    long_description = fh.read()
-
-with open("VERSION", "r") as fversion:
-    version = fversion.read(fversion).strip()
+NAME = "trikit"
+DESCRIPTION = "A Pythonic Approach to Actuarial Reserving"
+AUTHOR = "James D. Triveri"
+AUTHOR_EMAIL = "james.triveri@gmail.com"
+URL = "https://github.com/trikit/trikit"
+LICENSE = "MIT"
+BASE_DIR = pathlib.Path(__file__).parent.resolve()
+LONG_DESCRIPTION = (BASE_DIR / "README.md").read_text(encoding="utf-8")
+VERSION = (BASE_DIR / "VERSION").read_text(encoding="utf-8")
+REQUIREMENTS = (BASE_DIR / "requirements.txt").read_text(encoding="utf-8").split()
 
 
 setuptools.setup(
-    name="trikit",
-    version=version,
-    author="James D. Triveri",
-    author_email="james.triveri@gmail.com",
-    description="Actuarial Reserving Methods in Python",
-    long_description=long_description,
+
+    name=NAME,
+
+    version=VERSION,
+
+    author=AUTHOR,
+
+    author_email=AUTHOR_EMAIL, 	
+
+    license="MIT",    
+
+    description=DESCRIPTION,
+
+    long_description=LONG_DESCRIPTION,
+
     long_description_content_type="text/markdown",
-    url="https://github.com/trikit/trikit",
+
+    url=URL,
+
     packages=setuptools.find_packages(),
+
     classifiers=[
-        "Programming Language :: Python :: 3",
+        "Development Status :: 4 - Beta",
+        Programming Language :: Python :: 3 :: Only
         "License :: OSI Approved :: MIT License",
+        "Topic :: Scientific/Engineering :: Mathematics",
         "Operating System :: OS Independent",
         ],
-    install_requires=[
-        "numpy>=1.*", "scipy>=0.19", "pandas>=0.20", "matplotlib>=2.*",
-        "seaborn>=0.7",
-        ],
+
+    keywords=[
+        "actuarial finance reserving chainladder insurance",
+
+    install_requires=REQUIREMENTS,
+
     include_package_data=True,
     )
