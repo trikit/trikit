@@ -868,32 +868,6 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         self._summspecs.update(pctlfmts_)
 
 
-
-    @staticmethod
-    def _nbrbins(data):
-        """
-        Return an estimate for the appropriate number of histogram bins.
-        Bin width is determined using the Freedman–Diaconis rule, where
-        width = [ 2 * IQR ] / N^(1/3), N=number of observations and IQR
-        the interquartile range of the dataset.
-
-        Parameters
-        ----------
-        data: np.ndarray
-            One-dimensional array.
-
-        Returns
-        -------
-        int
-        """
-        data = np.asarray(data, dtype=np.float_)
-        IQR = stats.iqr(data, rng=(25, 75), scale="raw", nan_policy="omit")
-        N = data.size
-        bw = (2 * IQR) / np.power(N, 1/3)
-        datrng = data.max() - data.min()
-        return(int((datrng / bw) + 1))
-
-
     @property
     def origin_distribution(self):
         """
@@ -1205,11 +1179,6 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
                     spine_.set(visible=True, color="#000000", linewidth=.50)
 
         plt.show()
-
-
-
-
-
 
 
     def hist(self, color="#FE86F1", axes_style="darkgrid", context="notebook",

@@ -36,7 +36,19 @@ df = pd.read_csv(pp)
 tri = triangle.CumTriangle(data=df, origin="origin", dev="dev", value="value")
 bootargs = {"sims":500, "procdist":"gamma", "parametric":False, "q":[.75, .95]}
 bcl = tri.cl(range_method="bootstrap", **bootargs)
-bcl.plot()
+# bcl.plot()
+
+
+tri = triangle.CumTriangle(data=df, origin="origin", dev="dev", value="value")
+# mcl = tri.cl(range_method="mack")
+
+from trikit.chainladder import mack
+mcl = mack.MackChainLadder(cumtri=tri)
+
+
+
+
+
 
 
 

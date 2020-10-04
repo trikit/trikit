@@ -41,6 +41,7 @@ class _BaseTriangle(pd.DataFrame):
         value: str
             The fieldname in ``data`` representing loss amounts.
         """
+        print("In _BaseTriangle: {}".format(type(data)))
         if not isinstance(data, pd.DataFrame):
             raise TypeError("`data` must be an instance of pd.DataFrame.")
 
@@ -85,6 +86,16 @@ class _BaseTriangle(pd.DataFrame):
         self._rlvi = None
         self._clvi = None
         self._dof = None
+
+
+
+    @property
+    def _constructor(self):
+        return _BaseTriangle
+
+    # @property
+    # def _constructor_sliced(self):
+    #     return SubclassedSeries
 
 
     @property
@@ -319,6 +330,8 @@ class _BaseIncrTriangle(_BaseTriangle):
 
 
 
+
+
 class IncrTriangle(_BaseIncrTriangle):
     """
     Public incremental triangle class definition.
@@ -386,18 +399,24 @@ class _BaseCumTriangle(_BaseTriangle):
         value: str
             The fieldname in ``data`` representing loss amounts.
         """
+        print("In _BaseCumTriangle")
         # Replace NaN values with 1.0 in value column.
-        data2 = data.copy(deep=True)
-        data2.loc[np.where(np.isnan(data[value].values))[0], value] = 1.
-        data2["cumval"] = data2.groupby([origin], as_index=False)[value].cumsum()
-        data2 = data2.drop(value, axis=1)
-        data2 = data2.rename(columns={"cumval":value})
-        super().__init__(data=data2, origin=origin, dev=dev, value=value)
+        # data2 = data#.copy(deep=True)
+        # data2[value] = data2[value].map(lambda v: 1 if np.isnan(v) else v)
+        data["cumval"] = data.groupby([origin], as_index=False)[value].cumsum()
+        data = data.drop(value, axis=1)
+        data = data.rename(columns={"cumval":value})
+        super().__init__(data=data, origin=origin, dev=dev, value=value)
 
         # Properties.
         self._a2a_avgs = None
         self._a2aind = None
         self._a2a = None
+
+
+    @property
+    def _constructor(self):
+        return _BaseCumTriangle
 
 
     @staticmethod
@@ -697,8 +716,12 @@ class CumTriangle(_BaseCumTriangle):
     Public cumulative triangle class definition.
     """
     def __init__(self, data, origin=None, dev=None, value=None):
+        print("In CumTriangle")
         super().__init__(data, origin=origin, dev=dev, value=value)
 
+    @property
+    def _constructor(self):
+        return CumTriangle
 
 
     def to_incr(self):
