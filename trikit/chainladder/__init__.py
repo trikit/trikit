@@ -1,9 +1,5 @@
 """
-This module contains the class definitions for ``BaseChainLadder``.
-Users should avoid calling any ``*ChainLadder`` instances directly; rather the
-dataset and triangle arguments should be passed to ``chladder``, which will
-return the initialized ChainLadder instance, from which estimates of outstanding
-liabilities and optionally ranges can be obtained.
+This module contains the class definitions for ``BaseChainLadder``.-
 """
 import functools
 import pandas as pd
@@ -44,7 +40,7 @@ class BaseChainLadder:
     def __call__(self, sel="all-weighted", tail=1.0):
         """
         Compile a summary of ultimate and reserve estimates resulting from
-        the application of the development technique over ``self.tri``.
+        the application of the development technique over a triangle instance.
         Generated DataFrame is comprised of origin year, maturity of origin
         year, loss amount at latest evaluation, cumulative loss development
         factors, projected ultimates and the reserve estimate, by origin
@@ -61,7 +57,7 @@ class BaseChainLadder:
 
         Returns
         -------
-        trikit.chainladder._ChainLadderResult
+        trikit.chainladder.BaseChainLadderResult
         """
         ldfs_ = self._ldfs(sel=sel, tail=tail)
         cldfs_ = self._cldfs(ldfs=ldfs_)
@@ -98,7 +94,6 @@ class BaseChainLadder:
         return(clresult_)
 
 
-
     def _ldfs(self, sel="all-weighted", tail=1.0):
         """
         Lookup loss development factors corresponding to ``sel``.
@@ -120,37 +115,16 @@ class BaseChainLadder:
             ldfs_ = self.tri.a2a_avgs.loc[sel]
             tindx_ = ldfs_.index.max() + 1
             ldfs_ = ldfs_.append(pd.Series(data=[tail], index=[tindx_]))
+
         except KeyError:
                 print("Invalid age-to-age selection: `{}`".format(sel))
-        ldfs_ =pd.Series(data=ldfs_, index=ldfs_.index, dtype=np.float_, name="ldf")
+        ldfs_ = pd.Series(data=ldfs_, index=ldfs_.index, dtype=np.float_, name="ldf")
         return(ldfs_.sort_index())
-
-
-
-    def _ldfs_alt(selfself):
-        # keepcols = ["sim", "origin", "dev", "samp_cum", "last_origin"]
-        # dflvi = self.tri.clvi.reset_index(drop=False)
-        # dflvi = dflvi.rename(
-        #     {"index":"dev", "origin":"last_origin", "row_offset":"origin_offset"}, axis=1)
-        # dfinit = dfsamples.merge(dflvi, how="left", on=["dev"])
-        # dfinit = dfinit[keepcols].sort_values(by=["sim", "dev", "origin"])
-        # df = dfinit[~np.isnan(dfinit["samp_cum"])].reset_index(drop=True)
-        # df["_aggdev1"] = df.groupby(["sim", "dev"])["samp_cum"].transform("sum")
-        # df["_aggdev2"] = np.where(df["origin"].values==df["last_origin"].values, 0, df["samp_cum"].values)
-        # df["_aggdev2"] = df.groupby(["sim", "dev"])["_aggdev2"].transform("sum")
-        # dfuniq = df[["sim", "dev", "_aggdev1", "_aggdev2"]].drop_duplicates().reset_index(drop=True)
-        # dfuniq["_aggdev2"] = dfuniq["_aggdev2"].shift(periods=1)
-        # dfuniq["dev"] = dfuniq["dev"].shift(periods=1)
-        # dfldfs = dfuniq[dfuniq["_aggdev2"]!=0].dropna(how="any")
-        # dfldfs["ldf"] = dfldfs["_aggdev1"] / dfldfs["_aggdev2"]
-        # dfldfs["dev"] = dfldfs["dev"].astype(np.int_)
-        # return(dfldfs[["sim", "dev", "ldf"]].reset_index(drop=True)))
-        pass
 
 
     def _cldfs(self, ldfs):
         """
-        Calculate cumulative loss development factors factors by successive
+        Calculate cumulative loss development factors by successive
         multiplication beginning with the tail factor and the oldest
         age-to-age factor. The cumulative claim development factor projects
         the total growth over the remaining valuations. Cumulative claim
@@ -199,16 +173,14 @@ class BaseChainLadder:
 
     def _reserves(self, ultimates):
         """
-        Return IBNR/unpaid claim estimates. Represents the difference
-        between ultimate loss projections for each origin year and the latest
-        cumulative loss amount.
-        Note that because outstanding claim liabilities are different based
-        on the type of losses represented in the triangle ("ibnr" if losses
-        are reported/incurred, "unpaid" if data represents paid losses), we
-        use the generic term "reserves" to represent either. In any case,
-        what is referred to as "reserves" will always equate to the
-        difference between the ultimate loss projections and cumulative
-        loss amounts at the latest evaluation period for each origin year.
+        Return IBNR/reserve estimates by origin and in aggregate. Represents
+        the difference between ultimate projections for each origin period
+        and the latest cumulative value.
+        Since outstanding claim liabilities can be referred to differently
+        based on the type of losses represented in the triangle ("ibnr" if
+        reported/incurred, "unpaid" if paid losses), we use the general term
+        "reserve" to represent the difference between ultimate projections
+        and latest cumulative value by origin and in total.
 
         Parameters
         ----------
@@ -231,7 +203,7 @@ class BaseChainLadder:
         Project claims growth for each future development period. Returns a
         DataFrame of loss projections for each subsequent development period
         for each accident year. Populates the triangle's lower-right or
-        southeast portion (i.e., "squaring the triangle").
+        southeast portion (i.e., the result of "squaring the triangle").
 
         Returns
         -------
@@ -254,7 +226,7 @@ class BaseChainLadder:
 
 class BaseChainLadderResult:
     """
-    Container class consisting of output resulting from invocation of
+    Summary class consisting of output resulting from invocation of
     ``BaseChainLadder``'s ``__call__`` method.
     """
     def __init__(self, summary, tri, ldfs, cldfs, latest, maturity,
@@ -307,14 +279,16 @@ class BaseChainLadderResult:
             for key_ in kwargs:
                 setattr(self, key_, kwargs[key_])
 
-        self._summspecs = {"ultimate":"{:.0f}".format, "reserve":"{:.0f}".format,
-                           "latest":"{:.0f}".format, "cldf":"{:.5f}".format,}
+        self._summspecs = {
+            "ultimate":"{:.0f}".format, "reserve":"{:.0f}".format,
+            "latest":"{:.0f}".format, "cldf":"{:.5f}".format,
+            }
 
 
     def _data_transform(self):
         """
-        Transform dataset for use in FacetGrid plot by origin
-        exhibting chain ladder ultimate and reserve estimates.
+        Transform dataset for use in FacetGrid plot by origin exhibting chain
+        ladder ultimate & reserve estimates.
 
         Returns
         -------
@@ -352,17 +326,16 @@ class BaseChainLadderResult:
             axis=1
             )
 
-        # Vertically concatenate dfact_ and dfpred_.
-        dfact_ = df[df["incl_actual"]==1][["origin", "dev", "value"]]
-        dfact_["rectype"] = "actual"
-        dfpred_ = df[df["incl_pred"]==1][["origin", "dev", "value"]]
-        dfpred_["rectype"] = "forecast"
-        return(pd.concat([dfact_, dfpred_]).reset_index(drop=True))
-
+        # Vertically concatenate dfact and dfpred.
+        dfact = df[df["incl_actual"]==1][["origin", "dev", "value"]]
+        dfact["rectype"] = "actual"
+        dfpred = df[df["incl_pred"]==1][["origin", "dev", "value"]]
+        dfpred["rectype"] = "forecast"
+        return(pd.concat([dfact, dfpred]).reset_index(drop=True))
 
 
     def plot(self, actuals_color="#334488", forecasts_color="#FFFFFF",
-             axes_style="darkgrid", context="notebook", col_wrap=5,
+             axes_style="darkgrid", context="notebook", col_wrap=4,
              hue_kws=None, **kwargs):
         """
         Visualize actual losses along with projected chain ladder development.
@@ -405,35 +378,31 @@ class BaseChainLadderResult:
             default values for ``plt.plot`` objects. For a demonstration,
             See the Examples section.
 
-        Returns
-        -------
-        None
-
         Examples
         --------
         Demonstration of how to pass a dictionary of plot properties in order
         to update the scatter size and marker:
 
-        >>> import trikit
-        >>> raa = trikit.load(dataset="raa")
-        >>> tri = trikit.totri(data=raa)
-        >>> cl = tri.chladder(sel="all-weighted", tail=1.005)
+            In [1]: import trikit
+            In [2]: raa = trikit.load(dataset="raa")
+            In [3]: tri = trikit.totri(data=raa)
+            In [4]: cl = tri.cl(sel="all-weighted", tail=1.005)
 
-        ``cl`` represents an instance of ``_ChainLadderResult``, which
+        ``cl`` represents an instance of ``ChainLadderResult``, which
         exposes the ``plot`` method. First, we compile the dictionary of
         attributes to override:
 
-        >>> kwds = dict(marker="s", markersize=6)
-        >>> cl.plot(**kwds)
+            In [6]: kwds = dict(marker="s", markersize=6)
+            In [7]: cl.plot(**kwds)
         """
         import matplotlib.pyplot as plt
         import seaborn as sns
-        data = self._data_transform()
+        sns.set_context(context)
 
         # Plot chain ladder projections by development period for each
         # origin year. FacetGrid's ``hue`` argument should be set to
         # "rectype".
-        sns.set_context(context)
+        data = self._data_transform()
         with sns.axes_style(axes_style):
             huekwargs = dict(
                 marker=["o", "o",], markersize=[6, 6,],
@@ -451,62 +420,59 @@ class BaseChainLadderResult:
                 else:
                     warnings.warn("hue_kws overrides not correct length - Ignoring.")
 
-            titlestr_ = "Chain Ladder Ultimate Projections by Origin"
-
-
-            # pltkwargs = dict(
-            #     marker="o", markersize=6, alpha=1, markeredgecolor="#000000",
-            #     markeredgewidth=.50, linestyle="--", linewidth=.75,
-            #     fillstyle="full",
-            #     )
-            #
-            # if kwargs:
-            #     pltkwargs.update(kwargs)
-
-            g = sns.FacetGrid(
-                data, col="origin", hue="rectype", hue_kws=huekwargs,
-                col_wrap=col_wrap, margin_titles=False, despine=True, sharex=True,
-                sharey=True, hue_order=["forecast", "actual",]
+            grid = sns.FacetGrid(
+                data, col="origin", hue="rectype", hue_kws=huekwargs, col_wrap=col_wrap,
+                margin_titles=False, despine=True, sharex=True, sharey=True,
+                hue_order=["forecast", "actual",]
                 )
 
-            g.map(plt.plot, "dev", "value",)
-            g.set_axis_labels("", "")
-            g.set(xticks=data.dev.unique().tolist())
-            g.set_titles("{col_name}", size=9)
-            g.set_xticklabels(data.dev.unique().tolist(), size=8)
+            grid.map(plt.plot, "dev", "value",)
+            grid.set_axis_labels("", "")
+            grid.set(xticks=data.dev.unique().tolist())
+            grid.set_titles("{col_name}", size=9)
+            grid.set_xticklabels(data.dev.unique().tolist(), size=8)
 
             # Change ticklabel font size and place legend on each facet.
-            for i, _ in enumerate(g.axes):
-                ax_ = g.axes[i]
+            for ii, _ in enumerate(grid.axes):
+                ax_ = grid.axes[ii]
                 legend_ = ax_.legend(
                     loc="lower right", fontsize="x-small", frameon=True,
                     fancybox=True, shadow=False, edgecolor="#909090",
-                    framealpha=1, markerfirst=True,)
+                    framealpha=1, markerfirst=True,
+                    )
                 legend_.get_frame().set_facecolor("#FFFFFF")
-                ylabelss_ = [i.get_text() for i in list(ax_.get_yticklabels())]
-                ylabelsn_ = [float(i.replace(u"\u2212", "-")) for i in ylabelss_]
-                ylabelsn_ = [i for i in ylabelsn_ if i>=0]
-                ylabels_ = ["{:,.0f}".format(i) for i in ylabelsn_]
-                ax_.set_yticklabels(ylabels_, size=8)
+                ylabelss = [jj.get_text() for jj in list(ax_.get_yticklabels())]
+                ylabelsn = [float(jj.replace(u"\u2212", "-")) for jj in ylabelss]
+                ylabelsn = [jj for jj in ylabelsn if jj>=0]
+                ylabels = ["{:,.0f}".format(jj) for jj in ylabelsn]
+                if (len(ylabels)>0):
+                    ax_.set_yticklabels(ylabels, size=8)
+                ax_.tick_params(
+                    axis="x", which="both", bottom=True, top=False, labelbottom=True
+                    )
+                ax_.annotate(
+                    origin_, xy=(.85, .925), xytext=(.85, .925), xycoords='axes fraction',
+                    textcoords='axes fraction', fontsize=9, rotation=0, color="#000000",
+                    )
 
                 # Draw border around each facet.
-                for _, spine_ in ax_.spines.items():
-                    spine_.set_visible(True)
-                    spine_.set_color("#000000")
-                    spine_.set_linewidth(.50)
+                for _, spine in ax_.spines.items():
+                    spine.set_visible(True)
+                    spine.set_color("#000000")
+                    spine.set_linewidth(.50)
 
         # Adjust facets downward and and left-align figure title.
-        plt.subplots_adjust(top=0.9)
-        g.fig.suptitle(
-            titlestr_, x=0.065, y=.975, fontsize=9, color="#404040", ha="left"
-            )
+        # plt.subplots_adjust(top=0.87)
+        # grid.fig.suptitle(
+        #     "Chain Ladder Ultimates by Origin", x=0.065, y=.975,
+        #     fontsize=9, color="#404040", ha="left"
+        #     )
+        plt.show()
 
 
-    # def __str__(self):
-    #     formats_ = {"ultimate":"{:.0f}".format, "reserve":"{:.0f}".format,
-    #                 "latest":"{:.0f}".format, "cldf":"{:.5f}".format,}
-    #     return(self.summary.to_string(formatters=formats_))
-
+    def __str__(self):
+        return(self.summary.to_string(formatters=self._summspecs))
 
     def __repr__(self):
         return(self.summary.to_string(formatters=self._summspecs))
+

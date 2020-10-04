@@ -43,7 +43,7 @@ setuptools.setup(
 
     classifiers=[
         "Development Status :: 4 - Beta",
-        Programming Language :: Python :: 3 :: Only
+        "Programming Language :: Python :: 3 :: Only",
         "License :: OSI Approved :: MIT License",
         "Topic :: Scientific/Engineering :: Mathematics",
         "Operating System :: OS Independent",
@@ -54,5 +54,5 @@ setuptools.setup(
 
     install_requires=REQUIREMENTS,
 
-    include_package_data=True,
+    include_package_data=True
     )

@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 ===============================================================================
-``trikit`` --- Actuarial Reserving Tools and Techniques
+``trikit`` --- A Pythonic Approach to Actuarial Reserving
 ===============================================================================
 
 
@@ -15,7 +15,7 @@
    
    Project Overview <overview>
    Quickstart Guide <quickstart>
-   Triangle Implementation <triangle>
+   Triangle Objects <triangle>
    The Chain Ladder Method <chainladder>
    Reserve Variability Estimates <range>
    Sample Datasets <datasets>

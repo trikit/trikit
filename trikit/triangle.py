@@ -5,192 +5,73 @@ or ``CumTriangle`` instances directly; rather the dataset and triangle
 arguments should be passed to ``totri``, which will return either an
 instance of ``CumTriangle`` or ``IncrTriangle``, depending on the argument
 specified for ``type_``.
-
-##### TODO #####
-[0] Refactor a2a_avgs
-[1] Integrate a2aind into a2a_avgs
-[2] Make a2a_avgs a function rather than a property.
 """
 import itertools
 import numpy as np
 import pandas as pd
+from scipy import stats
 from .chainladder import BaseChainLadder
 from .chainladder.bootstrap import BootstrapChainLadder
 from .chainladder.mack import MackChainLadder
 
-#
-#
-# class _LossDevelopmentFactors(pd.DataFrame):
-#
-#     def __init__(self, tri):
-#
-#         df = tri.as_tbl()
-#         df["value2"] = df.groupby([tri.origin])[tri.value].shift(periods=-1)
-#         df["a2a"] = df["value2"] / df[tri.value]
-#         df = df.drop("value2", axis=1)
-#         super().__init__(df)
-#
-#
-#         self._a2atri = None
 
 
 
+class _BaseTriangle(pd.DataFrame):
 
-
-class _LossDevelopmentFactors(pd.DataFrame):
-    """
-    Loss Development factors for specified triangle.
-    """
-    def __init__(self, tri):
-
-        df = tri.as_tbl()
-        df["value2"] = df.groupby(df.columns[0])[df.columns[2]].shift(periods=-1)
-        df["a2a"] = df["value2"] / df[df.columns[2]]
-        df = df.drop("value2", axis=1)
-        super().__init__(df)
-
-
-
-    def as_tri(self):
-        """
-        Return age-to-age factors in triangle representation.
-        """
-        keepcols = [self.columns[0], self.columns[1], self.columns[3]]
-        a2atri = self[keepcols].pivot(index=self.columns[0], columns=self.columns[1])
-        a2atri = a2atri.dropna(axis=0, how="all").dropna(axis=1, how="all").rename_axis(None)
-        a2atri.columns = a2atri.columns.droplevel(0)
-        a2atri.columns.name = None
-        return(a2atri)
-
-
-
-
-df  = trikit.load(dataset="raa")
-dv = _LossDevelopmentFactors(tri)
-
-
-
-
-
-#
-#
-#
-#
-# class _LinkRatios(pd.DataFrame):
-#
-#     def __init__(self):
-#
-#         df = tri.as_tbl()
-#         df["value2"] = df.groupby([origin])[value].shift(periods=-1)
-#         df["a2a"] = df["value2"] / df[value]
-#         df = df.drop("value2", axis=1)
-#         super().__init__(df)
-#
-#
-#     def _a2atri(self):
-#         keepcols = [self.columns[0], self.columns[1], "a2a"]
-#         a2atri = self[keepcols].pivot(index=self.columns[0], columns=self.columns[1])
-#         a2atri = a2atri.dropna(axis=0, how="all").dropna(axis=1, how="all").rename_axis(None)
-#         a2atri.columns = a2atri.columns.droplevel(0)
-#         a2atri.columns.name = None
-#         return(a2atri)
-#
-#
-#     def __str__(self):
-#         a2atri = self._a2atri()
-#         formats = {d:"{:.5f}".format for d in a2atri.columns}
-#         return(a2atri.to_string(formatters=formats))
-#
-#
-#     # def __repr__(self):
-#     #     """
-#     #     Controls when object is referenced from interpreter.
-#     #     """
-#     #     formats_ = {dev_:"{:.0f}".format for dev_ in self.columns}
-#     #     return(self.to_string(formatters=formats_))
-#
-#         if self._a2a is None:
-#             self._a2a = self.shift(periods=-1, axis=1) / self
-#             self._a2a = self._a2a.dropna(axis=1, how="all").dropna(axis=0, how="all")
-#         return(self._a2a.sort_index())
-#
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class IncrTriangle(pd.DataFrame):
-    """
-    ``IncrTriangle`` specification. Note that this class isn't part of
-    trikit's public interface, as is used  primarily as a base class for
-    ``CumTriangle`` object definitions. As such, users shouldn't
-    instantiate ``IncrTriangle`` instances directly. To obtain an
-    incremental triangle object, use ``trikit.totri``.
-    """
     def __init__(self, data, origin=None, dev=None, value=None):
         """
-        Attempts to convert ``data`` to an incremental triangle instance.
-        Checks for ``origin``, ``dev`` and ``value`` arguments for fieldnames
-        corresponding to origin year, development period and loss amount
-        respectively. If ``origin``, ``dev`` and ``value`` are unspecified,
-        fieldnames are assumed to be "origin", "dev" and "value".
+        Transforms ``data`` into a triangle instance.
 
         Parameters
         ----------
         data: pd.DataFrame
-            The dataset to be coerced into a ``IncrTriangle`` instance.
+            The dataset to be transformed into a ``_BaseTriangle`` instance.
             ``data`` must be tabular loss data with at minimum columns
             representing the origin/acident year, the development
             period and the actual loss amount, given by ``origin``, ``dev``
             and ``value`` arguments.
 
         origin: str
-            The fieldname in ``data`` representing the origin year.
-            Defaults to None.
+            The fieldname in ``data`` representing origin year.
 
         dev: str
-            The fieldname in ``data`` representing the development period.
-            Defaults to None.
+            The fieldname in ``data`` representing development period.
 
         value: str
             The fieldname in ``data`` representing loss amounts.
-            Defaults to None.
-
-        Returns
-        -------
-        trikit.triangle.IncrTriangle
         """
-        try:
-            if all(i is None for i in (origin, dev, value)):
-                origin, dev, value = "origin", "dev", "value"
-            data2 = data[[origin, dev, value]]
-            data2 = data2.groupby([origin, dev], as_index=False).sum()
-            tri = data2.pivot(index=origin, columns=dev).rename_axis(None)
-            tri.columns = tri.columns.droplevel(0)
+        if not isinstance(data, pd.DataFrame):
+            raise TypeError("`data` must be an instance of pd.DataFrame.")
 
-        except KeyError:
-            print("One or more fields not present in data.")
+        origin_ = "origin" if origin is None else origin
+        if origin_ not in data.columns:
+            raise KeyError("`{}` not present in data.".format(origin_))
 
-        # Force all triangle cells to be of type np.float_.
-        for i in tri:
-            tri[i] = tri[i].astype(np.float_)
+        dev_ = "dev" if dev is None else dev
+        if dev_ not in data.columns:
+            raise KeyError("`{}` not present in data.".format(dev_))
 
+        value_ = "value" if value is None else value
+        if value_ not in data.columns:
+            raise KeyError("`{}` not present in data.".format(value_))
+
+        data2 = data.copy(deep=True)
+        data2 = data2[[origin_, dev_, value_]]
+        data2 = data2.groupby([origin_, dev_], as_index=False).sum()
+        data2 = data2.sort_values(by=[origin_, dev_])
+        tri = data2.pivot(index=origin_, columns=dev_).rename_axis(None)
+        tri.columns = tri.columns.droplevel(0)
+
+        # Force all triangle cells to be of type np.float.
+        tri = tri.astype({kk:np.float for kk in tri.columns})
         tri.columns.name = None
 
         super().__init__(tri)
 
-        self.origin = origin
-        self.value = value
-        self.dev = dev
+        self.origin = origin_
+        self.value = value_
+        self.dev = dev_
 
         # Properties.
         self._latest_by_origin = None
@@ -204,7 +85,6 @@ class IncrTriangle(pd.DataFrame):
         self._rlvi = None
         self._clvi = None
         self._dof = None
-
 
 
     @property
@@ -221,7 +101,6 @@ class IncrTriangle(pd.DataFrame):
         return(self._nbr_cells)
 
 
-
     @property
     def triind(self):
         """
@@ -236,11 +115,10 @@ class IncrTriangle(pd.DataFrame):
         return(self._triind)
 
 
-
     @property
     def rlvi(self):
         """
-        Determine the last valid index by row/origin period.
+        Determine the last valid index by origin.
 
         Returns
         -------
@@ -254,7 +132,6 @@ class IncrTriangle(pd.DataFrame):
             self._rlvi["col_offset"] = \
                 self._rlvi["dev"].map(lambda x: self.columns.get_loc(x))
         return(self._rlvi)
-
 
 
     @property
@@ -273,7 +150,6 @@ class IncrTriangle(pd.DataFrame):
             self._clvi["row_offset"] = \
                 self._clvi["origin"].map(lambda x: self.index.get_loc(x))
         return(self._clvi)
-
 
 
     @property
@@ -297,7 +173,6 @@ class IncrTriangle(pd.DataFrame):
         return(self._latest[["origin", "dev", "latest"]].sort_index())
 
 
-
     @property
     def latest_by_origin(self):
         """
@@ -312,7 +187,6 @@ class IncrTriangle(pd.DataFrame):
                 data=self.latest["latest"].values, index=self.latest["origin"].values,
                 name="latest_by_origin")
         return(self._latest_by_origin.sort_index())
-
 
 
     @property
@@ -331,7 +205,6 @@ class IncrTriangle(pd.DataFrame):
         return(self._latest_by_devp.sort_index())
 
 
-
     @property
     def devp(self):
         """
@@ -346,7 +219,6 @@ class IncrTriangle(pd.DataFrame):
         return(self._devp.sort_index())
 
 
-
     @property
     def origins(self):
         """
@@ -359,7 +231,6 @@ class IncrTriangle(pd.DataFrame):
         if self._origins is None:
             self._origins = pd.Series(self.index, name="origin")
         return(self._origins.sort_index())
-
 
 
     @property
@@ -382,10 +253,14 @@ class IncrTriangle(pd.DataFrame):
         return(self._maturity.sort_index())
 
 
-
-    def as_tbl(self):
+    def to_tbl(self, drop_nas=True):
         """
         Transform triangle instance into a tabular representation.
+
+        Parameters
+        ----------
+        drop_nas: bool
+            Should records with NA values be dropped? Default value is True.
 
         Returns
         -------
@@ -393,37 +268,11 @@ class IncrTriangle(pd.DataFrame):
         """
         tri = self.reset_index(drop=False).rename({"index":"origin"}, axis=1)
         df = pd.melt(tri, id_vars=[self.origin], var_name=self.dev, value_name=self.value)
-        df = df[~np.isnan(df[self.value])]
+        if drop_nas:
+            df = df[~np.isnan(df[self.value])]
         df = df.astype({self.origin:np.int_, self.dev:np.int_, self.value:np.float_})
         df = df[[self.origin, self.dev, self.value]].sort_values(by=[self.origin, self.dev])
         return(df.reset_index(drop=True))
-
-
-
-    def as_cum(self):
-        """
-        Transform incremental triangle instance into a cumulative
-        representation. Note that returned object will be a DataFrame,
-        not an instance of ``triangle.CumTriangle``.
-
-        Returns
-        -------
-        pd.DataFrame
-        """
-        return(self.cumsum(axis=1))
-
-
-
-    def as_incr(self):
-        """
-        Transform ``triangle.IncrTriangle`` instance to pd.DataFrame.
-
-        Returns
-        -------
-        pd.DataFrame
-        """
-        return(pd.DataFrame(self))
-
 
 
     def __str__(self):
@@ -431,62 +280,124 @@ class IncrTriangle(pd.DataFrame):
         return(self.to_string(formatters=formats_))
 
 
-    # def __repr__(self):
-    #     """
-    #     Controls when object is referenced from interpreter.
-    #     """
-    #     formats_ = {dev_:"{:.0f}".format for dev_ in self.columns}
-    #     return(self.to_string(formatters=formats_))
+    def __repr__(self):
+        formats_ = {dev_:"{:.0f}".format for dev_ in self.columns}
+        return(self.to_string(formatters=formats_))
 
 
 
 
-
-class CumTriangle(IncrTriangle):
+class _BaseIncrTriangle(_BaseTriangle):
     """
-    Cumulative triangle class definition.
+    Internal incremental triangle class definition.
     """
     def __init__(self, data, origin=None, dev=None, value=None):
         """
-        Attempts to represent ``data`` as a cumulative triangle instance.
-        ``origin``, ``dev`` and ``value`` arguments represent fieldnames
-        corresponding to loss year, development period and loss amount
-        respectively. If ``origin``, ``dev`` and ``value`` are unspecified,
-        fieldnames are assumed to be "origin", "dev" and "value".
-
         Parameters
         ----------
+        data: pd.DataFrame
+            The dataset to be transformed into a triangle instance.
+            ``data`` must be tabular loss data with at minimum columns
+            representing the origin/acident year, development
+            period and value of interest, given by ``origin``, ``dev``
+            and ``value`` respectively.
+
         origin: str
-            The fieldname in ``data`` representing the origin year.
-            Defaults to None.
+            The fieldname in ``data`` representing origin year.
 
         dev: str
-            The fieldname in ``data`` representing the development period.
-            Defaults to None.
+            The fieldname in ``data`` representing development period.
 
         value: str
             The fieldname in ``data`` representing loss amounts.
-            Defaults to None.
+        """
+        # Replace NaN values with 1.0 in value column.
+        data.loc[np.where(np.isnan(data.value.values))[0], "value"] = 1.
+        super().__init__(data, origin=origin, dev=dev, value=value)
+
+
+
+
+
+class IncrTriangle(_BaseIncrTriangle):
+    """
+    Public incremental triangle class definition.
+    """
+    def __init__(self, data, origin=None, dev=None, value=None):
+        """
+        Parameters
+        ----------
+        data: pd.DataFrame
+            The dataset to be transformed into a triangle instance.
+            ``data`` must be tabular loss data with at minimum columns
+            representing the origin/acident year, development
+            period and value of interest, given by ``origin``, ``dev``
+            and ``value`` respectively.
+
+        origin: str
+            The fieldname in ``data`` representing origin year.
+
+        dev: str
+            The fieldname in ``data`` representing development period.
+
+        value: str
+            The fieldname in ``data`` representing loss amounts.
+        """
+        super().__init__(data, origin=origin, dev=dev, value=value)
+
+
+    def to_cum(self):
+        """
+        Transform triangle instance into cumulative representation.
 
         Returns
         -------
         trikit.triangle.CumTriangle
         """
-        if all(i is None for i in (origin, dev, value)):
-            origin, dev, value = "origin", "dev", "value"
-        data2 = data[[origin, dev, value]]
-        data2 = data2.groupby([origin, dev], as_index=False).sum()
-        data2 = data2.sort_values(by=[origin, dev])
+        return(CumTriangle(self.to_tbl(), origin="origin", dev="dev", value="value"))
+
+
+
+
+
+class _BaseCumTriangle(_BaseTriangle):
+    """
+    Internal cumulative triangle class definition.
+    """
+    def __init__(self, data, origin="origin", dev="dev", value="value"):
+        """
+        Transforms ``data`` into a cumulative triangle instance.
+
+        Parameters
+        ----------
+         data: pd.DataFrame
+            The dataset to be transformed into a triangle instance.
+            ``data`` must be tabular loss data with at minimum columns
+            representing the origin/acident year, development
+            period and value of interest, given by ``origin``, ``dev``
+            and ``value`` respectively.
+
+        origin: str
+            The fieldname in ``data`` representing the origin year.
+
+        dev: str
+            The fieldname in ``data`` representing the development period.
+
+        value: str
+            The fieldname in ``data`` representing loss amounts.
+        """
+        # Replace NaN values with 1.0 in value column.
+        data2 = data.copy(deep=True)
+        data2.loc[np.where(np.isnan(data[value].values))[0], value] = 1.
         data2["cumval"] = data2.groupby([origin], as_index=False)[value].cumsum()
         data2 = data2.drop(value, axis=1)
         data2 = data2.rename(columns={"cumval":value})
         super().__init__(data=data2, origin=origin, dev=dev, value=value)
 
-        # Properties
+        # Properties.
         self._a2a_avgs = None
         self._a2aind = None
         self._a2a = None
-
 
 
     @staticmethod
@@ -501,19 +412,14 @@ class CumTriangle(IncrTriangle):
             single development period.
 
         weights: np.ndarray
-            Weights to assign specific values in the average computation.
-            If None, each value is assigned equal weight.
+            Not yet implemented.
 
         Returns
         -------
         float
         """
-        if len(vals)==0:
-            avg_ = None
-        else:
-            avg_ = np.prod(vals) ** (1 / len(vals))
-        return(avg_)
-
+        arr = np.asarray(vals, dtype=np.float)
+        return(np.NaN if arr.size==0 else stats.gmean(arr))
 
 
     @staticmethod
@@ -528,54 +434,14 @@ class CumTriangle(IncrTriangle):
             single development period.
 
         weights: np.ndarray
-            Weights to assign specific values in the average computation.
-            If None, each value is assigned equal weight.
+            Not yet implemented.
 
         Returns
         -------
         float
         """
-        if len(vals) < 1:
-            avg_ = None
-        else:
-            avg_ = sum(vals) / len(vals)
-        return(avg_)
-
-
-
-    @staticmethod
-    def _medial(vals, weights=None):
-        """
-        Compute the medial average of elements in ``vals``. Medial average
-        eliminates the min and max values, then returns the arithmetic
-        average of the remaining items.
-
-        Parameters
-        ----------
-        vals: np.ndarray
-            An array of values, typically representing link ratios from a
-            single development period.
-
-        weights: np.ndarray
-            Weights to assign specific values in the average computation.
-            If None, each value is assigned equal weight.
-
-        Returns
-        -------
-        float
-        """
-        vals = list(vals)
-        if len(vals)==0:
-            avg_ = None
-        elif len(vals)==1:
-            avg_ = vals[0]
-        elif len(vals)==2:
-            avg_ = sum(vals) / len(vals)
-        else:
-            keep_ = sorted(vals)[1:-1]
-            avg_ = sum(keep_) / len(keep_)
-        return(avg_)
-
+        arr = np.asarray(vals, dtype=np.float)
+        return(np.NaN if arr.size==0 else arr.mean())
 
 
     @property
@@ -593,7 +459,6 @@ class CumTriangle(IncrTriangle):
         return(self._a2a.sort_index())
 
 
-
     @property
     def a2aind(self):
         """
@@ -609,11 +474,10 @@ class CumTriangle(IncrTriangle):
         return(self._a2aind)
 
 
-
     @a2aind.setter
     def a2aind(self, update_spec):
         """
-        Update ``self.a2aind`` in order to down-weight ldfs in Chain Ladder
+        Update ``self.a2aind`` in order to down-weight ldfs in chain ladder
         calculation.
 
         Parameters
@@ -628,72 +492,106 @@ class CumTriangle(IncrTriangle):
         Load raa sample dataset, and remove a highly-leveraged age-to-age
         factor from influencing the ldf calculation.
 
-        >>> import trikit
-        >>> raa = trikit.load(dataset="raa")
-        >>> tri = trikit.totri(data=raa)
-        >>> tri.a2a.iloc[:, :1]
-                      1
-        1981   1.649840
-        1982  40.424528
-        1983   2.636950
-        1984   2.043324
-        1985   8.759158
-        1986   4.259749
-        1987   7.217235
-        1988   5.142117
-        1989   1.721992
+            In [1]: import trikit
+            In [2]: raa = trikit.load(dataset="raa")
+            In [3]: tri = trikit.totri(data=raa)
+            In [4]: tri.a2a.iloc[:, :1]
+            Out[1]:
+                          1
+            1981   1.649840
+            1982  40.424528
+            1983   2.636950
+            1984   2.043324
+            1985   8.759158
+            1986   4.259749
+            1987   7.217235
+            1988   5.142117
+            1989   1.721992
 
         To remove the link ratio at origin year 1982 and development
         period 1, run the following:
 
-        >>> tri.a2aind = (1982, 1, 0)
-        >>> tri.a2aind
-              1  2  3  4  5  6  7  8  9
-        1981  1  1  1  1  1  1  1  1  1
-        1982  0  1  1  1  1  1  1  1  0
-        1983  1  1  1  1  1  1  1  0  0
-        1984  1  1  1  1  1  1  0  0  0
-        1985  1  1  1  1  1  0  0  0  0
-        1986  1  1  1  1  0  0  0  0  0
-        1987  1  1  1  0  0  0  0  0  0
-        1988  1  1  0  0  0  0  0  0  0
-        1989  1  0  0  0  0  0  0  0  0
+            In [1]: tri.a2aind = (1982, 1, 0)
+            In [2]: tri.a2aind
+            Out[1]:
+                  1  2  3  4  5  6  7  8  9
+            1981  1  1  1  1  1  1  1  1  1
+            1982  0  1  1  1  1  1  1  1  0
+            1983  1  1  1  1  1  1  1  0  0
+            1984  1  1  1  1  1  1  0  0  0
+            1985  1  1  1  1  1  0  0  0  0
+            1986  1  1  1  1  0  0  0  0  0
+            1987  1  1  1  0  0  0  0  0  0
+            1988  1  1  0  0  0  0  0  0  0
+            1989  1  0  0  0  0  0  0  0  0
 
         Notice that the value at (1982, 1) is 0. To change it back
         to 1, simply run:
 
-        >>> tri.a2aind = (1982, 1, 1)
-        >>> tri.a2aind
-              1  2  3  4  5  6  7  8  9
-        1981  1  1  1  1  1  1  1  1  1
-        1982  1  1  1  1  1  1  1  1  0
-        1983  1  1  1  1  1  1  1  0  0
-        1984  1  1  1  1  1  1  0  0  0
-        1985  1  1  1  1  1  0  0  0  0
-        1986  1  1  1  1  0  0  0  0  0
-        1987  1  1  1  0  0  0  0  0  0
-        1988  1  1  0  0  0  0  0  0  0
-        1989  1  0  0  0  0  0  0  0  0
+            In [1]: tri.a2aind = (1982, 1, 1)
+            In [2]: tri.a2aind
+            Out[1]:
+                  1  2  3  4  5  6  7  8  9
+            1981  1  1  1  1  1  1  1  1  1
+            1982  1  1  1  1  1  1  1  1  0
+            1983  1  1  1  1  1  1  1  0  0
+            1984  1  1  1  1  1  1  0  0  0
+            1985  1  1  1  1  1  0  0  0  0
+            1986  1  1  1  1  0  0  0  0  0
+            1987  1  1  1  0  0  0  0  0  0
+            1988  1  1  0  0  0  0  0  0  0
+            1989  1  0  0  0  0  0  0  0  0
 
         Note also that ``self.a2aind`` may be updated using DataFrame
         methods directly:
 
-        >>> tri.a2aind.at[1982, 1] = 0
-        >>> tri.a2aind
-              1  2  3  4  5  6  7  8  9
-        1981  1  1  1  1  1  1  1  1  1
-        1982  0  1  1  1  1  1  1  1  0
-        1983  1  1  1  1  1  1  1  0  0
-        1984  1  1  1  1  1  1  0  0  0
-        1985  1  1  1  1  1  0  0  0  0
-        1986  1  1  1  1  0  0  0  0  0
-        1987  1  1  1  0  0  0  0  0  0
-        1988  1  1  0  0  0  0  0  0  0
-        1989  1  0  0  0  0  0  0  0  0
+            In [1]: tri.a2aind.at[1982, 1] = 0
+            In [2]: tri.a2aind
+            Out[1]:
+                  1  2  3  4  5  6  7  8  9
+            1981  1  1  1  1  1  1  1  1  1
+            1982  0  1  1  1  1  1  1  1  0
+            1983  1  1  1  1  1  1  1  0  0
+            1984  1  1  1  1  1  1  0  0  0
+            1985  1  1  1  1  1  0  0  0  0
+            1986  1  1  1  1  0  0  0  0  0
+            1987  1  1  1  0  0  0  0  0  0
+            1988  1  1  0  0  0  0  0  0  0
+            1989  1  0  0  0  0  0  0  0  0
         """
         indx, column, value = update_spec
         self._a2aind.at[indx, column] = value
 
+
+
+    def _medial(vals, weights=None):
+        """
+        Compute the medial average of elements in ``vals``. Medial average
+        eliminates the min and max values, then returns the arithmetic
+        average of the remaining items.
+        Parameters
+        ----------
+        vals: np.ndarray
+            An array of values, typically representing link ratios from a
+            single development period.
+        weights: np.ndarray
+            Weights to assign specific values in the average computation.
+            If None, each value is assigned equal weight.
+        Returns
+        -------
+        float
+        """
+        vals = list(vals)
+        if len(vals)==0:
+            avg_ = None
+        elif len(vals)==1:
+            avg_ = vals[0]
+        elif len(vals)==2:
+            avg_ = sum(vals) / len(vals)
+        else:
+            keep_ = sorted(vals)[1:-1]
+            avg_ = sum(keep_) / len(keep_)
+        return(avg_)
 
 
     @property
@@ -728,12 +626,6 @@ class CumTriangle(IncrTriangle):
                     for i in ldf_avg_lst
                 ]
 
-            # for i in ldf_avg_lst:
-            #     iteravg, iterdur = i[0], i[1]
-            #     iterstr = "all-" + str(iteravg) if iterdur==0 \
-            #               else str(iterdur) + "-" + str(iteravg)
-            #     indxstrs.append(iterstr)
-
             indx = sorted(ldf_avg_lst, key=lambda x: x[1])
             self._a2a_avgs = pd.DataFrame(index=indxstrs, columns=self.a2a.columns)
 
@@ -744,6 +636,7 @@ class CumTriangle(IncrTriangle):
                     itercol, colstr = self.a2a.iloc[:, col], self.a2a.columns[col]
 
                     if avgtype=='weighted':
+
                         t_ic_1, t_ic_2 = self.iloc[:, col], self.iloc[:, (col + 1)]
                         # Find first NaN value in t_ic_2.
                         first_nan_year = t_ic_2.index[t_ic_2.count():][0]
@@ -791,11 +684,38 @@ class CumTriangle(IncrTriangle):
 
                     self._a2a_avgs.loc[indxstr, colstr] = iteravg
 
+        # Remove medial averages for the time being.
+        self._a2a_avgs = self._a2a_avgs[~self._a2a_avgs.index.str.contains("medial")]
+
         return(self._a2a_avgs)
 
 
+
+
+class CumTriangle(_BaseCumTriangle):
+    """
+    Public cumulative triangle class definition.
+    """
+    def __init__(self, data, origin=None, dev=None, value=None):
+        super().__init__(data, origin=origin, dev=dev, value=value)
+
+
+
+    def to_incr(self):
+        """
+        Obtain incremental triangle based on cumulative triangle instance.
+        """
+        incrtri = self.diff(axis=1)
+        incrtri.iloc[:,0] = self.iloc[:, 0]
+        incrtri = incrtri.reset_index(drop=False).rename({"index":"origin"}, axis=1)
+        df = pd.melt(incrtri, id_vars=["origin"], var_name="dev", value_name="value")
+        df = df[~np.isnan(df["value"])].astype({"origin":np.int, "dev":np.int, "value":np.float})
+        df = df.sort_values(by=["origin", "dev"]).reset_index(drop=True)
+        return(IncrTriangle(df, origin="origin", dev="dev", value="value"))
+
+
     def plot(self, color="#334488", axes_style="darkgrid", context="notebook",
-             col_wrap=5, **kwargs):
+             col_wrap=4, **kwargs):
         """
         Visualize triangle development patterns.
 
@@ -823,17 +743,13 @@ class CumTriangle(IncrTriangle):
 
         kwargs: dict
             Additional plot styling options.
-
-        Returns
-        -------
-        matplotlib.pyplot.plot
         """
         import matplotlib as mpl
         import matplotlib.pyplot as plt
         import seaborn as sns
 
         sns.set_context(context)
-        data = self.as_tbl()
+        data = self.to_tbl()
 
         with sns.axes_style(axes_style):
 
@@ -846,7 +762,7 @@ class CumTriangle(IncrTriangle):
             if kwargs:
                 pltkwargs.update(kwargs)
 
-            titlestr_ = "Actual Loss Development by Origin"
+            titlestr = "Loss Development by Origin"
 
             g = sns.FacetGrid(
                 data, col="origin", col_wrap=col_wrap, margin_titles=False,
@@ -859,81 +775,62 @@ class CumTriangle(IncrTriangle):
             g.set_titles("{col_name}", size=9)
             g.set_xticklabels(data.dev.unique().tolist(), size=8)
 
-            # Change ticklabel font size and place legend on each facet.
-            for i, _ in enumerate(g.axes):
-                ax_ = g.axes[i]
-                ylabelss_ = [i.get_text() for i in list(ax_.get_yticklabels())]
-                ylabelsn_ = [float(i.replace(u"\u2212", "-")) for i in ylabelss_]
-                ylabelsn_ = [i for i in ylabelsn_ if i>=0]
-                ylabels_ = ["{:,.0f}".format(i) for i in ylabelsn_]
-                ax_.set_yticklabels(ylabels_, size=8)
+            for ii, _ in enumerate(g.axes):
+                ax_ = g.axes[ii]
+
+                ylabelss = [jj.get_text() for jj in list(ax_.get_yticklabels())]
+                ylabelsn = [float(jj.replace(u"\u2212", "-")) for jj in ylabelss]
+                ylabelsn = [jj for jj in ylabelsn if jj>=0]
+                ylabels = ["{:,.0f}".format(jj) for jj in ylabelsn]
+                if (len(ylabels)>0):
+                    ax_.set_yticklabels(ylabels, size=8)
+                ax_.tick_params(
+                    axis='x', which='both', bottom=True, top=False, labelbottom=True
+                    )
 
                 # Draw border around each facet.
-                for _, spine_ in ax_.spines.items():
-                    spine_.set_visible(True)
-                    spine_.set_color("#000000")
-                    spine_.set_linewidth(.50)
+                for _, spine in ax_.spines.items():
+                    spine.set_visible(True)
+                    spine.set_color("#000000")
+                    spine.set_linewidth(.50)
+
 
         # Adjust facets downward and and left-align figure title.
-        plt.subplots_adjust(top=0.9)
-        g.fig.suptitle(
-            titlestr_, x=0.065, y=.975, fontsize=11, color="#404040", ha="left"
-            )
+        # plt.subplots_adjust(top=0.9)
+        # g.fig.suptitle(
+        #     titlestr, x=0.065, y=.975, fontsize=11, color="#404040", ha="left"
+        #     )
+        plt.show()
 
 
-    def as_incr(self):
+
+    def cl(self, range_method=None, **kwargs):
         """
-        Convert cumulative triangle instance into an incremental
-        representation. Note that returned object will not be of type
-        ``triangle.IncrTriangle``, but will instead be a DataFrame.
-
-        Returns
-        -------
-        ps.DataFrame
-        """
-        tri_ = self.diff(axis=1)
-        tri_.iloc[:, 0] = self.iloc[:, 0]
-        return(tri_)
-
-
-    def as_cum(self):
-        """
-        Transform ``triangle.CumTriangle`` instance to pd.DataFrame.
-
-        Returns
-        -------
-        pd.DataFrame
-        """
-        return(pd.DataFrame(self))
-
-
-    def chladder(self, range_method=None, **kwargs):
-        """
-        Apply Chain Ladder method to ``CumTriangle`` instance.
+        Produce chain ladder estimates based on cumulative triangle instance.
 
         Parameters
         ----------
         range_method: {"bootstrap", "mack"}
             Specifies the method to use to quantify ultimate/reserve
             variability. When ``range_method=None``, reduces to the standard
-            chain ladder technique providing point estimate reserve
-            projections at ultimate. Defaults to None.
+            chain ladder technique providing reserve point estimates by
+            origin. Defaults to None.
 
         kwargs: dict
             For each value of ``range_method``, there are a number of optional
             parameters that can be used to override the default behavior of
-            the algorithm in question. If a keyword argument is provided that
-            is not valid within the context of the given Chain Ladder variant,
+            the reserve estimator. If a keyword argument is provided that
+            is not valid within the context of the given chain ladder variant,
             the argument will be ignored and a warning will be generated.
-            What follows are valid optional keyword parameters that can be
-            passed into ``chladder`` for different values of ``range_method``:
+            What follows are valid optional keyword parameters for different
+            values of ``range_method``:
 
-            * ``range_method==None`` (Standard chain ladder)
+            * ``range_method=None`` (standard chain ladder)
                 - ``sel``: The ldf average to select from ``triangle.CumTriangle.a2a_avgs``.
-                Defaults to "all-weighted".
+                Defaults to ``"all-weighted"``.
                 - ``tail``: Tail factor. Defaults to 1.0.
 
-            * ``range_method="bootstrap"`` (Bootstrap chain ladder)
+            * ``range_method="bootstrap"`` (bootstrap chain ladder)
                 - ``sims``: The number of bootstrap resamplings to perform.
                 Defaults to 1000.
                 - ``q``: Determines which percentiles of the reserve distribution
@@ -942,7 +839,8 @@ class CumTriangle(IncrTriangle):
                 be handled. See documentation for ``_BoostrapChainLadder``
                 for more information. Defaults to 1.
                 - ``procdist``: The distribution used to incorporate process
-                variance. Currently, this can only be set to "gamma".
+                variance. At present , the only option is "gamma", but
+                this wqill change in a future release.
                 - ``parametric``: If True, fit standardized residuals to a
                 normal distribution then sample from this parameterized
                 distribution. Otherwise, sample with replacement from the
@@ -962,207 +860,178 @@ class CumTriangle(IncrTriangle):
                 - ``symmetric``: Whether the symmetric interval of given
                 ``q``('s) should be included in summary output.
 
-            * ``range_method="mcmc"`` (not yet implemented)
-                - ``q``: Determines which percentiles of the reserve distribution
-                to compute. Defaults to [.75, .95].
-                - ``symmetric``: Whether the symmetric interval of given
-                ``q``('s) should be included in summary output.
-
         Returns
         -------
         chainladder.*ChainLadderResult
-            One of {``BaseChainLadderResult``, ``BootstrapChainLadderResult``,
-                    ``MackChainLadderResult``, ``MCMCChainLadderResult``}
+            One of {``BaseChainLadderResult``,``BootstrapChainLadderResult``,``MackChainLadderResult``}.
 
         Examples
         --------
-        In the following examples we refer to the raa sample dataset which
-        can be retrieved as follows:
+        In the following examples we refer to the raa sample dataset. We read
+        in the dataset and create a cumulative triangle instance, identified as
+        ``tri``:
 
-        >>> import trikit
-        >>> RAA = trikit.load("raa")
-        >>> tri = trikit.totri(RAA)
+            In [1]: import trikit
+            In [2]: raa = trikit.load("raa")
+            In [3]: tri = trikit.totri(raa)
 
 
-        1. Perform standard chain ladder method, overriding ``sel`` and ``tail``:
+        1. Perform standard chain ladder, accepting defaults for ``sel`` and ``tail``:
 
-        >>> kwds = dict(sel="medial-5", tail=1.015)
-        >>> cl = tri.chladder(**kwds)
+            In [1]: cl0 = tri.cl()
+            In [2]:
+            Out[1]:
 
-        2. Perform boostrap chain ladder, overriding ``sims``, ``q`` and ``symmetric``:
+        2. Perform standard chain ladder, updating values for ``sel`` and ``tail``:
 
-        >>> kwds = dict(sims=2500, q=[.90, .99], symmetric=True)
-        >>> bcl = tri.chladder(range_method="bootstrap", **kwds)
+            In [1]: kwds = dict(sel="medial-5", tail=1.015)
+            In [2]: cl1 = tri.cl(**kwds)
+            In [3]:
+            Out[1]:
 
-        3. Perfrom Mack chain ladder, overriding ``alpha``:
 
-        >>> kwds = {"alpha":2}
-        >>> mcl = tri.chladder(range_method="mack", **kwds)
+        3. Perform boostrap chain ladder, overriding ``sims``, ``q`` and ``symmetric``:
+
+            In [1]: kwds = dict(sims=2500, q=[.90, .99], symmetric=True)
+            In [2]: bcl = tri.cl(range_method="bootstrap", **kwds)
+            In [3]:
+            Out[1]:
+
+
+        4. Perfrom Mack chain ladder, overriding ``alpha``:
+
+            In [1]: kwds = {"alpha":2}
+            In [2]: mcl = tri.cl(range_method="mack", **kwds)
+            In [3]:
+            Out[1]:
+
         """
         kwds = {} if kwargs is None else kwargs
+
         if range_method is None:
-            cl_ = BaseChainLadder(self).__call__(**kwds)
+            result = BaseChainLadder(self).__call__(**kwds)
+
         elif range_method.lower().strip().startswith("boot"):
-            cl_ = BootstrapChainLadder(self).__call__(**kwds)
+            result = BootstrapChainLadder(self).__call__(**kwds)
+
         elif range_method.lower().strip().startswith("mack"):
-            cl_ = MackChainLadder(self).__call__(**kwds)
+            result = MackChainLadder(self).__call__(**kwds)
+
         elif range_method.lower().startswith("mcmc"):
-            raise NotImplementedError("range_method='mcmc' not currently available.")
+            raise NotImplementedError("range_method='mcmc' not yet implemented.")
+
         else:
             raise ValueError("Invalid range_method specification: {}".format(range_method))
-        return(cl_)
+
+        return(result)
 
 
 
 
 
 
-
-
-def totri(data=None, type_="cumulative", origin="origin", dev="dev",
-          value="value", trifmt=None, datafmt="incremental"):
+def totri(data, type_="cum", data_format="incr", data_shape="tabular",
+          origin="origin", dev="dev", value="value"):
     """
-    Transform ``data`` to a triangle object. ``type_`` can be one of
-    "incremental" or "cumulative". If ``trifmt==None``, it is assumed
-    ``data`` is tabular loss data (e.g., pd.DataFrame) containing at
-    minimum the fields "origin", "dev" and "value". If ``trifmt`` is set
-    to "incremental" or "cumulative", ``data`` is assumed to be formatted
-    as a loss triangle, but hasn't yet been transformed into a ``_CumTriangle``
-    or _IncrTriangle instance. Returns either a ``_CumTriangle`` or
-    ``_IncrTriangle`` instance, depending on the value passed to ``type_``.
+    Create a triangle object based on ``data``. ``type_`` can be one of
+    "incr" or "cum", determining whether the resulting triangle represents
+    incremental or cumulative losses/counts/alae.
+    If ``data_shape="triangle"``, ``data`` is assumed to be structured as a
+    runoff triangle, indexed by origin with columns representing development
+    periods. If ``data_shape="tabular"``, data is assumed to be tabular with at
+    minimum columns ``origin``, ``dev`` and ``value``, which represent origin
+    year, development period and metric of interest respectively.
+    ``data_format`` indicates whether the metric of interest are cumulative
+    or incremental in nature. Default value is "incr".
 
     Parameters
     ----------
     data: pd.DataFrame
-        The dataset to be coerced into a *Triangle instance. ``data`` can be
-        tabular loss data or a pandas DataFrame formatted as a triangle but
-        not typed as such. In the latter case, ``trifmt`` must be specified to
-        indicate the representation of ``data`` (either "cumulative" or
-        "incremental").
+        The dataset to be coerced into a triangle instance. ``data`` can be
+        tabular loss data, or a dataset (pandas DataFrame) formatted as a
+        triangle, but not typed as such. In the latter case,
+        ``data_shape`` should be set to ```triangle``.
 
-    type_: str
-        Either "cumulative" or "incremental". Alternatively, ``type_`` can be
-        specified as "i" for "incremental" or "c" for "cumulative". Dictates
-        the type of triangle returned. Default value is "cumulative".
+    type_: {"cum", "incr"}
+        Either "cum" or "incr". Specifies how the metric of interest (losses,
+        counts, alae, etc.) are to be represented in the returned triangle
+        instance.
+        ``type_`` can also be specified as "i" for "incremental" or "c" for
+        "cumulative". Default value is "cum".
 
-    trifmt: str
-        One of "cumulative", "incremental" or None (None by default).
-        ``trifmt`` should only be set to something other than None if ``data``
-        is a DataFrame formatted as a loss triangle, but hasn't yet been
-        converted to a ``CumTriangle`` or ``IncrTriangle`` instance. When
-        ``datafmt`` is not None, ``trifmt`` is ignored.
+    data_format: {"cum", "incr"}
+        Specifies the representation of the metric of interest in ``data``.
+        Default value is "incr".
 
-    datafmt: str
-        When ``data`` is in tabular form, ``datafmt`` indicates whether the
-        records comprising ``data`` represent cumulative or incremental
-        losses.  When ``trifmt`` is not None, ``datafmt`` is ignored. Default
-        value is "incremental".
+    data_shape:{"tabular", "triangle")
+        Indicates whether ``data`` is formatted as a triangle as opposed
+        to tabular loss data. In some workflows, triangles may have already
+        been created, and are available in auxillary files. In such cases, the
+        triangle formatted data will be passed in as a DataFrame, and
+        converted into the desired representation directly. Default value is
+        False.
 
     origin: str
         The field in ``data`` representing the origin year. When
-        ``trifmt`` is not None, ``origin`` is ignored. Defaults to None.
+        ``has_tri_shape`` is False, ``origin`` is ignored. Default value is
+        "origin".
 
     dev: str
         The field in ``data`` representing the development period. When
-        ``trifmt`` is not None, ``dev`` is ignored. Defaults to None.
+        ``has_tri_shape`` is False, ``dev`` is ignored. Default value is
+         "dev".
 
     value: str
-        The field in ``data`` representing loss amounts. When ``trifmt`` is
-        not None, ``value`` is ignored. Defaults to None.
+        The field in ``data`` representing loss amounts. When
+        ``has_tri_shape`` is False, ``value`` is ignored. Default value is
+        "value".
 
     Returns
     -------
-    {trikit.triangle._IncrTriangle, trikit.triangle._CumTriangle}
+    {trikit.triangle.IncrTriangle, trikit.triangle.CumTriangle}
     """
-    if trifmt:
-        if trifmt.lower().startswith("i"):
-            # `data` is in incremental triangle format (but not typed as such).
-            data2 = _tritotbl(data)
-        elif trifmt.lower().startswith("c"):
-            # `data` is in cumulative triangle format (but not typed as such).
-            data2 = _tritotbl(_cumtoincr(data))
+    if data_shape=="triangle":
+
+        if data_format.lower().strip().startswith("i"):
+            # data is in incremental triangle format (but not typed as such).
+            inctri = data.reset_index(drop=False).rename({"index":"origin"}, axis=1)
+            df = pd.melt(inctri, id_vars=["origin"], var_name="dev", value_name="value")
+
+        elif data_format.lower().strip().startswith("c"):
+            # data is in cumulative triangle format (but not typed as such).
+            incrtri = data.diff(axis=1)
+            incrtri.iloc[:,0] = data.iloc[:, 0]
+            incrtri = incrtri.reset_index(drop=False).rename({"index":"origin"}, axis=1)
+            df = pd.melt(incrtri, id_vars=["origin"], var_name="dev", value_name="value")
+            df = df[~np.isnan(df["value"])].astype({"origin":np.int, "dev":np.int, "value":np.float})
+
         else:
-            raise NameError("Invalid type_ argument: `{}`.".format(type_))
+            raise NameError("Invalid data_format argument: `{}`.".format(type_))
+
+        df = df[~np.isnan(df["value"])].astype({"origin":np.int, "dev":np.int, "value":np.float})
+        df = df.sort_values(by=["origin", "dev"]).reset_index(drop=True)
+
+    elif data_shape=="tabular":
+
+        if data_format.lower().strip().startswith("c"):
+            df = data.rename({value:"cum"}, axis=1)
+            df["incr"] = df.groupby([origin])["cum"].diff(periods=1)
+            df["incr"] = np.where(np.isnan(df["incr"]), df["cum"], df["incr"])
+            df = df.drop("cum", axis=1).rename({"incr":value}, axis=1)
+
+        else:
+            df = data
 
     else:
-        if datafmt.lower().startswith("c"): # `data` is in cumulative tabular format.
-            data2 = data.copy(deep=True)
-            data2["incr"] = data2.groupby([origin])[value].diff(periods=1)
-            data2["incr"] = np.where(np.isnan(data2["incr"]), data2[value], data2["incr"])
-            data2 = data2.drop(value, axis=1).rename({"incr":value}, axis=1)
+        raise NameError("Invalid data_shape argument: `{}`.".format(data_shape))
 
-        else: # `data` is in incremental tabular format.
-            data2 = data
+    df = df.reset_index(drop=True)
 
+    # Transform df to triangle instance.
     if type_.lower().startswith("i"):
-        tri = IncrTriangle(data=data2, origin=origin, dev=dev, value=value)
+        tri = IncrTriangle(data=df, origin=origin, dev=dev, value=value)
+
     elif type_.lower().startswith("c"):
-        tri = CumTriangle(data=data2, origin=origin, dev=dev, value=value)
+        tri = CumTriangle(data=df, origin=origin, dev=dev, value=value)
+
     return(tri)
-
-
-
-def _cumtoincr(cumtri):
-        """
-        Convert a cumulative triangle to incremental representation.
-        Not intended for public use.
-
-        Parameters
-        ----------
-        cumtri: cumulative.CumTriangle
-            An instance of cumulative.CumTriangle.
-
-        Returns
-        -------
-        pd.DataFrame
-        """
-        tri = pd.DataFrame().reindex_like(cumtri)
-        tri.iloc[:,0] = cumtri.iloc[:,0]
-        for i in enumerate(tri.columns[1:], start=1):
-            indx, col = i[0], i[1]
-            tri.iloc[:,indx] = cumtri.iloc[:,indx] - cumtri.iloc[:,(indx - 1)]
-        return(tri)
-
-
-
-def _incrtocum(incrtri):
-    """
-    Convert incremental triangle to cumulative representation. Not
-    intended for public use.
-
-    Parameters
-    ----------
-    incrtri: incremental.IncrTriangle
-        An instance of incremental.IncrTriangle.
-
-    Returns
-    -------
-    pd.DataFrame
-    """
-    return(incrtri.cumsum(axis=1))
-
-
-
-def _tritotbl(tri):
-    """
-    Convert data formatted as triangle to tabular representation. Fields
-    will be identified as "origin", "dev" and "value". Not intended for
-    public use.
-
-    Parameters
-    ----------
-    tri: pd.DataFrame
-        The Triangle object or DataFrame to transform to tabular data.
-
-    Returns
-    -------
-    pd.DataFrame
-    """
-    tri = tri.reset_index(drop=False).rename({"index":"origin"}, axis=1)
-    df = pd.melt(tri, id_vars=["origin"], var_name="dev", value_name="value")
-    df = df[~np.isnan(df["value"])].astype({"origin":np.int_, "dev":np.int_, "value":np.float_})
-    return(df.sort_values(by=["origin", "dev"]).reset_index(drop=True))
-
-
-
-

@@ -9,7 +9,6 @@ import os.path
 datasets_dir = os.path.dirname(__file__)
 
 dataref = {
-    "nonstd": os.path.join(datasets_dir,  "nonstd.csv"),
     "raa": os.path.join(datasets_dir,  "RAA.csv"),
     "ta83": os.path.join(datasets_dir,  "TaylorAshe83.csv"),
     "lrdb": os.path.join(datasets_dir,  "lrdb.csv"),

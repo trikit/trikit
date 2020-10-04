@@ -1,25 +1,5 @@
 """
 BootstrapChainLadder Implementation.
-
-===========================================================
-FUTURE ENHANCEMENTS                                       |
-===========================================================
-- Allow for residuals other than Pearson (Anscombe, Deviance, etc.)
-- Enable other distributions for process variance.
-- Add staticmethod for neg_handler==2 (needed in bs_samples).
-
-  From scipy nbinom parameterization:
-
-            Mean     = n * p / (1 - p)
-            Variance = n * p / (1 - p)^2
-            Variance = Mean / (1 - p)
-
-- Implement heteroscedasticity adjustment (Shapland pg. 25)
-- Plot residuals vs. development period
-- Plot residuals vs. origin
-- Separate class for residuals assessment
-
-
 """
 import functools
 import warnings
@@ -109,34 +89,34 @@ class BootstrapChainLadder(BaseChainLadder):
 
 
 
-    def __call__(self, sims=1000, q=[.75, .95], neg_handler=1, procdist="gamma",
+    def __call__(self, sims=1000, q=[.75, .95], neg_handler="all", procdist="gamma",
                  parametric=False, two_sided=False, interpolation="linear",
                  random_state=None):
         """
         ``BootstrapChainLadder`` simulation initializer. Generates predictive
-        distribution of ultimate reserve outcomes.
+        distribution of reserve outcomes by origin and in total.
 
-        As stated in ``BootstrapChainLadder``'s documentation, the estimated
-        distribution of losses assumes development is complete by the final
-        development period in order to avoid the complication of modeling a
-        tail factor.
+        The estimated distribution of losses assumes development is complete
+        by the final development period in order to avoid the complication of
+        modeling a tail factor.
 
         Parameters
         ----------
         sims: int
-            The number of bootstrap simulations to perfrom. Defaults to 1000.
+            The number of bootstrap simulations to perform. Defaults to 1000.
 
-        q: float in range of [0,1] (or sequence of floats)
-            Percentile to compute, which must be between 0 and 1 inclusive.
+        q: array_like of float
+            Quantile or sequence of quantiles to compute, which must be
+            between 0 and 1 inclusive.
 
-        neg_handler: int
-            If ``neg_handler=1``, then any first development period negative
-            cells will be coerced to +1. If ``neg_handler=2``, the minimum
+        neg_handler: str
+            If ``neg_handler="first"``, any first development period negative
+            cells will be coerced to +1. If ``neg_handler="all"``, the minimum
             value in all triangle cells is identified (identified as 'MIN_CELL').
-            If MIN_CELL is less than or equal to 0, the equation
-            (MIN_CELL + X = +1.0) is solved for X. X is then added to every
-            other cell in the triangle, resulting in all triangle cells having
-            a value strictly greater than 0.
+            If MIN_CELL is less than or equal to 0, (MIN_CELL + X = +1.0) is
+            solved for X. X is then added to every other cell in the triangle,
+            resulting in all triangle cells having a value strictly greater
+            than 0.
 
         procdist: str
             The distribution used to incorporate process variance. Currently,
@@ -175,7 +155,7 @@ class BootstrapChainLadder(BaseChainLadder):
 
         Returns
         -------
-        _BootstrapChainLadderResult
+        BootstrapChainLadderResult
         """
         # Obtain reference to Chain ladder point estimates.
         ldfs_ = self._ldfs(sel="all-weighted")
@@ -191,7 +171,7 @@ class BootstrapChainLadder(BaseChainLadder):
         tri_fit_incr_ = self._tri_fit_incr(fitted_tri_cum=tri_fit_cum_)
         unscld_residuals_ = self._resid_us(fitted_tri_incr=tri_fit_incr_)
         adjust_residuals_ = self._resid_adj(resid_us=unscld_residuals_)
-        scale_param_ = self._scale_param(resid_us=unscld_residuals_)
+        scale_param = self._scale_param(resid_us=unscld_residuals_)
         sampling_dist_ = self._sampling_dist(resid_adj=adjust_residuals_)
         dfsamples = self._bs_samples(
             sampling_dist=sampling_dist_, fitted_tri_incr=tri_fit_incr_,
@@ -204,20 +184,21 @@ class BootstrapChainLadder(BaseChainLadder):
         dflvi = dflvi.rename({"index":"origin", "dev":"l_act_dev"}, axis=1)
         dflvi = dflvi.drop("col_offset", axis=1)
         dfcombined = dfsamples.merge(dfldfs, on=["sim", "dev"], how="left")
-        dfcombined = dfcombined.merge(dflvi, on=["origin"], how="left", )
+        dfcombined = dfcombined.merge(dflvi, on=["origin"], how="left")
         dfcombined = dfcombined.reset_index(drop=True).sort_values(by=["sim", "origin", "dev"])
-        dfforecasts = self._bs_forecasts(dfcombined=dfcombined, scale_param=scale_param_)
+        dfforecasts = self._bs_forecasts(dfcombined=dfcombined, scale_param=scale_param)
         dfprocerror = self._bs_process_error(
-            dfforecasts=dfforecasts, scale_param=scale_param_, procdist=procdist,
+            dfforecasts=dfforecasts, scale_param=scale_param, procdist=procdist,
             random_state=random_state
             )
 
         dfreserves = self._bs_reserves(dfprocerror=dfprocerror)
+
         pctl_ = np.asarray([q] if isinstance(q, (float, int)) else q)
 
         if np.any(np.logical_or(pctl_ <= 1, pctl_ >= 0)):
             if two_sided:
-                pctlarr = np.sort(np.unique(np.append((1 - pctl_) / 2, (1 + pctl_) / 2)))
+                pctlarr = np.sort(np.unique(np.append((1 - pctl_) / 2., (1 + pctl_) / 2.)))
             else:
                 pctlarr = np.sort(np.unique(pctl_))
         else:
@@ -237,6 +218,16 @@ class BootstrapChainLadder(BaseChainLadder):
             (dflatest_, dfultimates_, dfreserves_), dfsumm
             )
 
+        dfsumm = dfsumm.rename({"reserve":"cl_reserve"}, axis=1)
+
+        # Compute median distribution of bootstrap samples.
+        dfsumm["bcl_reserve"] = dfsumm.index.map(
+            lambda v: np.percentile(
+                dfreserves[dfreserves["origin"]==v]["reserve"].values,
+                100 * .50, interpolation=interpolation
+                )
+            )
+
         # Attach percentile fields to dfsumm.
         pctlfmt = ["{:.5f}".format(i).rstrip("0").rstrip(".") + "%" for i in 100 * pctlarr]
         for q_, pctlstr_ in zip(pctlarr, pctlfmt):
@@ -251,21 +242,25 @@ class BootstrapChainLadder(BaseChainLadder):
         dfsumm.loc["total"] = dfsumm.sum()
         dfsumm.loc["total", "maturity"] = ""
         dfsumm.loc["total", "cldf"] = np.NaN
+
         dfsumm = dfsumm.reset_index(drop=False).rename({"index":"origin"}, axis=1)
+
         kwds = {"sel":"all-weighted", "sims": sims, "neg_handler":neg_handler,
                 "procdist":procdist, "parametric":parametric,
                 "q":q, "interpolation":interpolation,}
+
         sampling_dist_res = None if parametric==True else sampling_dist_
-        clresult_ = BootstrapChainLadderResult(
+
+        bclresult = BootstrapChainLadderResult(
             summary=dfsumm, reserve_dist=dfreserves, sims_data=dfprocerror,
             tri=self.tri, ldfs=ldfs_, cldfs=cldfs_, latest=latest_,
             maturity=maturity_, ultimates=ultimates_, reserves=reserves_,
-            scale_param=scale_param_, unscaled_residuals=unscld_residuals_,
+            scale_param=scale_param, unscaled_residuals=unscld_residuals_,
             adjusted_residuals=adjust_residuals_, sampling_dist=sampling_dist_res,
             fitted_tri_cum=tri_fit_cum_, fitted_tri_incr=tri_fit_incr_,
             trisqrd=trisqrd_, **kwds)
-        return(clresult_)
 
+        return(bclresult)
 
 
     @property
@@ -278,10 +273,8 @@ class BootstrapChainLadder(BaseChainLadder):
         int
         """
         if self._dof is None:
-            self._dof = self.tri.nbr_cells - (self.tri.columns.size - 1) + \
-                        self.tri.index.size
+            self._dof = self.tri.nbr_cells - (self.tri.columns.size - 1) + self.tri.index.size
         return(self._dof)
-
 
 
     def _scale_param(self, resid_us):
@@ -300,7 +293,7 @@ class BootstrapChainLadder(BaseChainLadder):
         -------
         float
         """
-        return((resid_us**2).sum().sum() / self.tri.dof)
+        return((resid_us**2).sum().sum() / self.dof)
 
 
 
@@ -322,24 +315,29 @@ class BootstrapChainLadder(BaseChainLadder):
         """
         ldfs = self._ldfs(sel=sel)
         fitted_tri_cum = self.tri.copy(deep=True)
-        for i in range(fitted_tri_cum.shape[0]):
-            iterrow = fitted_tri_cum.iloc[i, :]
+
+        for ii in range(fitted_tri_cum.shape[0]):
+
+            iterrow = fitted_tri_cum.iloc[ii, :]
             if iterrow.isnull().any():
                 # Find first NaN element in iterrow.
                 nan_hdr = iterrow.isnull()[iterrow.isnull()==True].index[0]
-                nan_idx = fitted_tri_cum.columns.index(nan_hdr)
+                nan_idx = fitted_tri_cum.columns.tolist().index(nan_hdr)
                 init_idx = nan_idx - 1
             else:
                 # If here, iterrow is the most mature exposure period.
                 init_idx = fitted_tri_cum.shape[1] - 1
+
             # Set to NaN any development periods earlier than init_idx.
-            fitted_tri_cum.iloc[i, :init_idx] = np.NaN
+            fitted_tri_cum.iloc[ii, :init_idx] = np.NaN
+
             # Iterate over rows, undeveloping triangle from latest diagonal.
-            for j in range(fitted_tri_cum_.iloc[i, :init_idx].size, 0, -1):
+            for j in range(fitted_tri_cum.iloc[ii, :init_idx].size, 0, -1):
                 prev_col_idx, curr_col_idx, curr_ldf_idx = j, j - 1, j - 1
-                prev_col_val = fitted_tri_cum.iloc[i, prev_col_idx]
+                prev_col_val = fitted_tri_cum.iloc[ii, prev_col_idx]
                 curr_ldf_val = ldfs.iloc[curr_ldf_idx]
-                fitted_tri_cum.iloc[i, curr_col_idx] = (prev_col_val / curr_ldf_val)
+                fitted_tri_cum.iloc[ii, curr_col_idx] = (prev_col_val / curr_ldf_val)
+
         return(fitted_tri_cum)
 
 
@@ -362,7 +360,6 @@ class BootstrapChainLadder(BaseChainLadder):
         return(tri)
 
 
-
     def _resid_us(self, fitted_tri_incr):
         """
         Return unscaled Pearson residuals, given by
@@ -380,7 +377,7 @@ class BootstrapChainLadder(BaseChainLadder):
         pd.DataFrame
         """
         # I represents actual incremental losses, m fitted incremental losses.
-        I = self.tri.as_incr()
+        I = self.tri.to_incr()
         m = fitted_tri_incr
         return((I - m) / np.sqrt(m.abs()))
 
@@ -403,8 +400,7 @@ class BootstrapChainLadder(BaseChainLadder):
         -------
         pd.DataFrame
         """
-        return(np.sqrt(self.tri.nbr_cells / self.tri.dof) * resid_us)
-
+        return(np.sqrt(self.tri.nbr_cells / self.dof) * resid_us)
 
 
     @staticmethod
@@ -429,9 +425,8 @@ class BootstrapChainLadder(BaseChainLadder):
         return(resid_[np.logical_and(~np.isnan(resid_), resid_!=0)])
 
 
-
     def _bs_samples(self, sampling_dist, fitted_tri_incr, sims=1000,
-                    neg_handler=1, parametric=False, random_state=None):
+                    neg_handler="all", parametric=False, random_state=None):
         """
         Return DataFrame containing sims resampled-with-replacement
         incremental loss triangles if ``parametric=False``, otherwise
@@ -453,14 +448,14 @@ class BootstrapChainLadder(BaseChainLadder):
         sims: int
             The number of bootstrap simulations to run. Defaults to 1000.
 
-        neg_handler: int
-            If ``neg_handler=1``, then any first development period negative
-            cells will be coerced to +1. If ``neg_handler=2``, the minimum
+        neg_handler: str
+            If ``neg_handler="first"``, any first development period negative
+            cells will be coerced to +1. If ``neg_handler="all"``, the minimum
             value in all triangle cells is identified (identified as 'MIN_CELL').
-            If MIN_CELL is less than or equal to 0, the equation
-            (MIN_CELL + X = +1.0) is solved for X. X is then added to every
-            other cell in the triangle, resulting in all triangle cells having
-            a value strictly greater than 0.
+            If MIN_CELL is less than or equal to 0, (MIN_CELL + X = +1.0) is
+            solved for X. X is then added to every other cell in the triangle,
+            resulting in all triangle cells having a value strictly greater
+            than 0.
 
         parametric: bool
             If True, fit standardized residuals to a normal distribution, and
@@ -496,31 +491,31 @@ class BootstrapChainLadder(BaseChainLadder):
 
         # Handle first period negative cells as specified by `neg_handler`.
         if np.any(dfm["value"]<0):
-            if neg_handler==1:
+
+            if neg_handler=="first":
                 dfm["value"] = np.where(
                     np.logical_and(dfm["dev"].values==1, dfm["value"].values<0),
                     1., dfm["value"].values
                     )
 
-            elif neg_handler==2:
+            elif neg_handler=="all":
                 # Obtain reference to minimum triangle cell value, then
-                # add the absolute value of that amount plus one to every
-                # other triangle cell.
+                # add the absolute value of that amount plus one to all
+                # other triangle cells.
                 add2cells = np.abs(dfm["value"].min()) + 1
                 dfm["value"] = dfm["value"] + add2cells
-            else:
-                raise ValueError("`neg_handler` must be in [1, 2].")
 
-        # Note that we don't use self.tri's ``as_tbl`` method since we need
-        # to retain records with NaNs.
-        dftri = self.tri.reset_index(drop=False).rename({"index":"origin"}, axis=1)
-        dfi = pd.melt(dftri, id_vars=["origin"], var_name="dev", value_name="value").drop("value", axis=1)
+            else:
+                raise ValueError("`neg_handler` must be in ['first', 'all'].")
+
+
+        dfi = self.tri.to_tbl(drop_nas=False).drop("value", axis=1)
         dfp = dfi.merge(dfm, how="outer", on=["origin", "dev"])
         dfp["rectype"] = np.where(np.isnan(dfp["value"].values), "forecast", "actual")
         dfp = dfp.rename({"value":"incr"}, axis=1)
         dfp["incr_sqrt"] = np.sqrt(dfp["incr"].values)
-        dfrtypes = {"origin":np.int, "dev":np.int_, "incr":np.float_,
-                   "incr_sqrt":np.float_, "rectype":np.str,}
+        dfrtypes = {"origin":np.int, "dev":np.int, "incr":np.float,
+                   "incr_sqrt":np.float, "rectype":np.str,}
         dfrcols = ["origin", "dev", "incr", "rectype", "incr_sqrt"]
 
         # Replicate dfp sims times then redefine datatypes.
@@ -549,7 +544,6 @@ class BootstrapChainLadder(BaseChainLadder):
         return(dfr.reset_index(drop=True))
 
 
-
     def _bs_ldfs(self, dfsamples):
         """
         Compute and return loss development factors for each set of
@@ -572,17 +566,16 @@ class BootstrapChainLadder(BaseChainLadder):
         dfinit = dfsamples.merge(dflvi, how="left", on=["dev"])
         dfinit = dfinit[keepcols].sort_values(by=["sim", "dev", "origin"])
         df = dfinit[~np.isnan(dfinit["samp_cum"])].reset_index(drop=True)
-        df["_aggdev1"] = df.groupby(["sim", "dev"], as_index=False)["samp_cum"].transform("sum")
-        df["_aggdev2"] = np.where(df["origin"].values==df["last_origin"].values, 0, df["samp_cum"].values)
-        df["_aggdev2"] = df.groupby(["sim", "dev"], as_index=False)["_aggdev2"].transform("sum")
-        dfuniq = df[["sim", "dev", "_aggdev1", "_aggdev2"]].drop_duplicates().reset_index(drop=True)
-        dfuniq["_aggdev2"] = dfuniq["_aggdev2"].shift(periods=1)
-        dfuniq["dev"] = dfuniq["dev"].shift(periods=1)
-        dfldfs = dfuniq[dfuniq["_aggdev2"]!=0].dropna(how="any")
+        df["_aggdev2"] = np.where(
+            df["origin"].values==df["last_origin"].values, 0, df["samp_cum"].values)
+        df2 = df.groupby(["sim", "dev"], as_index=False)[["samp_cum", "_aggdev2"]].sum().rename(
+            {"samp_cum":"_aggdev1"}, axis=1)
+        df2["_aggdev2"] = df2["_aggdev2"].shift(periods=1)
+        df2["dev"] = df2["dev"].shift(periods=1)
+        dfldfs = df2[df2["_aggdev2"]!=0].dropna(how="any")
+        dfldfs["dev"] = dfldfs["dev"].astype(np.int)
         dfldfs["ldf"] = dfldfs["_aggdev1"] / dfldfs["_aggdev2"]
-        dfldfs["dev"] = dfldfs["dev"].astype(np.int_)
         return(dfldfs[["sim", "dev", "ldf"]].reset_index(drop=True))
-
 
 
     @staticmethod
@@ -613,20 +606,22 @@ class BootstrapChainLadder(BaseChainLadder):
         dffcst["_l_act_indx"] = dffcst.groupby(["sim", "origin"])["_l_init_indx"].transform("min")
         dffcst["l_act_cum"] = dffcst.lookup(dffcst["_l_act_indx"].values, ["samp_cum"] * dffcst.shape[0])
         dffcst["_cum_ldf"] = dffcst.groupby(["sim", "origin"])["ldf"].transform("cumprod").shift(periods=1)
-        dffcst["_samp_cum2"] = np.nan_to_num((dffcst["l_act_cum"].values * dffcst["_cum_ldf"].values), 0)
-        dffcst["cum_final"] = np.nan_to_num(dffcst["samp_cum"].values, 0) + dffcst["_samp_cum2"].values
+        dffcst["_samp_cum2"] = dffcst["l_act_cum"].values * dffcst["_cum_ldf"].values
+        dffcst["_samp_cum2"] = np.where(np.isnan(dffcst["_samp_cum2"].values), 0, dffcst["_samp_cum2"].values)
+        dffcst["cum_final"] = np.where(np.isnan(dffcst["samp_cum"].values), 0, dffcst["samp_cum"].values) + dffcst["_samp_cum2"].values
 
         # Combine forecasts with actuals then compute incremental losses by sim and origin.
         dffcst = dffcst.drop(labels=["samp_cum", "samp_incr"], axis=1).rename(columns={"cum_final":"samp_cum"})
         dfsqrd = pd.concat([dffcst, dfacts], sort=True).sort_values(by=["sim", "origin", "dev"])
-        dfsqrd["_incr_dev1"] = np.nan_to_num(np.where(dfsqrd["dev"].values==1, dfsqrd["samp_cum"].values, np.NaN), 0)
-        dfsqrd["_incr_dev2"] = np.nan_to_num(dfsqrd.groupby(["sim", "origin"])["samp_cum"].diff(periods=1), 0)
+        dfsqrd["_dev1_ind"] = (dfsqrd["dev"].values==1) * 1
+        dfsqrd["_incr_dev1"] = dfsqrd["_dev1_ind"].values * dfsqrd["samp_cum"].values
+        dfsqrd["_incr_dev2"] = dfsqrd.groupby(["sim", "origin"])["samp_cum"].diff(periods=1)
+        dfsqrd["_incr_dev2"] = np.where(np.isnan(dfsqrd["_incr_dev2"].values), 0, dfsqrd["_incr_dev2"].values)
         dfsqrd["samp_incr"] = dfsqrd["_incr_dev1"].values + dfsqrd["_incr_dev2"].values
         dfsqrd["var"] = np.abs(dfsqrd["samp_incr"].values * scale_param)
         dfsqrd["sign"] = np.where(dfsqrd["samp_incr"].values > 0, 1, -1)
         dfsqrd = dfsqrd.drop(labels=[i for i in dfsqrd.columns if i.startswith("_")], axis=1)
         return(dfsqrd.sort_values(by=["sim", "origin", "dev"]).reset_index(drop=True))
-
 
 
     @staticmethod
@@ -726,7 +721,7 @@ class BootstrapChainLadder(BaseChainLadder):
             np.isnan(dfreserves["latest"].values),
             dfreserves["ultimate"].values, dfreserves["latest"].values
             )
-        dfreserves_["reserve"] = np.nan_to_num(dfreserves["reserve"].values, 0)
+        dfreserves["reserve"] = np.nan_to_num(dfreserves["reserve"].values, 0)
         return(dfreserves.sort_values(by=["origin", "sim"]).reset_index(drop=True))
 
 
@@ -787,7 +782,7 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
             **final_cum**: Final simulated cumulative loss amount after
             the incorporation of process error.
 
-        tri: trikit.triangle._CumTriangle
+        tri: trikit.triangle.CumTriangle
             A cumulative triangle instance.
 
         ldfs: pd.Series
@@ -899,8 +894,6 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         return(int((datrng / bw) + 1))
 
 
-
-
     @property
     def origin_distribution(self):
         """
@@ -929,13 +922,9 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         pd.DataFrame
         """
         if self._aggregate_distribution is None:
-            keepcols_ = ["latest", "ultimate", "reserve"]
             self._aggregate_distribution = self.origin_distribution.drop("origin", axis=1)
             self._aggregate_distribution = self._aggregate_distribution.groupby("sim", as_index=False).sum()
         return(self._aggregate_distribution)
-
-
-
 
 
     @property
@@ -984,49 +973,49 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         """
         if self._residuals_detail is None:
             if not self.parametric:
-                unscaled_ = self.unscaled_residuals.values.ravel()
-                adjusted_ = self.adjusted_residuals.values.ravel()
-                unscaled_ = unscaled_[~np.isnan(unscaled_)]
-                adjusted_ = adjusted_[~np.isnan(adjusted_)]
-                unscaled_ = unscaled_[unscaled_!=0]
-                adjusted_ = adjusted_[adjusted_!=0]
-                unscaled_size_ = unscaled_.size
-                unscaled_sum_ = unscaled_.sum(axis=0)
-                unscaled_ssqr_ = np.sum(unscaled_**2, axis=0)
-                unscaled_min_  = unscaled_.min(axis=0)
-                unscaled_max_  = unscaled_.max(axis=0)
-                unscaled_mean_ = unscaled_.mean(axis=0)
-                unscaled_skew_ = stats.skew(unscaled_, axis=0, nan_policy="omit")
-                unscaled_mode_ = stats.mode(unscaled_, axis=0, nan_policy="omit").mode[0]
-                unscaled_cvar_ = stats.variation(unscaled_, axis=0, nan_policy="omit")
-                unscaled_kurt_ = stats.kurtosis(unscaled_, axis=0, nan_policy="omit")
-                unscaled_var_  = unscaled_.var(ddof=1, axis=0)
-                unscaled_stddev_ = unscaled_.std(ddof=1, axis=0)
-                unscaled_med_  = np.median(unscaled_, axis=0)
-                adjusted_size_ = adjusted_.size
-                adjusted_sum_  = adjusted_.sum(axis=0)
-                adjusted_ssqr_ = np.sum(adjusted_**2, axis=0)
-                adjusted_min_  = adjusted_.min(axis=0)
-                adjusted_max_  = adjusted_.max(axis=0)
-                adjusted_mean_ = adjusted_.mean(axis=0)
-                adjusted_skew_ = stats.skew(adjusted_, axis=0, nan_policy="omit")
-                adjusted_mode_ = stats.mode(adjusted_, axis=0, nan_policy="omit").mode[0]
-                adjusted_cvar_ = stats.variation(adjusted_, axis=0, nan_policy="omit")
-                adjusted_kurt_ = stats.kurtosis(adjusted_, axis=0, nan_policy="omit")
-                adjusted_var_  = adjusted_.var(ddof=1, axis=0)
-                adjusted_stddev_ = adjusted_.std(ddof=1, axis=0)
-                adjusted_med_  = np.median(adjusted_, axis=0)
+                unscaled = self.unscaled_residuals.values.ravel()
+                adjusted = self.adjusted_residuals.values.ravel()
+                unscaled = unscaled_[~np.isnan(unscaled)]
+                adjusted = adjusted_[~np.isnan(adjusted)]
+                unscaled = unscaled_[unscaled!=0]
+                adjusted = adjusted_[adjusted!=0]
+                unscaled_size = unscaled.size
+                unscaled_sum = unscaled.sum(axis=0)
+                unscaled_ssqr = np.sum(unscaled_**2, axis=0)
+                unscaled_min  = unscaled.min(axis=0)
+                unscaled_max  = unscaled.max(axis=0)
+                unscaled_mean = unscaled.mean(axis=0)
+                unscaled_skew = stats.skew(unscaled, axis=0, nan_policy="omit")
+                unscaled_mode = stats.mode(unscaled, axis=0, nan_policy="omit").mode[0]
+                unscaled_cvar = stats.variation(unscaled, axis=0, nan_policy="omit")
+                unscaled_kurt = stats.kurtosis(unscaled, axis=0, nan_policy="omit")
+                unscaled_var  = unscaled_.var(ddof=1, axis=0)
+                unscaled_stddev = unscaled_.std(ddof=1, axis=0)
+                unscaled_med  = np.median(unscaled, axis=0)
+                adjusted_size = adjusted_.size
+                adjusted_sum  = adjusted_.sum(axis=0)
+                adjusted_ssqr = np.sum(adjusted**2, axis=0)
+                adjusted_min = adjusted_.min(axis=0)
+                adjusted_max  = adjusted_.max(axis=0)
+                adjusted_mean = adjusted_.mean(axis=0)
+                adjusted_skew = stats.skew(adjusted, axis=0, nan_policy="omit")
+                adjusted_mode = stats.mode(adjusted, axis=0, nan_policy="omit").mode[0]
+                adjusted_cvar = stats.variation(adjusted, axis=0, nan_policy="omit")
+                adjusted_kurt = stats.kurtosis(adjusted, axis=0, nan_policy="omit")
+                adjusted_var  = adjusted_.var(ddof=1, axis=0)
+                adjusted_stddev = adjusted_.std(ddof=1, axis=0)
+                adjusted_med  = np.median(adjusted, axis=0)
                 self._residuals_detail = pd.DataFrame({
                     "unscaled":[
-                        _unscaled_size, _unscaled_sum , _unscaled_ssqr, _unscaled_min,
-                        _unscaled_max,  _unscaled_mean, _unscaled_skew, _unscaled_mode,
-                        _unscaled_cvar, _unscaled_kurt, _unscaled_var , _unscaled_stdv,
-                        _unscaled_med,
+                        unscaled_size, unscaled_sum , unscaled_ssqr, unscaled_min,
+                        unscaled_max,  unscaled_mean, unscaled_skew, unscaled_mode,
+                        unscaled_cvar, unscaled_kurt, unscaled_var , unscaled_stdv,
+                        unscaled_med,
                         ],
                     "adjusted":[
-                        _adjusted_size, _adjusted_sum , _adjusted_ssqr, _adjusted_min,
-                        _adjusted_max,  _adjusted_mean, _adjusted_skew, _adjusted_mode,
-                        _adjusted_cvar, _adjusted_kurt, _adjusted_var , _adjusted_stdv,
+                        _adjusted_size, adjusted_sum , adjusted_ssqr, adjusted_min,
+                        _adjusted_max,  adjusted_mean, adjusted_skew, adjusted_mode,
+                        _adjusted_cvar, adjusted_kurt, adjusted_var , adjusted_stdv,
                         _adjusted_med,
                         ],
                     },
@@ -1039,7 +1028,7 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         return(self._residuals_detail)
 
 
-    def _bs_data_transform(self, which, q):
+    def _bs_data_transform(self,  q):
         """
         Starts with ``BaseChainLadderResult``'s ``_data_transform``, and
         performs additional pre-processing in order to generate plot of
@@ -1050,7 +1039,7 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         pd.DataFrame
         """
         data = self._data_transform()
-        dfsims = self.get_quantile(q=q, which=which, two_sided=True)
+        dfsims = self._get_quantile(q=q, two_sided=True)
         data = pd.merge(data, dfsims, how="outer", on=["origin", "dev"])
         pctl_hdrs = [i for i in dfsims.columns if i not in ("origin", "dev")]
         for hdr_ in pctl_hdrs:
@@ -1068,7 +1057,7 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
                 data["value"].values, data[hdr_].values
                 )
 
-        data.drop(["_ff", "_minf"], axis=1, inplace=True)
+        data = data.drop(["_ff", "_minf"], axis=1)
         dfv = data[["origin", "dev", "rectype", "value"]]
         dfl = data[["origin", "dev", "rectype", pctl_hdrs[0]]]
         dfu = data[["origin", "dev", "rectype", pctl_hdrs[-1]]]
@@ -1076,26 +1065,19 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         dfl = dfl.rename({pctl_hdrs[0]:"value"}, axis=1)
         dfu["rectype"] = pctl_hdrs[-1]
         dfu = dfu.rename({pctl_hdrs[-1]:"value"}, axis=1)
-        return(pd.concat([dfv, dfl, dfu]).sort_index())
+        return(pd.concat([dfv, dfl, dfu]).sort_index().reset_index(drop=True))
 
 
-    def plot(self, which="ultimate", q=.90, actuals_color="#334488",
-             forecasts_color="#FFFFFF", fill_color="#FCFCB1", fill_alpha=.75,
-             axes_style="darkgrid", context="notebook", col_wrap=5, hue_kws=None,
-             **kwargs):
+    def plot(self, q=.90, actuals_color="#334488", forecasts_color="#FFFFFF",
+             fill_color="#FCFCB1", fill_alpha=.75, axes_style="darkgrid",
+             context="notebook", col_wrap=4, hue_kws=None, **kwargs):
         """
-        Generate exhibit representing the distribution of ultimates or
-        reserves resulting from bootstrap resampling, along with
-        percentiles from the distribution given by ``q``. Distribution by
-        development period can be viewed as a function of origin period or
-        in aggregate, controlled by ``view``.
+        Generate exhibit representing the distribution of reserve estimates
+        resulting from bootstrap resampling, along with percentiles from the
+        distribution given by ``q``.
 
         Parameters
         ----------
-        which: {"ultimate", "reserve"}
-            Specifies whether exhibit should reflect ultimate or reserve
-            variability. Defaults to "ultimate".
-
         q: float in range of [0,1]
             two_sided percentile interval to highlight, which must be between
             0 and 1 inclusive. For example, when ``q=.90``, the 5th and
@@ -1120,16 +1102,14 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
             percentile bounds of the ultimate/reserve distribution. Defaults
             to .75.
 
-        axes_style: str
-            Aesthetic style of plots. Defaults to "darkgrid". Other options
-            include {whitegrid, dark, white, ticks}.
+        axes_style: {"darkgrid", "whitegrid", "dark", "white", "ticks"}
+            Aesthetic style of seaborn plots. Default values is "darkgrid".
 
-        context: str
+        context: {"paper", "talk", "poster"}.
             Set the plotting context parameters. According to the seaborn
             documentation, This affects things like the size of the labels,
             lines, and other elements of the plot, but not the overall style.
-            Defaults to ``"notebook"``. Additional options include
-            {paper, talk, poster}.
+            Default value is ``"notebook"``.
 
         col_wrap: int
             The maximum number of origin period axes to have on a single row
@@ -1144,30 +1124,20 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
             percentile renderings respectively. Defaults to ``None``.
 
         kwargs: dict
-            Additional styling options for scatter points. This can override
-            default settings for ``plt.plot`` objects.
-
-        Returns
-        -------
-        None
+            Additional styling options for scatter points. This should include
+            additional options accepted by ``plt.plot``.
         """
-        # which           = "ultimate"                               #
-        # q               = .90                                      #
-        # actuals_color   ="#334488"                                 #
-        # forecasts_color ="#FFFFFF"                                 #
-        # fill_color      = "#FCFCB1"                                #
-        # fill_alpha      = .75                                      #
-        # axes_style      = "darkgrid"                               #
-        # context         = "notebook"                               #
-        # col_wrap        = 5                                        #
-        # hue_kws          = None                                    #
-        # data            = bcl._bs_data_transform(which=which, q=q) #
+        import matplotlib
         import matplotlib.pyplot as plt
         import seaborn as sns
-        which_ = which.lower().strip()
-        data = self._bs_data_transform(which=which_, q=q)
-        pctl_hdrs = sorted([i for i in data["rectype"].unique() if i not in ("actual", "forecast")])
         sns.set_context(context)
+
+        data = self._bs_data_transform(q=q)
+
+        pctl_hdrs = sorted(
+            [i for i in data["rectype"].unique() if i not in ("actual", "forecast")]
+            )
+
         with sns.axes_style(axes_style):
             huekwargs = dict(
                 marker=["o", "o", None, None,], markersize=[6, 6, None, None,],
@@ -1186,24 +1156,26 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
                 else:
                     warnings.warn("hue_kws overrides not correct length - Ignoring.")
 
-            titlestr_ = "Bootstrap Chain Ladder {} Range Projections".format(which.title())
+            titlestr = "bootstrap chainladder ultimate range projections"
 
-            grid_ = sns.FacetGrid(
+            grid = sns.FacetGrid(
                 data, col="origin", hue="rectype", hue_kws=huekwargs,
                 col_wrap=col_wrap, margin_titles=False, despine=True,
-                sharex=True, sharey=True,
+                sharex=False, sharey=False,
                 hue_order=["forecast", "actual", pctl_hdrs[0], pctl_hdrs[-1]]
                 )
 
-            mean_ = grid_.map(plt.plot, "dev", "value",)
-            grid_.set_axis_labels("", "")
-            grid_.set(xticks=data["dev"].unique().tolist())
-            grid_.set_titles("{col_name}", size=9)
-            grid_.set_xticklabels(data["dev"].unique().tolist(), size=8)
+            mean_ = grid.map(plt.plot, "dev", "value",)
+            grid.set_axis_labels("", "")
+            grid.set(xticks=data["dev"].unique().tolist())
+            grid.set_titles("", size=5)
+            # grid_.set_titles("{col_name}", size=9)
+            grid.set_xticklabels(data["dev"].unique().tolist(), size=8)
 
             # Change ticklabel font size and place legend on each facet.
-            for i, _ in enumerate(grid_.axes):
-                ax_ = grid_.axes[i]
+            for ii, _ in enumerate(grid.axes):
+                ax_ = grid.axes[ii]
+                origin_ = str(self.tri.origins.get(ii))
                 legend_ = ax_.legend(
                     loc="upper left", fontsize="x-small", frameon=True,
                     fancybox=True, shadow=False, edgecolor="#909090",
@@ -1215,11 +1187,16 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
                     ["{:,.0f}".format(i) for i in ax_.get_yticks()], size=8
                     )
 
+                ax_.annotate(
+                    origin_, xy=(.85, .925), xytext=(.85, .925), xycoords='axes fraction',
+                    textcoords='axes fraction', fontsize=9, rotation=0, color="#000000",
+                    )
+
                 # Fill between upper and lower range bounds.
-                axc_ = ax_.get_children()
-                lines_ = [i for i in axc_ if isinstance(i, matplotlib.lines.Line2D)]
-                xx = [i._x for i in lines_ if len(i._x)>0]
-                yy = [i._y for i in lines_ if len(i._y)>0]
+                axc = ax_.get_children()
+                lines_ = [jj for jj in axc if isinstance(jj, matplotlib.lines.Line2D)]
+                xx = [jj._x for jj in lines_ if len(jj._x)>0]
+                yy = [jj._y for jj in lines_ if len(jj._y)>0]
                 x_, lb_, ub_ = xx[0], yy[-2], yy[-1]
                 ax_.fill_between(x_, lb_, ub_, color=fill_color, alpha=fill_alpha)
 
@@ -1227,19 +1204,16 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
                 for _, spine_ in ax_.spines.items():
                     spine_.set(visible=True, color="#000000", linewidth=.50)
 
-            # Adjust facets downward and and left-align figure title.
-            plt.subplots_adjust(top=0.9)
-            grid_.fig.suptitle(
-                titlestr_, x=0.065, y=.975, fontsize=10, color="#404040", ha="left"
-                )
+        plt.show()
 
 
 
 
 
 
-    def hist(self, which="ultimate", color="#f33455", axes_style="darkgrid",
-             context="notebook", col_wrap=5, **kwargs):
+
+    def hist(self, color="#FE86F1", axes_style="darkgrid", context="notebook",
+             col_wrap=4, **kwargs):
         """
         Generate visual representation of full predicitive distribtion
         of ultimates/reserves by origin and in aggregate. Additional
@@ -1248,10 +1222,6 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
 
         Parameters
         ----------
-        which: {"ultimate", "reserve"}
-            Specifies whether exhibit should reflect ultimate or reserve
-            variability. Defaults to "ultimate".
-
         color: str
             Determines histogram color in each facet. Can also be specified as
             a key-value pair in ``kwargs``.
@@ -1274,137 +1244,97 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
             Dictionary of optional matplotlib styling parameters.
 
         """
-        # which           = "ultimate"                               #
-        # axes_style      = "darkgrid"                               #
-        # context         = "notebook"                               #
-        # col_wrap        = 5                                        #
-        # kde             = True                                     #
-        # rug             = True                                     #
-        # norm            = True                                     #
-        # which_          = which.lower().strip()                    #
-        # kwargs          = {}                                       #
-        # data              = bcl.sims_data[["sim", "origin", "dev", "rectype", "latest", "ultimate", "reserve",]] #
         import matplotlib
         import matplotlib.pyplot as plt
         import seaborn as sns
-        which_ = which.lower().strip()
-        data = self.sims_data[["sim", "origin", "dev", "rectype", "latest", "ultimate", "reserve",]]
-        max_devp_ = data["dev"].max()
-        data = data[(data["dev"]==max_devp_) & (data["rectype"]=="forecast")].reset_index(drop=True)
-
         sns.set_context(context)
+
+        which_ = "ultimate"
+        data0 = self.sims_data[["sim", "origin", "dev", "rectype", "latest", "ultimate", "reserve",]]
+        data0 = data0[(data0["dev"]==data0["dev"].max()) & (data0["rectype"]=="forecast")].reset_index(drop=True)
+        tot_origin = data0["origin"].max() + 1
+        data0 = data0.drop(["dev", "rectype", "latest"], axis=1)
+
+        # Include additional origin representing aggregate distribution.
+        data1 = data0.groupby("sim", as_index=False)[["ultimate", "reserve"]].sum()
+        data1["origin"] = tot_origin
+        data = pd.concat([data0, data1])
+
+        # Get mean, min and max ultimate and reserve by origin.
+        med_data = data.groupby("origin", as_index=False)[["ultimate", "reserve"]].median().rename(
+            {"ultimate":"med_ult", "reserve":"med_res"}, axis=1).set_index("origin")
+        min_data = data.groupby("origin", as_index=False)[["ultimate", "reserve"]].min().rename(
+            {"ultimate":"min_ult", "reserve":"min_res"}, axis=1).set_index("origin")
+        max_data = data.groupby("origin", as_index=False)[["ultimate", "reserve"]].max().rename(
+            {"ultimate":"max_ult", "reserve":"max_res"}, axis=1).set_index("origin")
+        dfmetrics = functools.reduce(lambda df1, df2: df1.join(df2), (med_data, min_data, max_data))
+        dfmetrics = dfmetrics.reset_index(drop=False).applymap(lambda v: 0 if v<0 else v)
+
+
         with sns.axes_style(axes_style):
 
             pltkwargs = {
-                "color":"#f33455", "edgecolor":"#484848", "alpha":.75, "linewidth":.45,
+                "color":color, "bins":20, "edgecolor":"#484848", "alpha":.95,
+                "linewidth":.45,
                 }
 
-            titlestr_ = "Bootstrap Chain Ladder Predictive Distribution of {} by Origin".format(which.title())
             if kwargs is not None:
                 pltkwargs.update(kwargs)
 
-            grid_ = sns.FacetGrid(
+            grid = sns.FacetGrid(
                 data, col="origin", col_wrap=col_wrap, margin_titles=False,
-                despine=True, sharex=True, sharey=True,
+                despine=True, sharex=False, sharey=False,
                 )
-            hists_ = grid_.map(
-                plt.hist, which_, **pltkwargs
+            hists_ = grid.map(
+                plt.hist, "ultimate", **pltkwargs
                 )
 
-
-            grid_.set_axis_labels("", "")
-            grid_.set(xticks=data["dev"].unique().tolist())
-            grid_.set_titles("{col_name}", size=9)
-            grid_.set_xticklabels("")
+            grid.set_axis_labels("", "")
+            grid.set_titles("", size=6)
 
             # Change ticklabel font size and place legend on each facet.
-            for i, ax_ in enumerate(grid_.axes.flatten()):
-                # ax_ = grid_.axes[i]
-                # ylabelss_ = [i.get_text() for i in list(ax_.get_yticklabels())]
-                # ylabelsn_ = [float(i.replace(u"\u2212", "-")) for i in ylabelss_]
-                # ylabelsn_ = [i for i in ylabelsn_ if i>=0]
-                # ylabels_ = ["{:,.0f}".format(i) for i in ylabelsn_]
-                # ax_.set_yticklabels(ylabels_, size=8)
-                # ax_.grid(False)
-                yticks = ax_.get_yticks()[1:-1]
-                yticklabs = ["{:,.0f}".format(i) for i in yticks]
-                ax_.set_yticks(yticks)
-                ax_.set_yticklabels(yticklabs)
+            uniq_origins = np.sort(data.origin.unique())
+            med_hdr = "med_ult" if which_.startswith("ult") else "med_res"
+            min_hdr = "min_ult" if which_.startswith("ult") else "min_res"
+            max_hdr = "max_ult" if which_.startswith("ult") else "max_res"
+
+            for ii, ax_ in enumerate(grid.axes.flatten()):
+
+                origin_ = uniq_origins[ii]
+                xmin = np.max([0, dfmetrics[dfmetrics.origin==origin_][min_hdr].item()])
+                xmax = dfmetrics[dfmetrics.origin==origin_][max_hdr].item() * 1.025
+                xmed = dfmetrics[dfmetrics.origin==origin_][med_hdr].item()
+                origin_str = "total {}".format(which_) if origin_==tot_origin else "{} {}".format(origin_, which_)
+                ax_.set_xlim([0, xmax])
+                ax_.axvline(xmed)
+                ax_.grid(True)
+
+                ymedloc = max(rect.get_height() for rect in ax_.patches) * .30
+
+                ax_.tick_params(
+                    axis="x", which="both", bottom=True, top=False, labelbottom=True
+                    )
+                ax_.set_xticklabels(
+                    ["{:,.0f}".format(jj) for jj in ax_.get_xticks()], size=7
+                    )
+                ax_.annotate(
+                    origin_str, xy=(.85, .925), xytext=(.65, .925), xycoords='axes fraction',
+                    textcoords='axes fraction', fontsize=8, rotation=0, color="#000000",
+                    )
+                ax_.annotate(
+                    "median = {:,.0f}".format(xmed), (xmed, ymedloc), xytext=(7.5, 0),
+                    textcoords="offset points", ha="center", va="bottom", fontsize=6,
+                    rotation=90, color="#4b0082"
+                    )
 
                 # Draw border around each facet.
                 for _, spine_ in ax_.spines.items():
                     spine_.set(visible=True, color="#000000", linewidth=.50)
 
-            # Adjust facets downward and and left-align figure title.
-            plt.subplots_adjust(top=0.9)
-            grid_.fig.suptitle(
-                titlestr_, x=0.065, y=.975, fontsize=10, color="#404040", ha="left"
-                )
-
-
-
-
-
-    def plotdist(self, which="ultimate", view="aggregate", **kwargs):
-        """
-        Generate visual representation of full predicitive distribtion
-        of loss reserves in aggregate or by origin. Additional options
-        to style the histogram can be passed as keyword arguments.
-
-        Parameters
-        ----------
-        view: str
-            Set ``view`` to "origin" for faceted plot with predictive
-            distirbution by origin year, or "aggregate" for single plot
-            of predicitive distribution of reserves in aggregate. Default
-            value is "aggregate".
-
-        path: str
-            If path is not None, save plot to the specified location.
-            Otherwise, parameter is ignored. Default value is None.
-
-        kwargs: dict
-            Dictionary of optional matplotlib styling parameters.
-
-        """
-        import matplotlib.pyplot as plt
-        import seaborn as sns
-        plt_params = {"alpha":.995, "color":"#FFFFFF", "align":"mid",
-                      "edgecolor":"black", "histtype":"bar",
-                      "linewidth":1.1, "orientation":"vertical",}
-
-        if level.lower().strip().startswith(("agg", "tot")):
-            # bins computed using self._nbrbins if not passed as optional
-            # keyword argument.
-            dat = self.aggdist["reserve"].values
-            plt_params["bins"] = self._nbrbins(data=dat)
-
-            # Update plt_params with any optional keyword arguments.
-            plt_params.update(kwargs)
-
-            # Setup.
-            fig, ax = plt.subplots(nrows=1, ncols=1, tight_layout=True)
-            ax.set_facecolor("#1f77b4")
-            ax.set_title(
-                "Distribution of Bootstrap Reserve Estimates (Aggregate)",
-                loc="left", color=tc)
-            ax.get_xaxis().set_major_formatter(
-                matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
-            ax.set_xlabel("Reserves"); ax.set_ylabel("Frequency")
-            ax.hist(dat, **plt_params)
-
-        elif level.lower().strip().startswith(("orig", "year")):
-            dat = self.origindist[["origin", "reserve"]]
-            sns.set(rc={'axes.facecolor':"#1f77b4"})
-            g = sns.FacetGrid(dat, col="origin", col_wrap=4, margin_titles=False)
-            g.map(plt.hist, "reserve", **plt_params)
-            g.set_titles("{col_name}", color=tc)
-            g.fig.suptitle("Reserve Distribution by Origin Year", color=tc, weight="bold")
-            plt.subplots_adjust(top=0.92)
         plt.show()
 
 
-    def get_quantile(self, q, which="reserve", two_sided=True, interpolation="linear"):
+    def _get_quantile(self, q, two_sided=True, interpolation="linear"):
         """
         Return percentile of bootstrapped ultimate or reserve range
         distribution as specified by ``q``.
@@ -1413,10 +1343,6 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         ----------
         q: float in range of [0,1] (or sequence of floats)
             Percentile to compute, which must be between 0 and 1 inclusive.
-
-        which: {"reserve", "ultimate"}
-            The column used to compute bootstrapped confidence intervals.
-            Default value is "reserve".
 
         two_sided: bool
             Whether the two_sided interval should be returned. For example, if
@@ -1440,37 +1366,32 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         -------
         pd.DataFrame
         """
-        which_ = which.lower().strip()
-        if which_ not in self.sims_data.columns:
-            raise ValueError("which must be one of ['reserve', 'ultimate']")
-
-        dfsims = self.sims_data[["origin", "dev", which_]]
-        pctl_ = np.asarray([q] if isinstance(q, (float, int)) else q)
-        if np.any(np.logical_and(pctl_ <= 1, pctl_ >= 0)):
+        dfsims = self.sims_data[["origin", "dev", "ultimate"]]
+        pctl = np.asarray([q] if isinstance(q, (float, int)) else q)
+        if np.any(np.logical_and(pctl <= 1, pctl >= 0)):
             if two_sided:
-                pctlarr = np.sort(np.unique(np.append((1 - pctl_) / 2, (1 + pctl_) / 2)))
+                pctlarr = np.sort(np.unique(np.append((1 - pctl) / 2, (1 + pctl) / 2)))
             else:
-                pctlarr = np.sort(np.unique(pctl_))
+                pctlarr = np.sort(np.unique(pctl))
         else:
             raise ValueError("Values for percentiles must fall between [0, 1].")
 
-        pctlfmt = ["{:.5f}".format(i).rstrip("0").rstrip(".") + "%" for i in 100 * pctlarr]
-
         # Initialize DataFrame for percentile data.
+        pctlfmt = ["{:.5f}".format(i).rstrip("0").rstrip(".") + "%" for i in 100 * pctlarr]
         dfpctl = dfsims.groupby(["origin", "dev"]).aggregate(
             "quantile", q=.50, interpolation=interpolation)
-        dfpctl = dfpctl.rename({which_:"50%"}, axis=1)
+        dfpctl = dfpctl.rename({"ultimate":"50%"}, axis=1)
         dfpctl.columns.name = None
 
         for q_, pctlstr_ in zip(pctlarr, pctlfmt):
             if q_!=.50:
                 df_ = dfsims.groupby(["origin", "dev"]).aggregate(
                     "quantile", q=q_, interpolation=interpolation)
-                df_ = df_.rename({which_:pctlstr_}, axis=1)
+                df_ = df_.rename({"ultimate":pctlstr_}, axis=1)
                 df_.columns.name = None
                 dfpctl = dfpctl.join(df_)
 
-        if .50 not in pctl_:
+        if .50 not in pctl:
             dfpctl = dfpctl.drop("50%", axis=1)
 
         return(dfpctl.reset_index(drop=False).sort_index())

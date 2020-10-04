@@ -6,9 +6,6 @@ import sys
 import os.path
 import numpy as np
 import pandas as pd
-from numpy.random import RandomState
-
-
 
 
 
@@ -16,9 +13,8 @@ def _load(dataref):
     """
     trikit's sample dataset loading utility.
     """
-    def func(dataset, loss_type="paid", lob=None, grcode=None,
-             grname=None, upper_left_ind=True, lower_right_ind=False,
-             allcols=False, action=None, random_state=None):
+    def func(dataset, loss_type="incurred", lob="comauto", grcode=1767,
+             grname=None, train_only=True):
         """
         Load the specified dataset, returning a DataFrame of incremental
         losses. If ``dataset`` ="lrdb", additional keyword arguments are used
@@ -38,11 +34,8 @@ def _load(dataref):
             datasets can be obtained by calling ``get_datasets``.
 
         lob: str
-            One of "WC", "COM_AUTO", "MED_MAL", "OTHR_LIAB", "PP_AUTO" or
-            "PROD_LIAB". When ``dataset`` ="lrdb", specifies which losses to
-            target. The complete mapping of available lobs can be obtained by
-            calling ``get_lrdb_lobs``. Applies only when ``dataset`` ="lrdb",
-            otherwise parameter is ignored.
+            At present, only option is "comauto". This will be expanded in a
+            future release.
 
         grcode: str
             NAIC company code including insurer groups and single insurers.
@@ -58,163 +51,65 @@ def _load(dataref):
 
         loss_type: str
             Specifies which loss data to load. Can be one of "paid" or
-            "incurred". Defaults to "paid". Applies only when
-            ``dataset`` ="lrdb", otherwise parameter is ignored.
-
-        upper_left_ind: bool
-            If True, the upper-left portion of the triangle will be returned.
-            The upper-left portion of the triangle typically consists of
-            actual loss experience. Defaults to True. Applies only when
-            ``dataset`` ="lrdb", otherwise parameter is ignored.
-
-        lower_right_ind: bool
-            If True, the lower-right portion of the triangle will be returned.
-            The CAS Loss Reserve Database includes 10 development lags for
-            each loss year, the intention being that the data comprising the
-            lower-right portion of the triangle can be used for model
-            validation purposes. Defaults to False. Applies only when
-            ``dataset`` ="lrdb", otherwise parameter is ignored.
-
-        allcols: bool
-            If True, the returned DataFrame contains all columns that comprise
-            the CAS Loss Reserving Database. Defaults to False. When
-            ``allcols`` =False, only the columns required to convert the
-            dataset to an ``IncrTriangle`` or ``CumTriangle`` instance, namely
-            "origin", "dev" and "value", with the field specified by ``loss``
-            renamed to "value" will be returned. Note that if
-            ``action`` ="aggregate", ``allcols`` is bound to False,
-            regardless of how it was originally specified in the function
-            call.
-
-        action: str
-            Action to perform if the specified subsetting parameters do not
-            reduce to a single "loss_key"-"grcode". If more than one
-            combination of "loss_key" and "grcode" remains after applying all
-            subsetting specifications, the remaining records can either be
-            (1) aggregated (``action`` ="aggregate"), (2) a single
-            "loss_key"-"grcode" combination can be selected at random and the
-            associated records returned (``action`` ="random") or (3) the
-            remaining records can be returned as-is without additional
-            processing (``action`` =None). Defaults to None. Note that
-            ``action``="aggregate" implicitly sets ``allcols`` to False,
-            regardless of how the parameter may have been set initially.
+            "incurred". Defaults to "incurred". Note that bulk losses
+            have already been subtracted from schedule P incurred losses.
             Applies only when ``dataset`` ="lrdb", otherwise parameter is
             ignored.
 
-        random_state: RandomState/int
-            If int, random_state is the seed used by the random number
-            generator; If RandomState instance, random_state is the random
-            number generator; If None, the random number generator is the
-            RandomState instance used by np.random. Applies only when
-            ``dataset ="lrdb"``, otherwise parameter is ignored.
+        train_only: bool
+            If True, the upper-left portion of the triangle will be returned.
+            The upper-left portion of the triangle typically consists of
+            actual loss experience. If False, the completed triangle, consisting
+            of 100 observations is returned. Defaults to True. Applies only when
+            ``dataset`` ="lrdb", otherwise parameter is ignored.
 
         Returns
         -------
         pd.DataFrame
-            Sample dataset or subset of the CAS Loss Reserving Database.
         """
         try:
-            dataset  = dataset.lower()
-            datapath = dataref[dataset]
-            dat_init = pd.read_csv(datapath, delimiter=",")
+            dataset_  = dataset.lower()
+            datapath = dataref[dataset_]
+            loss_data_init = pd.read_csv(datapath, delimiter=",")
 
         except KeyError:
             print("Specified dataset does not exist: `{}`".format(dataset))
 
         # Additional filtering/subsetting if dataset="lrdb".
         if dataset=="lrdb":
-            if   loss_type.lower().startswith("i"): loss_field = "incrd_loss"
-            elif loss_type.lower().startswith("p"): loss_field = "paid_loss"
-            elif loss_type.lower().startswith("b") : loss_field = "bulk_loss"
+            loss_field = "incrd_loss" if loss_type.lower().startswith("i") else "paid_loss"
+            loss_data = loss_data_init[
+                ["loss_key", "grcode", "grname", "origin", "dev", loss_field, "train_ind"]
+                ]
 
-            basecols = ["loss_key", "grcode", "origin", "dev", loss_field]
-            lower_right_spec = 1 if lower_right_ind==True else 0
-            upper_left_spec  = 1 if upper_left_ind==True  else 0
-            loss_key_spec, loss_type_spec = lob, loss_type
-            grname_spec, grcode_spec = grname, grcode
+            if lob is not None:
+                loss_data = loss_data[loss_data.loss_key==lob].reset_index(drop=True)
 
-            if all([lower_right_spec, upper_left_spec]):
-                dat_init = dat_init[
-                    (dat_init["lower_right_ind"]==lower_right_spec) |
-                    (dat_init["upper_left_ind"]==upper_left_spec)
-                    ]
-            elif upper_left_spec==1 and lower_right_spec==0:
-                dat_init = dat_init[
-                    dat_init["upper_left_ind"]==upper_left_spec
-                    ]
-            elif upper_left_spec==0 and lower_right_spec==1:
-                dat_init = dat_init[
-                    dat_init["lower_right_ind"]==lower_right_spec
-                    ]
-            else:
-                raise ValueError(
-                    "At least one of upper_left_ind or lower_right_ind must be 1."
-                    )
+            if grcode is not None:
+                loss_data = loss_data[loss_data.grcode==grcode].reset_index(drop=True)
 
-            if loss_key_spec is not None:
-                dat_init = dat_init[dat_init["loss_key"]==loss_key_spec]
+            if grname is not None:
+                loss_data = loss_data[loss_data.grname==grname].reset_index(drop=True)
 
-            if grname_spec is not None:
-                dat_init = dat_init[dat_init["grname"]==grname_spec]
+            if train_only:
+                loss_data = loss_data[loss_data.train_ind==1].reset_index(drop=True)
 
-            if grcode_spec is not None:
-                dat_init = dat_init[dat_init["grcode"]==grcode_spec]
-
-            # Check whether provided filter specs filter down to a single
-            # loss_key-grname/grcode combination. If more than one spec
-            # remains, look to `action` parameter.
-            fields = ["loss_key", "grcode"]
-            remaining_specs = dat_init[fields].drop_duplicates().reset_index(drop=True)
-
-            if remaining_specs.shape[0] > 1:
-
-                if action and action.lower().startswith("agg"):
-                    # Aggregate remaining records over `origin` and `dev`.
-                    # Requires dropping `loss_key` and `grcode`.
-                    dat = dat_init[["origin", "dev", loss_field]].groupby(["origin", "dev"],
-                        as_index=False).sum().reset_index(drop=True)
-
-                elif action and action.lower().startswith("rand"):
-                    # Check random_state and initialize random number generator.
-                    if random_state is not None:
-                        if isinstance(random_state, int):
-                            prng = RandomState(random_state)
-                        elif isinstance(random_state, RandomState):
-                            prng = random_state
-                    else:
-                        prng = RandomState()
-
-                    # Randomly select record from remaining_specs.
-                    keepspec = remaining_specs.loc[prng.choice(remaining_specs.index)]
-                    keep_loss_key, keep_grcode = keepspec.loss_key, keepspec.grcode
-
-                    # Filter dat_init using keep_*-prefixed fields.
-                    dat = dat_init[
-                        (dat_init.loss_key==keep_loss_key) & (dat_init.grcode==keep_grcode)
-                        ]
-
-                    dat = dat[basecols]
-
-                else: # Return dataset "as-is", containing > 1 specs.
-                    dat = dat_init[basecols]
-            else:
-                dat = dat_init[basecols]
+            loss_data = loss_data.rename({loss_field:"value"}, axis=1)
 
         else: # Specified dataset is not "lrdb".
-            loss_field = "value"
-            basecols = ["origin", "dev", "value"]
-            dat      = dat_init
+            loss_data = loss_data_init
 
-        if not allcols:
-            dat = dat.rename({loss_field:"value"}, axis=1)
-        return(dat.reset_index(drop=True))
+        return(loss_data[["origin", "dev", "value"]].reset_index(drop=True))
+
     return(func)
 
 
 
 
 
-# Loss Reserving Database utility functions ==================================]
+
+# Loss Reserving Database utility functions -----------------------------------
+
 def _get_datasets(dataref:dict):
     def func():
         """
@@ -227,7 +122,6 @@ def _get_datasets(dataref:dict):
         """
         return(list(dataref.keys()))
     return(func)
-
 
 
 def _get_lrdb_lobs(lrdb_path:str):
@@ -249,7 +143,6 @@ def _get_lrdb_lobs(lrdb_path:str):
         """
         return(lrdb.tolist())
     return(func)
-
 
 
 def _get_lrdb_groups(lrdb_path:str):
@@ -290,7 +183,6 @@ def _get_lrdb_groups(lrdb_path:str):
             raise TypeError("Invalid returnas object class: `{}`".format(returnas))
         return(groups)
     return(func)
-
 
 
 def _get_lrdb_specs(lrdb_path:str):
