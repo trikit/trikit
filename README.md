@@ -460,7 +460,7 @@ np.random. Default value is None.
 
 The suggested approach is to collect parameters into a dictionary, 
 then include the dictionary with the call to the triangle's `cl` method. 
-We next demonstrate how to apply the bootstrap chainladder to the raa dataset.
+We next demonstrate how to apply the bootstrap chain ladder to the raa dataset.
 We'll set `sims=2500`, `two_sided=True` and `random_state=516`:
 
 ```python
@@ -485,7 +485,7 @@ Out[1]:
 10  total              nan 160987   213122 52135.22826  49320.42648  7938 22526 86344 120069
 ```
 
-Here `cl_reserve` represents standard chainladder reserve point estimates. 
+Here `cl_reserve` represents standard chain ladder reserve point estimates. 
 `bcl_reserve` represents the 50th percentile of the predicitive distribution 
 of reserve estimates by origin and in total, and `2.5%`, `12.5%`, `87.5%` and `97.5%`
 represent various percentiles of the predictive distribution of reserve estimates. 
