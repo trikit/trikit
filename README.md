@@ -97,8 +97,8 @@ Next we demonstrate how to create triangles using `totri` and various
 combinations of the arguments listed above.
 
 
-#### Example \#1
-*Creating a cumulative loss triangle from tabular incremental data.*
+#### Example \#1: 
+Create a cumulative loss triangle from tabular incremental data.*
 <br>
 
 Referring again to the RAA dataset, let's create a cumulative loss triangle. 
@@ -299,7 +299,7 @@ In [7]: tri.to_cum()
 
 
 #### Example \#3
-*Create an cumulative loss triangle from data formatted as a triangle*.  
+*Create a cumulative loss triangle from data formatted as a triangle*.  
 <br>
 There may be situations in which data is already formatted as a triangle, 
 and we're interested in creating a triangle instance from this data. 
@@ -492,6 +492,32 @@ represent various percentiles of the predictive distribution of reserve estimate
 The lower percentiles,  `2.5%` and `12.5%` are included because `two_sided=True`. 
 If `two_sided=False`, they would not be included, and the included percentiles 
 would be `75%` and `95%`.
+
+
+The `BoostrapChainLadderResult` object includes two exhibits: The first 
+is similar to `BaseChainLadderResult`'s `plot`, but includes the specified
+upper and lower bounds of the specified percentile of the predictive distribution. 
+To obtain the faceted plot showing the 5th and 95th percentiles, run:
+
+```python
+In [1]: bclargs = {"sims":2500, "two_sided":True, "random_state":516}
+In [2]: bcl = tri.cl(range_method="bootstrap", **bclargs)
+In [3]: bcl.plot(q=.90)
+```
+
+
+In addition, we can obtain a faceted plot of the distribution of bootstrap samples
+by origin and in aggregate by calling `BoostrapChainLadderResult`'s `hist`
+method:
+
+```
+In [4]: bcl.hist()
+```
+
+There are a number of parameters which control the style of the generated exhibits.
+Refer to the docstring for more information.   
+
+
 
 ## Looking Ahead
 In future releases, trikit will include additional methods to quantify reserve 
