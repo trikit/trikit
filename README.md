@@ -79,24 +79,19 @@ for more information.
 Triangles are created by calling the `totri` function. Available arguments
 are:
 
-- `data`: The dataset to transform into a triangle instance.   
-<br>
-- `type_`: {"cum", "incr"} Specifies the type of triangle to return.  
-<br> 
-- `data_format`: {"cum", "incr"} Specifies how losses are represented in `data`.  
-<br> 
-- `data_shape`: {"tabular", "triangle"} Specifies whether `data` represents
-tabular loss data or data already structured as a loss triangle.  
-<br>
-- `origin`: The column name in `data` corresponding to accident year. 
-Ignored if `data_shape="triangle"`.   
-<br>
-- `dev`: The column name in `data` corresponding to development period. 
-Ignored if `data_shape="triangle"`.   
-<br>
-- `value`: The column name in `data` corresponding to the metric of interest. 
-Ignored if `data_shape="triangle"`.    
-<br>
+-  `data`: The dataset to transform into a triangle instance.      
+-  `type_`: {"cum", "incr"} Specifies the type of triangle to return.  
+-  `data_format`: {"cum", "incr"} Specifies how losses are represented in `data`.        
+-  `data_shape`: {"tabular", "triangle"} Specifies whether `data` represents
+tabular loss data or data already structured as a loss triangle.     
+-  `origin`: The column name in `data` corresponding to accident year. 
+Ignored if `data_shape="triangle"`.      
+-  `dev`: The column name in `data` corresponding to development period. 
+Ignored if `data_shape="triangle"`.      
+-  `value`: The column name in `data` corresponding to the metric of interest. 
+Ignored if `data_shape="triangle"`.         
+
+
 
 Next we demonstrate how to create triangles using `totri` and various 
 combinations of the arguments listed above.
@@ -434,43 +429,36 @@ those point estimates. We can obtain quantiles of the predictive distribution
 of reserve estimates by setting `range_method="bootstrap"`. When `range_method`
 is set to "bootstrap", available optional parameters include:
 
-- `sims`: The number of bootstrap iterations to perform. Default value is 1000.   
-<br>      
-- `q`: Quantile or sequence of quantiles to compute, which must be between 0 
-and 1 inclusive. Default value is [.75, .95].  
-<br>   
-- `neg_handler`: Determines how negative incremental triangle values should be 
+-  `sims`: The number of bootstrap iterations to perform. Default value is 1000.       
+-  `q`: Quantile or sequence of quantiles to compute, which must be between 0 
+and 1 inclusive. Default value is [.75, .95].   
+-  `neg_handler`: Determines how negative incremental triangle values should be 
 handled. If set to "first", cells with value less than 0 will be set to 1. If 
 set to "all", the minimum value in all triangle cells is identified ('MIN_CELL'). 
 If MIN_CELL is less than or equal to 0, `MIN_CELL + X = +1.0` is solved for `X`. 
 `X` is then added to every other cell in the triangle, resulting in all 
 incremental triangle cells having a value strictly greater than 0. Default
-value is first.     
-<br>
-`procdist`: The distribution used to incorporate process variance. Currently,
+value is first.      
+-  `procdist`: The distribution used to incorporate process variance. Currently,
 this can only be set to "gamma". This may change in a future release.  
-<br>
-`two_sided`: Whether the two_sided prediction interval should be included in 
+-  `two_sided`: Whether the two_sided prediction interval should be included in 
 summary output. For example, if ``two_sided=True`` and ``q=.95``, then
 the 2.5th and 97.5th quantiles of the predictive reserve distribution will be 
 returned [(1 - .95) / 2, (1 + .95) / 2]. When False, only the specified 
 quantile(s) will be included in summary output. Default value is False.   
-<br>
-`parametric`:  If True, fit standardized residuals to a normal distribution via
+-  `parametric`:  If True, fit standardized residuals to a normal distribution via
 maximum likelihood, and sample from this parameterized distribution. Otherwise, 
 sample with replacement from the collection of standardized fitted triangle 
 residuals. Default value to False.     
-<br>
 `interpolation`: One of {'linear', 'lower', 'higher', 'midpoint', 'nearest'}.
-Default value is "linear". Refer to [`numpy.quantile`](https://numpy.org/devdocs/reference/generated/numpy.quantile.html) for more information.  
-<br>
-`random_state`:  If int, random_state is the seed used by the random number
+Default value is "linear". Refer to [`numpy.quantile`](https://numpy.org/devdocs/reference/generated/numpy.quantile.html) for more information.    
+- `random_state`:  If int, random_state is the seed used by the random number
 generator; If `RandomState` instance, random_state is the random number generator; 
 If None, the random number generator is the `RandomState` instance used by 
 np.random. Default value is None.     
 <br>
 
-EThe suggested approach is to collect parameters into a dictionary, 
+The suggested approach is to collect parameters into a dictionary, 
 then include the dictionary with the call to the triangle's `cl` method. 
 We next demonstrate how to apply the bootstrap chainladder to the raa dataset.
 We'll set `sims=2500`, `two_sided=True` and `random_state=516`:
