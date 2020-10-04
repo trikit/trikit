@@ -340,7 +340,7 @@ date by development period. The exhibit can be obtained as follows:
 In [5]: tri.plot()
 ```
 
-## Chain Ladder Estimates
+## Reserve Estimates
 
 In trikit, chain ladder reserve estimates are obtained by calling a cumulative
 triangle's `cl` method. Let's refer to the CAS Loss Reserving Dastabase 
