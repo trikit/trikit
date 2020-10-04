@@ -81,22 +81,22 @@ are:
 
 - `data`: The dataset to transform into a triangle instance.   
 <br>
-- `type_`: {"cum", "incr"} Specifies the type of triangle to return.    
-<br>
-- `data_format`: {"cum", "incr"} Specifies how losses are represented in `data`. 
-<br>
+- `type_`: {"cum", "incr"} Specifies the type of triangle to return.  
+<br> 
+- `data_format`: {"cum", "incr"} Specifies how losses are represented in `data`.  
+<br> 
 - `data_shape`: {"tabular", "triangle"} Specifies whether `data` represents
-tabular loss data or data already structured as a loss triangle. 
+tabular loss data or data already structured as a loss triangle.  
 <br>
 - `origin`: The column name in `data` corresponding to accident year. 
-Ignored if `data_shape="triangle"`.
+Ignored if `data_shape="triangle"`.   
 <br>
 - `dev`: The column name in `data` corresponding to development period. 
-Ignored if `data_shape="triangle"`.
+Ignored if `data_shape="triangle"`.   
 <br>
 - `value`: The column name in `data` corresponding to the metric of interest. 
-Ignored if `data_shape="triangle"`.
-
+Ignored if `data_shape="triangle"`.    
+<br>
 
 Next we demonstrate how to create triangles using `totri` and various 
 combinations of the arguments listed above.
@@ -143,7 +143,7 @@ Out[3]: True
 ```
 
 This means that all of the really useful functionality made available by 
-DataFrame objects can be leveraged triangle objects. For example, to reference 
+DataFrame objects can be applied to triangle objects. For example, to access
 the first column of `tri`:
 
 ```python
@@ -162,7 +162,7 @@ Out[4]:
 Name: 1, dtype: float64
 ```
 
-Triangle objects offer a number of methods useful for Actuarial reserving 
+Triangle objects offer a number of methods useful in Actuarial reserving 
 applications. To extract the latest diagonal, call `tri.latest`:
 
 ```python
@@ -256,10 +256,10 @@ Out[8]:
 
 
 #### Example \#2
-*Create an incremental loss triangle from tabular incremental data.*
+*Create an incremental loss triangle from tabular incremental data.*  
 <br>
-The call to `totri` will be identical as in Example #1, but we change 
-`type_` from "cum" to "incr":
+The call to `totri` is identical to Example #1, but we change `type_` from 
+"cum" to "incr":
 
 ```python
 In [1]: import pandas as pd
@@ -282,7 +282,7 @@ In [6]: tri
 1990 2063  nan  nan  nan  nan  nan  nan nan nan nan
 ```
 
-`tri` now represents RAA losses in incremental format.
+`tri` now represents RAA losses in incremental format.  
 <br>
 It is possible to obtain a cumulative representation of an incremental triangle
 object by calling `tri.to_cum`:
@@ -304,13 +304,13 @@ In [7]: tri.to_cum()
 
 
 #### Example \#3
-*Create an cumulative loss triangle from data formatted as a triangle*.
+*Create an cumulative loss triangle from data formatted as a triangle*.  
 <br>
 There may be situations in which data is already formatted as a triangle, 
 and we're interested in creating a triangle instance from this data. 
 In the next example, we create a DataFrame with the same shape as a triangle, 
-which we then pass into `totri` with `data_shape="triangle"` to a cumulative
-triangle instance:
+which we then pass into `totri` with `data_shape="triangle"` to obtain a 
+cumulative triangle instance:
 
 ```python
 In [1]: import pandas as pd
@@ -337,7 +337,7 @@ In [6]: type(tri)
 Out[2]: trikit.triangle.CumTriangle 
 ```
 
-trikit cumulative triangle instances expose a plot method, which produces a 
+trikit cumulative triangle instances expose a plot method, which generates a 
 faceted plot by origin representing the progression of cumulative losses to 
 date by development period. The exhibit can be obtained as follows:
 
@@ -351,7 +351,7 @@ In trikit, chain ladder reserve estimates are obtained by calling a cumulative
 triangle's `cl` method. Let's refer to the CAS Loss Reserving Dastabase 
 included with trikit, focusing `grcode=1767` (`grcode` uniquely identifies 
 each company in the database. To obtain a full list of grcodes and their
-corresponding companies, use `trikit.get_lrdb_groups`):
+corresponding companies, use `trikit.get_lrdb_groups()`):
 
 ```python
 In [1]: from trikit import load, totri
@@ -373,7 +373,7 @@ In [5]: result
 10  total               nan 10178930 20666007 10487077
 ```
 
-result has type `chainladder.BaseChainLadderResult`.
+result is of type `chainladder.BaseChainLadderResult`.    
 
 When the `range_method` argument of `cl` is None, two keyword arguments
 can be provided:
@@ -381,11 +381,10 @@ can be provided:
 - `tail`: The tail factor, which defaults to 1.0 
 - `sel`: Loss development factors, which defaults to "all-weighted".
 
-Recall from Example #2 in the triangle section we demonstrated how to 
-access a number of candidate loss development patterns by calling 
-`tri.a2a_avgs`. Available options for `sel` can be any value present
-in the index of `tri.a2a_avgs`. To obtain a list of available loss development
-factors, run:
+Recall from Example #2 we demonstrated how to access a number of candidate loss 
+development patterns by calling `tri.a2a_avgs`. Available options for `sel` can 
+be any value present in `tri.a2a_avgs`'s index. To obtain a list of available 
+loss development factors by name, run:
 
 ```python
 In [1]: tri.a2a_avgs.index.tolist()
@@ -399,7 +398,7 @@ Out[1]:
 
 If instead of `all-weighted`, a 5-year geometric loss 
 development pattern is preferred, along with a tail factor of 1.015, 
-the call to `cl` would be modified as:
+the call to `cl` becomes:
 
 ```python
 In [1]: tri.cl(sel="geometric-5", tail=1.015)
@@ -418,7 +417,7 @@ Out[1]:
 10  total               nan 10178930 20951135 10772205
 ```
 
-A faceted plot by origin comparing combining actual and estimates can 
+A faceted plot by origin comparing combining actuals and estimates can 
 be obtained by calling the `BaseChainLadderResult`'s plot method:
 
 ```python
@@ -438,7 +437,7 @@ is set to "bootstrap", available optional parameters include:
 - `sims`: The number of bootstrap iterations to perform. Default value is 1000.   
 <br>      
 - `q`: Quantile or sequence of quantiles to compute, which must be between 0 
-and 1 inclusive. Default value is [.75, .95]. 
+and 1 inclusive. Default value is [.75, .95].  
 <br>   
 - `neg_handler`: Determines how negative incremental triangle values should be 
 handled. If set to "first", cells with value less than 0 will be set to 1. If 
@@ -446,10 +445,10 @@ set to "all", the minimum value in all triangle cells is identified ('MIN_CELL')
 If MIN_CELL is less than or equal to 0, `MIN_CELL + X = +1.0` is solved for `X`. 
 `X` is then added to every other cell in the triangle, resulting in all 
 incremental triangle cells having a value strictly greater than 0. Default
-value is first.    
-<br>    
+value is first.     
+<br>
 `procdist`: The distribution used to incorporate process variance. Currently,
-this can only be set to "gamma". This may change in a future release. 
+this can only be set to "gamma". This may change in a future release.  
 <br>
 `two_sided`: Whether the two_sided prediction interval should be included in 
 summary output. For example, if ``two_sided=True`` and ``q=.95``, then
@@ -460,20 +459,20 @@ quantile(s) will be included in summary output. Default value is False.
 `parametric`:  If True, fit standardized residuals to a normal distribution via
 maximum likelihood, and sample from this parameterized distribution. Otherwise, 
 sample with replacement from the collection of standardized fitted triangle 
-residuals. Default value to False.      
+residuals. Default value to False.     
 <br>
 `interpolation`: One of {'linear', 'lower', 'higher', 'midpoint', 'nearest'}.
-Default value is "linear". Refer to [`numpy.quantile`](https://numpy.org/devdocs/reference/generated/numpy.quantile.html)
-for more information.    
+Default value is "linear". Refer to [`numpy.quantile`](https://numpy.org/devdocs/reference/generated/numpy.quantile.html) for more information.  
 <br>
 `random_state`:  If int, random_state is the seed used by the random number
 generator; If `RandomState` instance, random_state is the random number generator; 
 If None, the random number generator is the `RandomState` instance used by 
-np.random. Default value is None.
+np.random. Default value is None.     
+<br>
 
-Encouraged approach is to collect parameters into a dictionary, 
-then include the dictionary in the call to the triangle's `cl` method. 
-Next we demonstrate how to apply the bootstrap chainladder to the raa dataset.
+EThe suggested approach is to collect parameters into a dictionary, 
+then include the dictionary with the call to the triangle's `cl` method. 
+We next demonstrate how to apply the bootstrap chainladder to the raa dataset.
 We'll set `sims=2500`, `two_sided=True` and `random_state=516`:
 
 ```python
@@ -498,17 +497,20 @@ Out[1]:
 10  total              nan 160987   213122 52135.22826  49320.42648  7938 22526 86344 120069
 ```
 
-Here `cl_reserve` represents the standard chainladder reserve point estimates. 
+Here `cl_reserve` represents standard chainladder reserve point estimates. 
 `bcl_reserve` represents the 50th percentile of the predicitive distribution 
 of reserve estimates by origin and in total, and `2.5%`, `12.5%`, `87.5%` and `97.5%`
 represent various percentiles of the predictive distribution of reserve estimates. 
 The lower percentiles,  `2.5%` and `12.5%` are included because `two_sided=True`. 
-If `two_sided=False`, they would not be included.
-<br>
+If `two_sided=False`, they would not be included, and the included percentiles 
+would be `75%` and `95%`.
 
+## Looking Ahead
 In future releases, trikit will include additional methods to quantify reserve 
 variability, including the Mack method and various Markov Chain Monte Carlo 
-approaches. 
+approaches.   
+<br>
+Please contact james.triveri@gmail.com with suggestions or feature requests.
 
 
 
