@@ -35,16 +35,8 @@ Future releases will include additional loss reserving databases.
 `trikit` can be installed by running:
 
 ```sh
-$ pip install trikit
+$ python -m pip install trikit
 ```
-
-Alternatively, manual installation can be accomplished by downloading the
-source archive, extracting the contents and running:
-
-```sh
-$ python setup.py install
-```
-
 
 
 ## Quickstart Guide
