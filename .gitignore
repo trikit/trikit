@@ -29,6 +29,7 @@ GSYMS
 GTAGS
 .cache
 .mypy_cache/
+.pytest_cache/
 
 # Compiled source #
 ###################
@@ -115,3 +116,4 @@ Archive/
 .spyder*
 .editorconfig
 TODO
+autoDist.sh

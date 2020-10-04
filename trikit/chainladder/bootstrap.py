@@ -1181,7 +1181,7 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         plt.show()
 
 
-    def hist(self, color="#FE86F1", axes_style="darkgrid", context="notebook",
+    def hist(self, color="#FFFFFF", axes_style="darkgrid", context="notebook",
              col_wrap=4, **kwargs):
         """
         Generate visual representation of full predicitive distribtion
@@ -1243,7 +1243,7 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         with sns.axes_style(axes_style):
 
             pltkwargs = {
-                "color":color, "bins":20, "edgecolor":"#484848", "alpha":.95,
+                "color":color, "bins":20, "edgecolor":"#484848", "alpha":1.,
                 "linewidth":.45,
                 }
 

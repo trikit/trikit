@@ -12,7 +12,7 @@ import pandas as pd
 from scipy import stats
 from .chainladder import BaseChainLadder
 from .chainladder.bootstrap import BootstrapChainLadder
-from .chainladder.mack import MackChainLadder
+
 
 
 
@@ -41,7 +41,6 @@ class _BaseTriangle(pd.DataFrame):
         value: str
             The fieldname in ``data`` representing loss amounts.
         """
-        print("In _BaseTriangle: {}".format(type(data)))
         if not isinstance(data, pd.DataFrame):
             raise TypeError("`data` must be an instance of pd.DataFrame.")
 
@@ -86,16 +85,6 @@ class _BaseTriangle(pd.DataFrame):
         self._rlvi = None
         self._clvi = None
         self._dof = None
-
-
-
-    @property
-    def _constructor(self):
-        return _BaseTriangle
-
-    # @property
-    # def _constructor_sliced(self):
-    #     return SubclassedSeries
 
 
     @property
@@ -399,10 +388,9 @@ class _BaseCumTriangle(_BaseTriangle):
         value: str
             The fieldname in ``data`` representing loss amounts.
         """
-        print("In _BaseCumTriangle")
         # Replace NaN values with 1.0 in value column.
-        # data2 = data#.copy(deep=True)
-        # data2[value] = data2[value].map(lambda v: 1 if np.isnan(v) else v)
+        data2 = data.copy(deep=True)
+        data2[value] = data2[value].map(lambda v: 1 if np.isnan(v) else v)
         data["cumval"] = data.groupby([origin], as_index=False)[value].cumsum()
         data = data.drop(value, axis=1)
         data = data.rename(columns={"cumval":value})
@@ -412,11 +400,6 @@ class _BaseCumTriangle(_BaseTriangle):
         self._a2a_avgs = None
         self._a2aind = None
         self._a2a = None
-
-
-    @property
-    def _constructor(self):
-        return _BaseCumTriangle
 
 
     @staticmethod
@@ -582,7 +565,6 @@ class _BaseCumTriangle(_BaseTriangle):
         self._a2aind.at[indx, column] = value
 
 
-
     def _medial(vals, weights=None):
         """
         Compute the medial average of elements in ``vals``. Medial average
@@ -710,18 +692,13 @@ class _BaseCumTriangle(_BaseTriangle):
 
 
 
-
 class CumTriangle(_BaseCumTriangle):
     """
     Public cumulative triangle class definition.
     """
     def __init__(self, data, origin=None, dev=None, value=None):
-        print("In CumTriangle")
-        super().__init__(data, origin=origin, dev=dev, value=value)
 
-    @property
-    def _constructor(self):
-        return CumTriangle
+        super().__init__(data, origin=origin, dev=dev, value=value)
 
 
     def to_incr(self):

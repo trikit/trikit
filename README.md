@@ -437,33 +437,95 @@ In [2]: result.plot()
 
 ### Quantifying Reserve Variability
 
-The base chain ladder method provides an estimate by origin of future claim 
-liabilities, but 
+The base chain ladder method provides an estimate by origin and in total of 
+future claim liabilities, but offers no indication of the variability around 
+those point estimates. We can obtain quantiles of the predictive distribution 
+of reserve estimates by setting `range_method="bootstrap"`. When `range_method`
+is set to "bootstrap", available optional parameters include:
 
+- `sims`: The number of bootstrap iterations to perform. Default value is 1000.   
+<br>      
+- `q`: Quantile or sequence of quantiles to compute, which must be between 0 
+and 1 inclusive. Default value is [.75, .95]. 
+<br>   
+- `neg_handler`: Determines how negative incremental triangle values should be 
+handled. If set to "first", cells with value less than 0 will be set to 1. If 
+set to "all", the minimum value in all triangle cells is identified ('MIN_CELL'). 
+If MIN_CELL is less than or equal to 0, `MIN_CELL + X = +1.0` is solved for `X`. 
+`X` is then added to every other cell in the triangle, resulting in all 
+incremental triangle cells having a value strictly greater than 0. Default
+value is first.    
+<br>    
+`procdist`: The distribution used to incorporate process variance. Currently,
+this can only be set to "gamma". This may change in a future release. 
+<br>
+`two_sided`: Whether the two_sided prediction interval should be included in 
+summary output. For example, if ``two_sided=True`` and ``q=.95``, then
+the 2.5th and 97.5th quantiles of the predictive reserve distribution will be 
+returned [(1 - .95) / 2, (1 + .95) / 2]. When False, only the specified 
+quantile(s) will be included in summary output. Default value is False.   
+<br>
+`parametric`:  If True, fit standardized residuals to a normal distribution via
+maximum likelihood, and sample from this parameterized distribution. Otherwise, 
+sample with replacement from the collection of standardized fitted triangle 
+residuals. Default value to False.      
+<br>
+`interpolation`: One of {'linear', 'lower', 'higher', 'midpoint', 'nearest'}.
+Default value is "linear". Refer to [`numpy.quantile`](https://numpy.org/devdocs/reference/generated/numpy.quantile.html)
+for more information.    
+<br>
+`random_state`:  If int, random_state is the seed used by the random number
+generator; If `RandomState` instance, random_state is the random number generator; 
+If None, the random number generator is the `RandomState` instance used by 
+np.random. Default value is None.
 
+Encouraged approach is to collect parameters into a dictionary, 
+then include the dictionary in the call to the triangle's `cl` method. 
+Next we demonstrate how to apply the bootstrap chainladder to the raa dataset.
+We'll set `sims=2500`, `two_sided=True` and `random_state=516`:
 
+```python
+In [1]: from trikit import load, totri
+In [2]: df = load("raa")
+In [3]: tri = totri(data=df)
+In [4]: bclargs = {"sims":2500, "two_sided":True, "random_state":516}
+In [5]: bcl = tri.cl(range_method="bootstrap", **bclargs)
+In [6]: bcl
+Out[1]:
+   origin maturity    cldf latest ultimate  cl_reserve  bcl_reserve  2.5% 12.5% 87.5%  97.5%
+0    1981       10 1.00000  18834    18834     0.00000      0.00000     0     0     0      0
+1    1982        9 1.00922  16704    16858   153.95392      4.94385  -691   -71   543   1610
+2    1983        8 1.02631  23466    24083   617.37092    404.09648 -1028  -100  1727   3115
+3    1984        7 1.06045  27067    28703  1636.14216   1377.04868  -518   227  3351   5129
+4    1985        6 1.10492  26180    28927  2746.73634   2423.95365    50   859  4826   7209
+5    1986        5 1.23020  15852    19501  3649.10318   3457.84768   724  1688  5986   8226
+6    1987        4 1.44139  12314    17749  5435.30259   5289.49722  1536  2730  8622  11521
+7    1988        3 1.83185  13112    24019 10907.19251  10635.06275  4477  6577 15557  20131
+8    1989        2 2.97405   5395    16045 10649.98410  10247.20301  2824  5452 16603  21204
+9    1990        1 8.92023   2063    18402 16339.44253  15480.77315   565  5164 29130  41923
+10  total              nan 160987   213122 52135.22826  49320.42648  7938 22526 86344 120069
+```
 
+Here `cl_reserve` represents the standard chainladder reserve point estimates. 
+`bcl_reserve` represents the 50th percentile of the predicitive distribution 
+of reserve estimates by origin and in total, and `2.5%`, `12.5%`, `87.5%` and `97.5%`
+represent various percentiles of the predictive distribution of reserve estimates. 
+The lower percentiles,  `2.5%` and `12.5%` are included because `two_sided=True`. 
+If `two_sided=False`, they would not be included.
+<br>
 
-
-
+In future releases, trikit will include additional methods to quantify reserve 
+variability, including the Mack method and various Markov Chain Monte Carlo 
+approaches. 
 
 
 
 ## Relevant Links
-- [trikit Quickstart Guide](https://github.com/jtrive84/trikit/docs/quickstart)
-- [trikit Documentation](https://github.com/jtrive84/trikit/docs)
-- [trikit Source](https://github.com/jtrive84/trikit)
+
+- [trikit Source](https://github.com/trikit/trikit)
 - [CAS Loss Reserving Database](https://www.casact.org/research/index.cfm?fa=loss_reserves_data)
 - [Python](https://www.python.org/)
 - [Numpy](http://www.numpy.org/)
 - [Pandas](https://pandas.pydata.org/)
 - [Matplotlib](https://matplotlib.org/)
 - [Seaborn](https://seaborn.pydata.org/)
-
-
-
-
-
-### Footnotes     
-
-[1] https://www.casact.org/research/index.cfm?fa=loss_reserves_data
