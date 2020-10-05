@@ -51,6 +51,7 @@ setuptools.setup(
 
     keywords=[
         "actuarial finance reserving chainladder insurance",
+        ],
 
     install_requires=REQUIREMENTS,
 
