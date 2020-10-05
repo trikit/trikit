@@ -1,10 +1,11 @@
 include *.txt
 include *.py
+include *.csv
 include VERSION
 recursive-include chainladder *.py
-recursive-include tests *.py
-include datasets/*.csv
+recursive-include trikit/tests *.py
+include trikit/datasets/*.csv
 include docs/source/*.rst
 include docs/source/*.md
 prune Reference
-prune docs/build
+
