@@ -1,11 +1,4 @@
-include *.txt
-include *.py
 include *.csv
-include VERSION
-recursive-include chainladder *.py
-recursive-include trikit/tests *.py
-include trikit/datasets/*.csv
-include docs/source/*.rst
-include docs/source/*.md
-prune Reference
-
+include datasets/*.*
+include doc/source/*.rst
+include doc/source/*.md

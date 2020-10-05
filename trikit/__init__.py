@@ -35,4 +35,4 @@ get_lrdb_lobs = _get_lrdb_lobs(lrdb_path=lrdb_path)
 get_lrdb_groups = _get_lrdb_groups(lrdb_path=lrdb_path)
 get_lrdb_specs = _get_lrdb_specs(lrdb_path=lrdb_path)
 
-__version__ = "0.2.8"
+__version__ = "0.2.9"
