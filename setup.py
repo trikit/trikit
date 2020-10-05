@@ -4,8 +4,8 @@ Copyright 2018 James D. Triveri
 
 trikit setup.py.
 """
-import setuptools
 import pathlib
+from setuptools import setup, find_packages
 
 NAME = "trikit"
 DESCRIPTION = "A Pythonic Approach to Actuarial Reserving"
@@ -19,28 +19,17 @@ VERSION = (BASE_DIR / "VERSION").read_text(encoding="utf-8")
 REQUIREMENTS = (BASE_DIR / "requirements.txt").read_text(encoding="utf-8").split()
 
 
-setuptools.setup(
-
+setup(
     name=NAME,
-
     version=VERSION,
-
     author=AUTHOR,
-
-    author_email=AUTHOR_EMAIL, 	
-
-    license="MIT",    
-
+    author_email=AUTHOR_EMAIL,
+    license="MIT",
     description=DESCRIPTION,
-
     long_description=LONG_DESCRIPTION,
-
     long_description_content_type="text/markdown",
-
     url=URL,
-
-    packages=setuptools.find_packages(),
-
+    packages=find_packages(),
     classifiers=[
         "Development Status :: 4 - Beta",
         "Programming Language :: Python :: 3 :: Only",
@@ -48,12 +37,9 @@ setuptools.setup(
         "Topic :: Scientific/Engineering :: Mathematics",
         "Operating System :: OS Independent",
         ],
-
     keywords=[
         "actuarial finance reserving chainladder insurance",
         ],
-
     install_requires=REQUIREMENTS,
-
-    include_package_data=True
+    include_package_data=True,
     )
