@@ -42,6 +42,5 @@ setup(
         "actuarial finance reserving chainladder insurance",
         ],
     install_requires=REQUIREMENTS,
-    package_data=dpkg_data,
     include_package_data=True,
     )
