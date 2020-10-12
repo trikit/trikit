@@ -30,49 +30,62 @@ class BootstrapChainLadder(BaseChainLadder):
     is a triangle of cumulative losses:
 
     1.  Calculate the all-year volume-weighted age-to-age factors.
+
     2.  Estimate the fitted historical cumulative paid loss and ALAE
         using the latest diagonal of the original triangle and the
         age-to-age factors from [1] to un-develop the losses.
+
     3.  Calculate the unscaled Pearson residuals, degrees of freedom
         and scale parameter.
+
     4.  Calculate the adjusted Pearson residuals.
+
     5.  Sample with replacement from the adjusted Pearson residuals.
+
     6.  Calculate the triangle of sampled incremental losses
         (I^ = m + r_adj * sqrt(m)), where I^ = Resampled incremental loss,
         m = Incremental fitted loss (from [2]) and r_adj = Adjusted Pearson
         residuals.
+
     7.  Using the triangle from [6], project future losses using the
         Chain Ladder method.
+
     8.  Include Process variance by simulating each incremental future
         loss from a Gamma distribution with mean = I^ and
         variance = I^ * scale parameter.
+
     9.  Estimate unpaid losses using the Chain Ladder technique.
+
     10. Repeat for the number of cycles specified.
 
     The collection of projected ultimates for each origin year over all
     bootstrap cycles comprises the predictive distribtuion of reserve
     estimates.
-
     Note that the estimate of the distribution of losses assumes
     development is complete by the final development period. This is
     to avoid the complication associated with modeling a tail factor.
 
+
     References
     ----------
     - England, P., and R. Verrall, (2002), *Stochastic Claims Reserving in General
-    Insurance*, British Actuarial Journal 8(3): 443-518.
+      Insurance*, British Actuarial Journal 8(3): 443-518.
+
     - CAS Working Party on Quantifying Variability in Reserve Estimates,
-    *The Analysis and Estimation of Loss & ALAE Variability: A Summary Report*,
-    Casualty Actuarial Society Forum, Fall 2005.
+      *The Analysis and Estimation of Loss & ALAE Variability: A Summary Report*,
+      Casualty Actuarial Society Forum, Fall 2005.
+
     - Leong et al., (2012), *Back-Testing the ODP Bootstrap of the Paid
-    Chain-Ladder Model with Actual Historical Claims Data*, Casualty Actuarial
-    Society E-Forum.
+      Chain-Ladder Model with Actual Historical Claims Data*, Casualty Actuarial
+      Society E-Forum.
+
     - Kirschner, et al., *Two Approaches to Calculating Correlated Reserve
-    Indications Across Multiple Lines of Business* Appendix III, Variance
-    Journal, Volume 2/Issue 1.
+      Indications Across Multiple Lines of Business* Appendix III, Variance
+      Journal, Volume 2/Issue 1.
+
     - Shapland, Mark R., (2016), *Using the ODP Bootstrap Model: A
-    Practicioner's Guide*, CAS Monograph Series Number 4: Casualty Actuarial
-    Society, 2016.
+      Practicioner's Guide*, CAS Monograph Series Number 4: Casualty Actuarial
+      Society, 2016.
     """
     def __init__(self, cumtri):
         """
@@ -1048,7 +1061,7 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         """
         Generate exhibit representing the distribution of reserve estimates
         resulting from bootstrap resampling, along with percentiles from the
-        distribution given by ``q``.
+        distribution given by ``q``, the percentile(s) of interest.
 
         Parameters
         ----------

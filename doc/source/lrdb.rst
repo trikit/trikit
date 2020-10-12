@@ -1,11 +1,11 @@
 
 .. _lrdb:
 
-===============================================================================
+================================================================================
 The CAS Loss Reserving Database
-===============================================================================
+================================================================================
 
-----------------------------------------------------
+
 
 The |LRDB|__ is a collection of loss data originally compiled by Glenn Meyers 
 intended to be used for claims reserving studies. The data includes major 
@@ -24,12 +24,9 @@ its performance retrospectively [#f1]_.
 
 
 ``loss_key``            
-	One of "WC", "PROD_LIAB", "PP_AUTO", "OTHR_LIAB", "MED_MAL" or "COM_AUTO"
+	Currently limited to ``"com_auto"``, but will be expanded in a future release.
 	(see mapping below)
-
-``loss_type_suffix``           
-	One of "D", "R", "B", "H", "F" or "C" (see mapping below)                 
-
+               
 ``grcode``       
 	NAIC company code (including insurer groups and single insurers)               
 
@@ -48,17 +45,13 @@ its performance retrospectively [#f1]_.
 ``paid_loss``    
 	paid losses and allocated expenses at year end       
 
-``bulk_loss``            
-	Bulk and IBNR reserves on net losses and defense and cost containment 
-	expenses reported at year end
-
-``earned_prem_dir``   	
+``ep_dir``   	
 	Premiums earned at incurral year - direct and assumed     
 
-``earned_prem_ceded``       
+``ep_ceded``       
 	Premiums earned at incurral year - ceded       
 	
-``earned_prem_net``       	
+``ep_net``       	
 	earned_prem_dir - earned_prem_ceded      
 
 ``single``         	
@@ -69,48 +62,38 @@ its performance retrospectively [#f1]_.
 	Exhibit Part 2A, including net losses unpaid and unpaid loss adjustment
 	expenses     
 
-``upper_left_ind``	      
+``train_ind``	      
 	**1** indicates whether the value associated with a particular 
 	``origin-dev`` combination would fall in the upper-left of a typical loss 
 	triangle   
-
-``lower_right_ind``
-	**1** corresponds to values that are typically calculated using a reserve 
-	estimation technique, such as the chain ladder method. However, within the 
-	context of the |LRDB|, there are 10 years of development lag for each 
-	origin year. This field serves as a mechanism to exclude these additional 
-	development periods for analyses requiring a more conventional loss 
-	triangle structure, where the latest origin year has a one period of 
-	development, the second latest origin year has two periods of development, 
-	etc.
 
 
 The following table provides a description of the type of losses associated 
 with each unique combination of ``loss_key`` and
 ``loss_type_suffix``:
 
+.. note:: At present, the only available option for losas_key is ``"com_auto"``.
 
 .. csv-table:: "Loss Description"
     :header: "loss_type_suffix", "loss_key", "description"
 
-	"D", "WC", "Workers Compensation"
-	"R", "PROD_LIAB","Products Liability - Occurance"
-	"B", "PP_AUTO","Private Passenger Auto Liability/Medical"
-	"H", "OTHR_LIAB", "Other Liability - Occurrence"
-	"F", "MED_MAL", "Medical Malpractice - Claims Made"
-	"C", "COM_AUTO", "Commercial Auto Liability/Medical"
+	"D", "wc", "Workers Compensation"
+	"R", "prod_liab","Products Liability - Occurance"
+	"B", "pp_auto","Private Passenger Auto Liability/Medical"
+	"H", "othr_liab", "Other Liability - Occurrence"
+	"F", "med_mal", "Medical Malpractice - Claims Made"
+	"C", "comauto", "Commercial Auto Liability/Medical"
 
 
 
 
 A copy of the |LRDB| is distributed along with trikit, in addition to
 a number of convenience functions intended to simplify database
-interaction. This page details the |LRDB| convenience functions, with 
-examples demonstrating typical usage scenarios. 
+interaction. This page details the |LRDB| convenience functions.
 
 
-API
-^^^^^^^^^^^^^^^^^^^^^^^^
+Loss Reserve Database API
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
 Sample datasets are loaded using the ``load`` utility available in trikit's
@@ -121,98 +104,21 @@ top-level.
 
 
 
-When ``dataset`` = "lrdb", a number of additional keyword arguments can be
-passed to ``load``. For example, to retrieve the subset of workers' compensation
-losses for ``grcode`` =2143:
+When ``dataset="lrdb"``, a number of additional keyword arguments can be
+passed to ``load``. For example, to retrieve the subset of commercial
+auto losses for ``grcode=1767``::
 
-
-.. code-block:: python
-
-    >>> import trikit
-    >>> wc2143 = trikit.load(dataset="lrdb", grcode=2143, loss_key="WC")
-    >>> type(wc2143)
+    In [1]: from trikit import load
+    In [2]: df = trikit.load(dataset="lrdb", grcode=1767, loss_key="comauto")
+    In [3]: type(df)
     pandas.core.frame.DataFrame
 
-    >>> wc2143.shape
-    (55, 3)
 
 
 Notice that with ``grcode`` and ``loss_key`` specified as above, the
 returned DataFrame contains 55 records as expected (recall that by default,
-``lower_right_ind`` is set to False, otherwise the shape of the returned
+``train_ind`` is set to False, otherwise the shape of the returned
 DataFrame would be (100, 3).
-
-If we repeat the same example but this time leave out the ``loss_key`` ="WC",
-the arguments passed into ``load`` no longer specify a unique collection of
-losses. When this occurs, one of three courses of action that can be taken,
-determined by the value passed to the ``action``
-parameter:
-
-``action=None``
-    Return the |LRDB| subset of data "as-is", without further aggregation
-    or selection. This will result in a DataFrame in excess of 55 records
-    (100 records if ``lower_right_ind=True``). This is the default.
-
-``action="aggregate"``
-    Aggregate the returned subset over "origin" and "dev". Note that setting
-    ``action="aggregate"`` implicitly sets ``allcols=False``.
-
-``action="random"``
-    Select at random a single group from the remaining groups obtained
-    after filtering via the original function arguments. A ``RandomState``
-    object can optionally be passed to ``load``.
-
-
-To demonstrate, ``load`` is called with each option and the result inspected.
-
-First, we look at ``action=None``. Retrieve the unique "loss-key"-"grcode"
-combinations from returned dataset.
-
-.. code-block:: python
-
-    >>> dat1 = trikit.load(dataset="lrdb", grcode=2143, action=None)
-    >>> dat1[["loss_key", "grcode"]].drop_duplicates().reset_index(drop=True)
-        loss_key  grcode
-    0         WC    2143
-    1  PROD_LIAB    2143
-    2    PP_AUTO    2143
-    3  OTHR_LIAB    2143
-    4   COM_AUTO    2143
-
-
-
-
-Next, we inspect the unique "loss-key"-"grcode" combinations returned
-when ``action="random"``.
-
-.. code-block:: python
-
-    >>> dat2 = trikit.load(dataset="lrdb", grcode=2143, action="random")
-    >>> dat2[["loss_key", "grcode"]].drop_duplicates().reset_index(drop=True)
-      loss_key  grcode
-    0       WC    2143
-
-
-Finally, we inspect the output generated when ``action="aggregate"``. Note that
-when this option is given, "loss_key" and "grcode" are not included in
-the output, since ``action="aggregate"`` specifies that "value" should be
-aggregated over "origin" and "dev".
-
-.. code-block:: python
-
-    >>> dat3 = trikit.load(dataset="lrdb", grcode=2143, action="aggregate")
-    >>> dat3.shape
-    (55, 3)
-
-
-
-To return all records of the |LRDB|, call ``load`` with only ``dataset="lrdb"``.
-
-.. code-block:: python
-
-    lrdb = trikit.load(dataset="lrdb")
-    lrdb.shape
-    (42845, 5)
 
 
 
@@ -234,10 +140,11 @@ To return all records of the |LRDB|, call ``load`` with only ``dataset="lrdb"``.
 __ https://www.casact.org/research/index.cfm?fa=loss_reserves_data
 
 
+
 .. rubric:: Footnotes
 
 .. [#f1] https://www.casact.org/research/index.cfm?fa=loss_reserves_data
-.. [#f2] Text of the second footnote.
+
 
 
 

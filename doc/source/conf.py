@@ -19,9 +19,25 @@
 #
 import os
 import sys
-#import sphinx_bootstrap_theme
-sys.path.insert(0, os.path.abspath('../../..'))
+import sphinx_rtd_theme
 
+
+
+sys.path.insert(0, os.path.abspath("../.."))
+sys.path.insert(0, "G:/Repos/trikit")
+
+#~ sys.path.insert(0, "G:/Repos/trikit")
+sys.path.insert(0, "G:/Repos/trikit/trikit")
+#~ sys.path.insert(0, "G:/Repos/trikit/trikit/chainladder")
+#~ sys.path.insert(0, "G:/Repos/trikit/trikit/datasets")
+
+#~ sys.path.insert(0, os.path.abspath('.'))
+#~ sys.path.insert(0, os.path.abspath('../'))
+#~ sys.path.insert(0, os.path.abspath('../../..'))
+
+#~ print("os.path.abspath('.'): {}".format(os.path.abspath('.')))
+#~ print("os.path.abspath('../'): {}".format(os.path.abspath('../')))
+#~ print("os.path.abspath('../../..'): {}".format(os.path.abspath('../../..')))
 
 # -- General configuration ------------------------------------------------
 
@@ -97,7 +113,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = []
+exclude_patterns = ['_build', '**tests**', '**spi**']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
@@ -114,7 +130,7 @@ add_module_names = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
+html_theme = "sphinx_rtd_theme"
 #html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
 
 # Theme options are theme-specific and customize the look and feel of a theme

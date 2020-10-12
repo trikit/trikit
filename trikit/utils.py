@@ -11,7 +11,56 @@ import pandas as pd
 
 def _load(dataref):
     """
-    trikit's sample dataset loading utility.
+	Load the specified dataset, returning a DataFrame of incremental
+	losses. If ``dataset`` ="lrdb", additional keyword arguments are used
+	to subset the CAS Loss Reserving Database to the records of interest.
+	Within the Loss Reserving Database, "loss_key" and "grname" uniquely
+	partition losses into 100 record blocks if ``lower_right_ind`` =True,
+	otherwise losses are partitioned into 55 record blocks. All available
+	combinations of "loss_key" and "grcode" (referred to as "specs")
+	can be obtained by calling ``get_lrdb_specs``.
+	If ``dataset`` is something other than "lrdb", then only the name of
+	the target dataset as a string is required.
+
+	Parameters
+	----------
+	dataset: str
+		Specifies which sample dataset to load. The complete set of sample
+		datasets can be obtained by calling ``get_datasets``.
+
+	lob: str
+		At present, only option is "comauto". This will be expanded in a
+		future release.
+
+	grcode: str
+		NAIC company code including insurer groups and single insurers.
+		The complete mapping of available grcodes can be obtained by
+		calling ``get_lrdb_groups``. Applies only when
+		``dataset`` ="lrdb", otherwise parameter is ignored.
+
+	grname: str
+		NAIC company name (including insurer groups and single insurers).
+		The complete mapping of available grcodes can be obtained by
+		calling ``get_lrdb_groups``. Applies only when
+		``dataset`` ="lrdb", otherwise parameter is ignored.
+
+	loss_type: str
+		Specifies which loss data to load. Can be one of "paid" or
+		"incurred". Defaults to "incurred". Note that bulk losses
+		have already been subtracted from schedule P incurred losses.
+		Applies only when ``dataset`` ="lrdb", otherwise parameter is
+		ignored.
+
+	train_only: bool
+		If True, the upper-left portion of the triangle will be returned.
+		The upper-left portion of the triangle typically consists of
+		actual loss experience. If False, the completed triangle, consisting
+		of 100 observations is returned. Defaults to True. Applies only when
+		``dataset`` ="lrdb", otherwise parameter is ignored.
+
+	Returns
+	-------
+	pd.DataFrame
     """
     def func(dataset, loss_type="incurred", lob="comauto", grcode=1767,
              grname=None, train_only=True):

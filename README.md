@@ -450,7 +450,7 @@ quantile(s) will be included in summary output. Default value is False.
 maximum likelihood, and sample from this parameterized distribution. Otherwise, 
 sample with replacement from the collection of standardized fitted triangle 
 residuals. Default value to False.     
-`interpolation`: One of {'linear', 'lower', 'higher', 'midpoint', 'nearest'}.
+-  `interpolation`: One of {'linear', 'lower', 'higher', 'midpoint', 'nearest'}.
 Default value is "linear". Refer to [`numpy.quantile`](https://numpy.org/devdocs/reference/generated/numpy.quantile.html) for more information.    
 - `random_state`:  If int, random_state is the seed used by the random number
 generator; If `RandomState` instance, random_state is the random number generator; 

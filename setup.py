@@ -41,5 +41,8 @@ setup(
         "actuarial finance reserving chainladder insurance",
         ],
     install_requires=REQUIREMENTS,
+    package_data={
+        "":["datasets/*.csv",]
+        },
     include_package_data=True,
     )

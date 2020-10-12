@@ -1,27 +1,27 @@
 
 .. _chainladder:
 
-===============================================================================
-The Chain Ladder Method
-===============================================================================
-
-This is the Chain Ladder page.
+================================================================================
+:mod: chainladder --- Reserve Estimators
+================================================================================
 
 
+Chain Ladder Class Definitions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-
-tri1.a2a.mask(tri1.a2a > 3)
-tri1.a2a.where(tri1.a2a < 5.0) # Get link ratios less than 5, otherwise NaN.
-
-# Remove link ratios greater than 3:
-tri1._a2aind = tri1.a2a.mask(tri1.a2a > 3).applymap(lambda v: 0 if np.isnan(v) else 1)
-
-.. autoclass:: trikit.chainladder._BaseChainLadder
+.. autoclass:: trikit.chainladder.BaseChainLadder
 	:members:
+	:private-members:
+	:no-undoc-members:
 
-.. autoclass:: trikit.chainladder.mack._MackChainLadder
-	:members:
 
-.. autoclass:: trikit.chainladder.bootstrap._BootstrapChainLadder
+.. autoclass:: trikit.chainladder.bootstrap.BootstrapChainLadder
 	:members:
+	:private-members:
+	:no-undoc-members:
+	
+
+
+
+
 

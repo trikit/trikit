@@ -492,7 +492,7 @@ class _BaseCumTriangle(_BaseTriangle):
         Examples
         --------
         Load raa sample dataset, and remove a highly-leveraged age-to-age
-        factor from influencing the ldf calculation.
+        factor from influencing the ldf calculation::
 
             In [1]: import trikit
             In [2]: raa = trikit.load(dataset="raa")
@@ -510,8 +510,9 @@ class _BaseCumTriangle(_BaseTriangle):
             1988   5.142117
             1989   1.721992
 
+
         To remove the link ratio at origin year 1982 and development
-        period 1, run the following:
+        period 1, run the following::
 
             In [1]: tri.a2aind = (1982, 1, 0)
             In [2]: tri.a2aind
@@ -527,8 +528,9 @@ class _BaseCumTriangle(_BaseTriangle):
             1988  1  1  0  0  0  0  0  0  0
             1989  1  0  0  0  0  0  0  0  0
 
+
         Notice that the value at (1982, 1) is 0. To change it back
-        to 1, simply run:
+        to 1, simply run::
 
             In [1]: tri.a2aind = (1982, 1, 1)
             In [2]: tri.a2aind
@@ -544,8 +546,9 @@ class _BaseCumTriangle(_BaseTriangle):
             1988  1  1  0  0  0  0  0  0  0
             1989  1  0  0  0  0  0  0  0  0
 
+
         Note also that ``self.a2aind`` may be updated using DataFrame
-        methods directly:
+        methods directly::
 
             In [1]: tri.a2aind.at[1982, 1] = 0
             In [2]: tri.a2aind
@@ -694,7 +697,7 @@ class _BaseCumTriangle(_BaseTriangle):
 
 class CumTriangle(_BaseCumTriangle):
     """
-    Public cumulative triangle class definition.
+    Cumulative triangle class definition.
     """
     def __init__(self, data, origin=None, dev=None, value=None):
 
@@ -704,6 +707,21 @@ class CumTriangle(_BaseCumTriangle):
     def to_incr(self):
         """
         Obtain incremental triangle based on cumulative triangle instance.
+
+        Returns
+        -------
+        trikit.triangle.IncrTriangle
+
+        Examples
+        --------
+        Convert existing cumulative triangle instance into an instance of
+        ``trikit.triangle.IncrTriangle``::
+
+            In [1]: from trikit import load, totri
+            In [2]: cumtri = totri(load("raa"))
+            In [3]: incrtri = cumtri.to_incr()
+            In [4]: type(incrtri)
+            Out[1]: triangle.IncrTriangle
         """
         incrtri = self.diff(axis=1)
         incrtri.iloc[:,0] = self.iloc[:, 0]
@@ -794,12 +812,6 @@ class CumTriangle(_BaseCumTriangle):
                     spine.set_color("#000000")
                     spine.set_linewidth(.50)
 
-
-        # Adjust facets downward and and left-align figure title.
-        # plt.subplots_adjust(top=0.9)
-        # g.fig.suptitle(
-        #     titlestr, x=0.065, y=.975, fontsize=11, color="#404040", ha="left"
-        #     )
         plt.show()
 
 
@@ -810,7 +822,7 @@ class CumTriangle(_BaseCumTriangle):
 
         Parameters
         ----------
-        range_method: {"bootstrap", "mack"}
+        range_method: {"bootstrap"}
             Specifies the method to use to quantify ultimate/reserve
             variability. When ``range_method=None``, reduces to the standard
             chain ladder technique providing reserve point estimates by
@@ -824,87 +836,64 @@ class CumTriangle(_BaseCumTriangle):
             the argument will be ignored and a warning will be generated.
             What follows are valid optional keyword parameters for different
             values of ``range_method``:
-
-            * ``range_method=None`` (standard chain ladder)
+            * ``range_method=None`` (standard chain ladder):
                 - ``sel``: The ldf average to select from ``triangle.CumTriangle.a2a_avgs``.
-                Defaults to ``"all-weighted"``.
+                  Defaults to ``"all-weighted"``.
                 - ``tail``: Tail factor. Defaults to 1.0.
-
-            * ``range_method="bootstrap"`` (bootstrap chain ladder)
+            * ``range_method="bootstrap"`` (bootstrap chain ladder):
                 - ``sims``: The number of bootstrap resamplings to perform.
-                Defaults to 1000.
+                  Defaults to 1000.
                 - ``q``: Determines which percentiles of the reserve distribution
-                to compute. Defaults to [.75, .95].
+                  to compute. Defaults to [.75, .95].
                 - ``neg_handler``: Dictates how negative triangle values should
-                be handled. See documentation for ``_BoostrapChainLadder``
-                for more information. Defaults to 1.
+                  be handled. See documentation for ``_BoostrapChainLadder``
+                  for more information. Defaults to 1.
                 - ``procdist``: The distribution used to incorporate process
-                variance. At present , the only option is "gamma", but
-                this wqill change in a future release.
+                  variance. At present , the only option is "gamma", but
+                  this wqill change in a future release.
                 - ``parametric``: If True, fit standardized residuals to a
-                normal distribution then sample from this parameterized
-                distribution. Otherwise, sample with replacement from the
-                collection of standardized residuals. Defaults to False.
+                  normal distribution then sample from this parameterized
+                  distribution. Otherwise, sample with replacement from the
+                  collection of standardized residuals. Defaults to False.
                 - ``symmetric``: Whether the symmetric interval of given
-                ``q``('s) should be included in summary output.
+                  ``q``('s) should be included in summary output.
                 - ``interpolation``: See ``numpy.quantile`` for more information.
-                Defaults to "linear".
+                  Defaults to "linear".
                 - ``random_state``: Set random seed for reproducibility.
-                Defaults to None.
-
-            * ``range_method="mack"`` (Mack chain ladder)
-                - ``alpha``: Can be one of {0, 1, 2}. See ``_MackChainLadder._ldfs``
-                for more information. Defaults to 1.
-                - ``q``: Determines which percentiles of the reserve distribution
-                to compute. Defaults to [.75, .95].
-                - ``symmetric``: Whether the symmetric interval of given
-                ``q``('s) should be included in summary output.
+                  Defaults to None.
 
         Returns
         -------
-        chainladder.*ChainLadderResult
-            One of {``BaseChainLadderResult``,``BootstrapChainLadderResult``,``MackChainLadderResult``}.
+        chainladder.ChainLadderResult
+            One of {BaseChainLadderResult, BootstrapChainLadderResult}.
+
 
         Examples
         --------
         In the following examples we refer to the raa sample dataset. We read
         in the dataset and create a cumulative triangle instance, identified as
-        ``tri``:
+        ``tri``::
 
             In [1]: import trikit
             In [2]: raa = trikit.load("raa")
             In [3]: tri = trikit.totri(raa)
 
 
-        1. Perform standard chain ladder, accepting defaults for ``sel`` and ``tail``:
+        1. Perform standard chain ladder, accepting defaults for ``sel`` and ``tail``::
 
             In [1]: cl0 = tri.cl()
-            In [2]:
-            Out[1]:
 
-        2. Perform standard chain ladder, updating values for ``sel`` and ``tail``:
+
+        2. Perform standard chain ladder, updating values for ``sel`` and ``tail``::
 
             In [1]: kwds = dict(sel="medial-5", tail=1.015)
             In [2]: cl1 = tri.cl(**kwds)
-            In [3]:
-            Out[1]:
 
 
-        3. Perform boostrap chain ladder, overriding ``sims``, ``q`` and ``symmetric``:
+        3. Perform boostrap chain ladder, overriding ``sims``, ``q`` and ``symmetric``::
 
             In [1]: kwds = dict(sims=2500, q=[.90, .99], symmetric=True)
             In [2]: bcl = tri.cl(range_method="bootstrap", **kwds)
-            In [3]:
-            Out[1]:
-
-
-        4. Perfrom Mack chain ladder, overriding ``alpha``:
-
-            In [1]: kwds = {"alpha":2}
-            In [2]: mcl = tri.cl(range_method="mack", **kwds)
-            In [3]:
-            Out[1]:
-
         """
         kwds = {} if kwargs is None else kwargs
 
@@ -935,13 +924,13 @@ def totri(data, type_="cum", data_format="incr", data_shape="tabular",
     """
     Create a triangle object based on ``data``. ``type_`` can be one of
     "incr" or "cum", determining whether the resulting triangle represents
-    incremental or cumulative losses/counts/alae.
+    incremental or cumulative losses/counts.
     If ``data_shape="triangle"``, ``data`` is assumed to be structured as a
     runoff triangle, indexed by origin with columns representing development
     periods. If ``data_shape="tabular"``, data is assumed to be tabular with at
     minimum columns ``origin``, ``dev`` and ``value``, which represent origin
     year, development period and metric of interest respectively.
-    ``data_format`` indicates whether the metric of interest are cumulative
+    ``data_format`` specifies whether the metric of interest are cumulative
     or incremental in nature. Default value is "incr".
 
     Parameters
@@ -950,7 +939,7 @@ def totri(data, type_="cum", data_format="incr", data_shape="tabular",
         The dataset to be coerced into a triangle instance. ``data`` can be
         tabular loss data, or a dataset (pandas DataFrame) formatted as a
         triangle, but not typed as such. In the latter case,
-        ``data_shape`` should be set to ```triangle``.
+        ``data_shape`` should be set to "triangle".
 
     type_: {"cum", "incr"}
         Either "cum" or "incr". Specifies how the metric of interest (losses,
@@ -963,28 +952,27 @@ def totri(data, type_="cum", data_format="incr", data_shape="tabular",
         Specifies the representation of the metric of interest in ``data``.
         Default value is "incr".
 
-    data_shape:{"tabular", "triangle")
-        Indicates whether ``data`` is formatted as a triangle as opposed
-        to tabular loss data. In some workflows, triangles may have already
+    data_shape:{"tabular", "triangle"}
+        Indicates whether ``data`` is formatted as a triangle instead of
+        tabular loss data. In some workflows, triangles may have already
         been created, and are available in auxillary files. In such cases, the
-        triangle formatted data will be passed in as a DataFrame, and
-        converted into the desired representation directly. Default value is
+        triangle formatted data is read into a DataFrame, then coerced
+        into the desired triangle representation directly. Default value is
         False.
 
     origin: str
-        The field in ``data`` representing the origin year. When
-        ``has_tri_shape`` is False, ``origin`` is ignored. Default value is
-        "origin".
+        The field in ``data`` representing origin year. When ``data_shape="triangle"``,
+        ``origin`` is ignored. Default value is "origin".
 
     dev: str
-        The field in ``data`` representing the development period. When
-        ``has_tri_shape`` is False, ``dev`` is ignored. Default value is
-         "dev".
+        The field in ``data`` representing development period. When
+        ``data_shape="triangle"``,  ``dev`` is ignored. Default value is
+        "dev".
 
     value: str
-        The field in ``data`` representing loss amounts. When
-        ``has_tri_shape`` is False, ``value`` is ignored. Default value is
-        "value".
+        The field in ``data`` representing the metric of interest (losses, counts, etc.).
+        When ``data_shape="triangle"``, ``value`` is ignored. Default value is "value".
+
 
     Returns
     -------
