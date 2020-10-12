@@ -19,6 +19,7 @@ VERSION = (BASE_DIR / "VERSION").read_text(encoding="utf-8")
 REQUIREMENTS = (BASE_DIR / "requirements.txt").read_text(encoding="utf-8").split()
 
 
+
 setup(
     name=NAME,
     version=VERSION,
@@ -41,8 +42,6 @@ setup(
         "actuarial finance reserving chainladder insurance",
         ],
     install_requires=REQUIREMENTS,
-    package_data={
-        "":["datasets/*.csv",]
-        },
+    package_data=dpkg_data,
     include_package_data=True,
     )

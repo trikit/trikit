@@ -1,4 +1,1 @@
-include *.csv
-include datasets/*.*
-include doc/source/*.rst
-include doc/source/*.md
+global-include *.csv
