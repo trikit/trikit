@@ -1,5 +1,5 @@
 """
-BootstrapChainLadder Implementation.
+BootstrapChainLadder implementation.
 """
 import functools
 import warnings

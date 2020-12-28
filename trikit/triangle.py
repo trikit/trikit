@@ -487,7 +487,7 @@ class _BaseCumTriangle(_BaseTriangle):
         update_spec: tuple
             3-tuple consisting of ``(index, column, value)``, representing
             the intersection point of the ``self.a2a`` target cell, and the
-            value used to update it.
+            value used to update it. ``value`` must be either 0 or 1.
 
         Examples
         --------
@@ -972,7 +972,6 @@ def totri(data, type_="cum", data_format="incr", data_shape="tabular",
     value: str
         The field in ``data`` representing the metric of interest (losses, counts, etc.).
         When ``data_shape="triangle"``, ``value`` is ignored. Default value is "value".
-
 
     Returns
     -------

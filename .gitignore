@@ -117,3 +117,5 @@ Archive/
 .editorconfig
 TODO
 autoDist.sh
+__setenv.py
+*__setenv.py

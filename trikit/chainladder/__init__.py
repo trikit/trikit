@@ -141,9 +141,9 @@ class BaseChainLadder:
         pd.Series
         """
         cldfs_indx = ldfs.index.values
-        cldfs_ = np.cumprod(ldfs.values[::-1])[::-1]
-        cldfs_ = pd.Series(data=cldfs_, index=ldfs.index.values, name="cldf")
-        return(cldfs_.astype(np.float_).sort_index())
+        cldfs = np.cumprod(ldfs.values[::-1])[::-1]
+        cldfs = pd.Series(data=cldfs, index=ldfs.index.values, name="cldf")
+        return(cldfs.astype(np.float).sort_index())
 
 
     def _ultimates(self, cldfs):
@@ -164,11 +164,11 @@ class BaseChainLadder:
         -------
         pd.Series
         """
-        ultimates_ = pd.Series(
+        ultimates = pd.Series(
             data=self.tri.latest_by_origin.values * cldfs.values[::-1],
             index=self.tri.index, name="ultimate"
             )
-        return(ultimates_.astype(np.float_).sort_index())
+        return(ultimates.astype(np.float).sort_index())
 
 
     def _reserves(self, ultimates):
@@ -192,10 +192,10 @@ class BaseChainLadder:
         -------
         pd.Series
         """
-        reserves_ = pd.Series(
+        reserves = pd.Series(
             data=ultimates - self.tri.latest_by_origin,
             index=self.tri.index, name='reserve')
-        return(reserves_.astype(np.float_).sort_index())
+        return(reserves.astype(np.float).sort_index())
 
 
     def _trisqrd(self, ldfs):
@@ -215,12 +215,11 @@ class BaseChainLadder:
         for i in enumerate(trisqrd_.columns[1:], start=1):
             ii  , devp  = i[0], i[1]
             ildf, rposi = ldfs.values[ii - 1], clvi[devp] + 1
-            trisqrd_.iloc[rposi:rposf, ii] = \
-                trisqrd_.iloc[rposi:rposf, ii - 1] * ildf
+            trisqrd_.iloc[rposi:rposf, ii] = trisqrd_.iloc[rposi:rposf, ii - 1] * ildf
         # Multiply right-most column by tail factor.
         max_devp = trisqrd_.columns[-1]
         trisqrd_["ultimate"] = trisqrd_.loc[:,max_devp].values * ldfs.values[-1]
-        return(trisqrd_.astype(np.float_).sort_index())
+        return(trisqrd_.astype(np.float).sort_index())
 
 
 

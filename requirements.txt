@@ -3,3 +3,4 @@ scipy>=1.0
 pandas>=0.23
 matplotlib>=2.2
 seaborn>=0.10
+statsmodels>=0.12.0
