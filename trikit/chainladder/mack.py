@@ -43,21 +43,10 @@ class MackChainLadder(BaseChainLadder):
 
         super().__init__(cumtri)
 
+        # Properties.
         self._mod_a2aind = None
         self._mod_tri = None
 
-
-        # properties
-        self._parameter_error = None
-        self._process_error = None
-        self._inverse_sums = None
-        self._originref = None
-
-        self._devpref = None
-        self._devpvar = None
-        self._mseptot = None
-        self._rmsepi = None
-        self._msepi = None
 
 
     # def __call__(self, alpha=1, tail=1.0):
@@ -144,6 +133,7 @@ class MackChainLadder(BaseChainLadder):
         pd.DataFrame
         """
         if self._mod_tri is None:
+
             self._mod_tri = self.tri.copy(deep=True)
             for ii in range(self.tri.latest.shape[0]):
                 r_indx = self.tri.latest.loc[ii, "origin"].item()
@@ -210,11 +200,76 @@ class MackChainLadder(BaseChainLadder):
         n = self.tri.origins.size
         for indx, jj in enumerate(self.tri.devp[:-2]):
             devpvar[indx] = \
-                (w[jj] * (C[jj]**alpha) * (F[jj] - ldfs[jj])**2).sum() / (n - jj - 1)
+                (w[jj] * (C[jj]**alpha) * (F[jj] - ldfs[jj])**2).sum() / (n - indx - 2)
 
         # Calculate development period variance for period n-1.
         devpvar[-1] = np.min((devpvar[-2]**2 / devpvar[-3], np.min([devpvar[-2], devpvar[-3]])))
         return(pd.Series(devpvar, index=self.tri.devp[:-1], name="devp_variance"))
+
+
+    def _process_error(self, ldfs, devpvar):
+        """
+        Return a triangle-shaped DataFrame containing elementwise process
+        error. To obtain the process error for a given origin period,
+        cells are aggregated across columns.
+
+        Parameters
+        ----------
+        ldfs: pd.Series
+            Selected ldfs, typically the output of calling ``self._ldfs``,
+            or a series of values indexed by development period.
+
+        devpvar: pd.Series
+            The development period variance, usually represented as
+            $\hat{\sigma}^{2}_{k}$ in the literature. For a triangle with
+            ``n`` development periods, devpvar will contain ``n-1`` elements.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        # Create latest reference using 1-based indexing.
+        latest = self.tri.latest.sort_index()
+        latest.origin = range(1, latest.index.size + 1)
+        latest.dev = range(latest.index.size, 0, -1)
+
+        # Create DataFrame to hold cellwise process error.
+        dfpe = pd.DataFrame(columns=self.tri.columns, index=self.tri.index)
+        dfpe.index = range(1, dfpe.index.size + 1)
+        dfpe.columns = range(1, dfpe.columns.size + 1)
+
+        # Bind reference to squared triangle.
+        trisqrd = self._trisqrd(ldfs).drop("ultimate", axis=1)
+        trisqrd.index = range(1, trisqrd.index.size + 1)
+        trisqrd.columns = range(1, trisqrd.columns.size + 1)
+        n = self.tri.devp.size
+
+        # `ii` iterates by origin, `kk` by development period.
+        for ii in dfpe.index[1:]:
+            latest_devp = latest[latest["origin"]==ii]["dev"].item()
+            latest_cum = trisqrd.at[ii, latest_devp]
+            kk0 = n + 2 - ii
+            dfpe.at[ii, kk0] = latest_cum * devpvar.iloc[kk0 - 2]
+
+            for kk in range(kk0 + 1, n + 1):
+                term0 = (ldfs.iloc[kk - 2]**2) * dfpe.at[ii, kk - 1]
+                term1 = trisqrd.at[ii, kk - 1] * devpvar.iloc[kk - 2]
+                dfpe.at[ii, kk] = term0 + term1
+
+        # Re-index dfpe to match self.tri.
+        # dfpe.columns, dfpe.index = self.tri.columns, self.tri.index
+        return(dfpe)
+
+
+
+
+
+
+
+
+
+    def _parameter_error(self):
+        pass
 
 
 

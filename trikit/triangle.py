@@ -276,13 +276,13 @@ class _BaseTriangle(pd.DataFrame):
 
 
     def __str__(self):
-        formats_ = {dev_:"{:.0f}".format for dev_ in self.columns}
-        return(self.to_string(formatters=formats_))
+        formats = {devp:"{:.0f}".format for devp in self.columns}
+        return(self.to_string(formatters=formats))
 
 
     def __repr__(self):
-        formats_ = {dev_:"{:.0f}".format for dev_ in self.columns}
-        return(self.to_string(formatters=formats_))
+        formats = {devp:"{:.0f}".format for devp in self.columns}
+        return(self.to_string(formatters=formats))
 
 
 

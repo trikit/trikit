@@ -112,14 +112,14 @@ class BaseChainLadder:
         pd.Series
         """
         try:
-            ldfs_ = self.tri.a2a_avgs.loc[sel]
-            tindx_ = ldfs_.index.max() + 1
-            ldfs_ = ldfs_.append(pd.Series(data=[tail], index=[tindx_]))
+            ldfs = self.tri.a2a_avgs.loc[sel]
+            tindx = ldfs.index.max() + 1
+            ldfs = ldfs.append(pd.Series(data=[tail], index=[tindx]))
 
         except KeyError:
                 print("Invalid age-to-age selection: `{}`".format(sel))
-        ldfs_ = pd.Series(data=ldfs_, index=ldfs_.index, dtype=np.float_, name="ldf")
-        return(ldfs_.sort_index())
+        ldfs = pd.Series(data=ldfs, index=ldfs.index, dtype=np.float, name="ldf")
+        return(ldfs.sort_index())
 
 
     def _cldfs(self, ldfs):
@@ -202,24 +202,29 @@ class BaseChainLadder:
         """
         Project claims growth for each future development period. Returns a
         DataFrame of loss projections for each subsequent development period
-        for each accident year. Populates the triangle's lower-right or
+        for each origin period. Populates the triangle's lower-right or
         southeast portion (i.e., the result of "squaring the triangle").
+
+        Parameters
+        ----------
+        ldfs: pd.Series
+            Selected ldfs, typically the output of calling ``self._ldfs``.
 
         Returns
         -------
         pd.DataFrame
         """
-        trisqrd_ = self.tri.copy(deep=True)
+        trisqrd = self.tri.copy(deep=True)
         rposf = self.tri.index.size
         clvi = self.tri.clvi["row_offset"]
-        for i in enumerate(trisqrd_.columns[1:], start=1):
+        for i in enumerate(trisqrd.columns[1:], start=1):
             ii  , devp  = i[0], i[1]
             ildf, rposi = ldfs.values[ii - 1], clvi[devp] + 1
-            trisqrd_.iloc[rposi:rposf, ii] = trisqrd_.iloc[rposi:rposf, ii - 1] * ildf
+            trisqrd.iloc[rposi:rposf, ii] = trisqrd.iloc[rposi:rposf, ii - 1] * ildf
         # Multiply right-most column by tail factor.
-        max_devp = trisqrd_.columns[-1]
-        trisqrd_["ultimate"] = trisqrd_.loc[:,max_devp].values * ldfs.values[-1]
-        return(trisqrd_.astype(np.float).sort_index())
+        max_devp = trisqrd.columns[-1]
+        trisqrd["ultimate"] = trisqrd.loc[:,max_devp].values * ldfs.values[-1]
+        return(trisqrd.astype(np.float).sort_index())
 
 
 
