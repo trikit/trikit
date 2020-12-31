@@ -131,6 +131,7 @@ class ChainLadderTestCase(unittest.TestCase):
 
 
 # MackChainLadder.
+# Test developemnt/origin periods other than 1-10.
 
 class MackChainLadderTestCase(unittest.TestCase):
     def setUp(self):
