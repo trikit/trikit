@@ -1,10 +1,11 @@
 """
 _MackChainLadder implementation.
 """
+import functools
 import numpy as np
 import pandas as pd
-from scipy.stats import norm, lognorm
-from . import BaseChainLadder
+from scipy.stats import norm
+from . import BaseChainLadder, BaseChainLadderResult
 
 
 
@@ -108,30 +109,37 @@ class MackChainLadder(BaseChainLadder):
         -------
         MackChainLadderResult
         """
-        ldfs = self._ldfs(alpha=alpha)
-        cldfs = self._cldfs(ldfs=ldfs, tail=1.0)
-        maturity = self.tri.maturity.astype(np.str)
-        latest = self.tri.latest_by_origin
-        ults = self._ultimates(cldfs=cldfs)
-        ibnr = self._reserves(ultimates=ults)
-        devpvar = self._devp_variance(ldfs=ldfs, alpha=alpha)
-        ldfvar = self._ldf_variance(devpvar=devpvar, alpha=alpha)
+        # alpha = 1
+        # tail = 1.0
+        # dist = "lognorm"
+        # q = [.75, .95]
+        # two_sided = False
+
+
+        ldfs = mcl._ldfs(alpha=alpha)
+        cldfs = mcl._cldfs(ldfs=ldfs, tail=1.0)
+        maturity = mcl.tri.maturity.astype(np.str)
+        latest = mcl.tri.latest_by_origin
+        ults = mcl._ultimates(cldfs=cldfs)
+        ibnr = mcl._reserves(ultimates=ults)
+        devpvar = mcl._devp_variance(ldfs=ldfs, alpha=alpha)
+        ldfvar = mcl._ldf_variance(devpvar=devpvar, alpha=alpha)
         proc_error = pd.Series(
-            self._process_error(ldfs=ldfs, devpvar=devpvar).iloc[:,-1].replace(np.NaN, 0),
+            mcl._process_error(ldfs=ldfs, devpvar=devpvar).iloc[:,-1].replace(np.NaN, 0),
             name="process_error", dtype=np.float
             )
         param_error = pd.Series(
-            self._parameter_error(ldfs=ldfs, ldfvar=ldfvar).iloc[:,-1].replace(np.NaN, 0),
+            mcl._parameter_error(ldfs=ldfs, ldfvar=ldfvar).iloc[:,-1].replace(np.NaN, 0),
             name="parameter_error", dtype=np.float
             )
-        mse = self._mean_squared_error(process_error=proc_error, parameter_error=param_error)
+        mse = mcl._mean_squared_error(process_error=proc_error, parameter_error=param_error)
         std_error = pd.Series(np.sqrt(mse), name="std_error")
         cv = pd.Series(std_error / ibnr, name="cv")
 
         trisqrd_ldfs = ldfs.copy(deep=True)
         increment = np.unique(ldfs.index[1:] - ldfs.index[:-1])[0]
         trisqrd_ldfs.loc[ldfs.index.max() + increment] = tail
-        trisqrd = self._trisqrd(ldfs=trisqrd_ldfs)
+        trisqrd = mcl._trisqrd(ldfs=trisqrd_ldfs)
 
         dfmatur = maturity.to_frame().reset_index(drop=False).rename({"index":"origin"}, axis=1)
         dfcldfs = cldfs.to_frame().reset_index(drop=False).rename({"index":"maturity"}, axis=1)
@@ -145,8 +153,40 @@ class MackChainLadder(BaseChainLadder):
             dfsumm
             )
 
+        # Add total index and set to NaN fields that shouldn't be aggregated.
+        dfsumm.loc["total"] = dfsumm.sum()
+        dfsumm.loc["total", "maturity"] = ""
+        dfsumm.loc["total", "cldf"] = np.NaN
+
+
+        # Create latest and trisqrd reference using 1-based indexing.
+        latest = mcl.tri.latest.sort_index()
+        latest.origin = range(1, latest.index.size + 1)
+        latest.dev = range(latest.index.size, 0, -1)
+        trisqrd = mcl._trisqrd(ldfs).drop("ultimate", axis=1)
+        trisqrd.index = range(1, trisqrd.index.size + 1)
+        trisqrd.columns = range(1, trisqrd.columns.size + 1)
+        n = mcl.tri.devp.size
+
+        # Compute mse for aggregate reserve.
+        mse_total = pd.Series(index=dfsumm.index[:-1], dtype=np.float)
+        quotient = pd.Series(devpvar / ldfs**2, dtype=np.float).reset_index(drop=True)
+        quotient.index = quotient.index + 1
+
+        for indx, ii in enumerate(mse_total.index[1:], start=2):
+            mse_ii, ult_ii = mse[ii],  ults[ii]
+            ults_sum = ults[ults.index>ii].dropna().sum()
+            rh_sum = sum(
+                quotient[jj] / sum(trisqrd.loc[mm, jj] for mm in range(1, (n - jj) + 1))
+                for jj in range(n + 1 - indx, n)
+                )
+            mse_total[ii] = mse_ii + 2 * ult_ii * ults_sum * rh_sum
+
+        dfsumm.loc["total", "std_error"] = np.sqrt(mse_total.dropna().sum())
+        dfsumm.loc["total", "cv"] = dfsumm.loc["total", "std_error"] / dfsumm.loc["total", "reserve"]
+
         if dist=="norm":
-            std_params, mean_params = std_error, ibnr
+            std_params, mean_params = dfsumm["std_error"], dfsumm["reserve"]
 
             def rv(mu, sigma, z):
                 """
@@ -156,8 +196,8 @@ class MackChainLadder(BaseChainLadder):
                 return(mu + sigma * z)
 
         if dist=="lognorm":
-            std_params = np.sqrt(np.log(1 + (std_error/ ibnr)**2))
-            mean_params = np.clip(np.log(ibnr), a_min=0, a_max=None) - .50 * std_params**2
+            std_params = np.sqrt(np.log(1 + (dfsumm["std_error"] / dfsumm["reserve"])**2)).replace(np.NaN, 0)
+            mean_params = np.clip(np.log(dfsumm["reserve"]), a_min=0, a_max=None) - .50 * std_params**2
 
             def rv(mu, sigma, z):
                 """
@@ -170,10 +210,7 @@ class MackChainLadder(BaseChainLadder):
         mu = pd.Series(mean_params, name="mu", dtype=np.float)
         dfsumm = dfsumm.join(mu.to_frame()).join(sigma.to_frame())
 
-        # q = [.75, .95]
-        # two_sided = False
-
-
+        # Determine quantiles.
         qtls = np.asarray([q] if isinstance(q, (float, int)) else q)
         if np.all(np.logical_and(qtls <= 1, qtls >= 0)):
             if two_sided:
@@ -186,201 +223,39 @@ class MackChainLadder(BaseChainLadder):
         qtlsfmt = [
             "{:.5f}".format(i).rstrip("0").rstrip(".") + "%" for i in 100 * qtls
             ]
-
         for ii, jj in zip(qtls, qtlsfmt):
             dfsumm[jj] = dfsumm.apply(
                 lambda rec: rv(rec.mu, rec.sigma, norm().ppf(ii)), axis=1
                 )
-
-        # # Add "Total" index and set to NaN fields that shouldn't be aggregated.
-        dfsumm.loc["total"] = dfsumm.sum()
-        dfsumm.loc["total", "maturity"] = ""
-        dfsumm.loc["total", ["cldf", "cv", "std_error"] + qtlsfmt] = np.NaN
+        dfsumm.loc[mcl.tri.index.min(), ["cv"] + qtlsfmt] = np.NaN
         dfsumm = dfsumm.drop(["mu", "sigma"], axis=1)
 
-
-        # Compute mse for aggregate reserve.
-        mse_total = pd.Series(index=dfsumm.index[:-1], dtype=np.float)
-        quotient = pd.Series(devpvar / ldfs**2, dtype=np.float).reset_index(drop=True)
-        quotient.index = quotient.index + 1
-
-        # Create latest and trisqrd reference using 1-based indexing.
-        latest = self.tri.latest.sort_index()
-        latest.origin = range(1, latest.index.size + 1)
-        latest.dev = range(latest.index.size, 0, -1)
-
-        trisqrd = self._trisqrd(ldfs).drop("ultimate", axis=1)
-        trisqrd.index = range(1, trisqrd.index.size + 1)
-        trisqrd.columns = range(1, trisqrd.columns.size + 1)
-        n = self.tri.devp.size
+        # Instantiate and return MackChainLadderResult instance.
 
 
-
-        for indx, ii in enumerate(mse_total.index[1:], start=2):
-
-            # indx, ii = 2, 2002
-
-            mse_ii, ult_ii = mse[ii],  ults[ii]
-            ults_sum = ults[ults.index>ii].dropna().sum()
-            rh_sum = sum(
-                quotient[jj] / sum(trisqrd.loc[mm, jj] for mm in range(1, (n - jj) + 1))
-                for jj in range(n + 1 - indx, n)
-                )
-
-            mse_total[ii] = mse_ii + 2 * ult_ii * ults_sum * rh_sum
+        alpha = 1
+        tail = 1.0
+        dist = "lognorm"
+        q = [.75, .95]
+        two_sided = False
 
 
-
-            # # jj0 = n + 1 - indx
-            #
-            # for jj in range(jj0, n): # over development period.
-            #
-            #     # jj = 9
-            #     numer = quotient[jj]
-            #     denom = sum(trisqrd.loc[mm, jj] for mm in range(1, (n - jj) + 1))
-            #
-            #         # m = 1
-
-        std_error_total = np.sqrt(mse_total.dropna().sum())
+        mcl_result = MackChainLadderResult(
+            summary=dfsumm,
 
 
 
 
 
 
+            reserve_dist=dfreserves, sims_data=dfprocerror,
+            tri=self.tri, ldfs=ldfs_, cldfs=cldfs_, latest=latest_,
+            maturity=maturity_, ultimates=ultimates_, reserves=reserves_,
+            scale_param=scale_param, unscaled_residuals=unscld_residuals_,
+            adjusted_residuals=adjust_residuals_, sampling_dist=sampling_dist_res,
+            fitted_tri_cum=tri_fit_cum_, fitted_tri_incr=tri_fit_incr_,
+            trisqrd=trisqrd_, **kwds)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-        #
-        # sigma_i = np.log(1 + self.msepi / ibnr**2)
-        # mu_i    = np.log(ibnr - .50 * sigma_i)
-        #
-        # summcols = ["maturity", "latest", "cldf", "ultimate", "reserve"]
-        # summDF   = pd.DataFrame(columns=summcols, index=self.tri.index)
-        # summDF["maturity"]  = self.tri.maturity.astype(np.str)
-        # summDF["latest"]    = self.tri.latest_by_origin
-        # summDF["cldf"]      = cldfs.values[::-1]
-        # summDF["ultimate"]  = ults
-        # summDF["reserve"]   = ibnr
-        # self._summary['RMSEP']        = self.rmsepi
-        # self._summary['CV']           = self.rmsepi/self.reserves
-        # self._summary["NORM_95%_LB"]  = self.reserves - (1.96 * self.rmsepi)
-        # self._summary["NORM_95%_UB"]  = self.reserves + (1.96 * self.rmsepi)
-        # self._summary["LNORM_95%_LB"] = np.exp(mu_i - 1.96 * sigma_i)
-        # self._summary["LNORM_95%_UB"] = np.exp(mu_i + 1.96 * sigma_i)
-        # self._summary.loc['TOTAL']    = self._summary.sum()
-        # summDF.loc["total"] = summDF.sum()
-        #
-        # # Set to NaN columns that shouldn't be summed.
-        # summDF.loc["total", "maturity"] = ""
-        # summDF.loc["total", "cldf"]     = np.NaN
-        # summDF = summDF.reset_index().rename({"index":"origin"}, axis="columns")
-        #
-        #
-        #
-        #
-        #     # # Populate self._summary with existing properties if available.
-        #     # self._summary['LATEST']       = self.latest_by_origin
-        #     # self._summary['CLDF']         = self.cldfs[::-1]
-        #     # self._summary['EMERGENCE']    = 1/self.cldfs[::-1]
-        #     # self._summary['ULTIMATE']     = self.ultimates
-        #     # self._summary['RESERVE']      = self.reserves
-        #     # self._summary['RMSEP']        = self.rmsepi
-        #     # self._summary['CV']           = self.rmsepi/self.reserves
-        #     # self._summary["NORM_95%_LB"]  = self.reserves - (1.96 * self.rmsepi)
-        #     # self._summary["NORM_95%_UB"]  = self.reserves + (1.96 * self.rmsepi)
-        #     # self._summary["LNORM_95%_LB"] = np.exp(mu_i - 1.96 * sigma_i)
-        #     # self._summary["LNORM_95%_UB"] = np.exp(mu_i + 1.96 * sigma_i)
-        #     # self._summary.loc['TOTAL']    = self._summary.sum()
-        #     #
-        #     # # Set CLDF Total value to `NaN`.
-        #     # self._summary.loc["TOTAL","CLDF","EMERGENCE"] = np.NaN
-        #
-        # return(self._summary)
-
-
-        # pctl_ = np.asarray([q] if isinstance(q, (float, int)) else q)
-        #
-        # if np.any(np.logical_or(pctl_ <= 1, pctl_ >= 0)):
-        #     if two_sided:
-        #         pctlarr = np.sort(np.unique(np.append((1 - pctl_) / 2., (1 + pctl_) / 2.)))
-        #     else:
-        #         pctlarr = np.sort(np.unique(pctl_))
-        # else:
-        #     raise ValueError("Values for quantiles must fall between [0, 1].")
-        #
-        # # Compile Chain Ladder point estimate summary.
-        # dfmatur_ = maturity_.to_frame().reset_index(drop=False).rename({"index":"origin"}, axis=1)
-        # dfcldfs_ = cldfs_.to_frame().reset_index(drop=False).rename({"index":"maturity"}, axis=1)
-        # dfcldfs_["maturity"] = dfcldfs_["maturity"].astype(np.str)
-        # dfsumm = dfmatur_.merge(dfcldfs_, on=["maturity"], how="left").set_index("origin")
-        # dfsumm.index.name = None
-        # dflatest_ = latest_.to_frame().rename({"latest_by_origin":"latest"}, axis=1)
-        # dfultimates_ = ultimates_.to_frame()
-        # dfreserves_ = reserves_.to_frame()
-        # dfsumm = functools.reduce(
-        #     lambda df1, df2: df1.join(df2),
-        #     (dflatest_, dfultimates_, dfreserves_), dfsumm
-        # )
-        #
-        # dfsumm = dfsumm.rename({"reserve":"cl_reserve"}, axis=1)
-        #
-        # # Compute median distribution of bootstrap samples.
-        # dfsumm["bcl_reserve"] = dfsumm.index.map(
-        #     lambda v: np.percentile(
-        #         dfreserves[dfreserves["origin"]==v]["reserve"].values,
-        #         100 * .50, interpolation=interpolation
-        #     )
-        # )
-        #
-        # # Attach percentile fields to dfsumm.
-        # pctlfmt = ["{:.5f}".format(i).rstrip("0").rstrip(".") + "%" for i in 100 * pctlarr]
-        # for q_, pctlstr_ in zip(pctlarr, pctlfmt):
-        #     dfsumm[pctlstr_] = dfsumm.index.map(
-        #         lambda v: np.percentile(
-        #             dfreserves[dfreserves["origin"]==v]["reserve"].values,
-        #             100 * q_, interpolation=interpolation
-        #         )
-        #     )
-        #
-        # # Add "Total" index and set to NaN fields that shouldn't be aggregated.
-        # dfsumm.loc["total"] = dfsumm.sum()
-        # dfsumm.loc["total", "maturity"] = ""
-        # dfsumm.loc["total", "cldf"] = np.NaN
-        #
-        # dfsumm = dfsumm.reset_index(drop=False).rename({"index":"origin"}, axis=1)
-        #
-        # kwds = {"sel":"all-weighted", "sims": sims, "neg_handler":neg_handler,
-        #         "procdist":procdist, "parametric":parametric,
-        #         "q":q, "interpolation":interpolation,}
-        #
-        # sampling_dist_res = None if parametric==True else sampling_dist_
-        #
-        # bclresult = BootstrapChainLadderResult(
-        #     summary=dfsumm, reserve_dist=dfreserves, sims_data=dfprocerror,
-        #     tri=self.tri, ldfs=ldfs_, cldfs=cldfs_, latest=latest_,
-        #     maturity=maturity_, ultimates=ultimates_, reserves=reserves_,
-        #     scale_param=scale_param, unscaled_residuals=unscld_residuals_,
-        #     adjusted_residuals=adjust_residuals_, sampling_dist=sampling_dist_res,
-        #     fitted_tri_cum=tri_fit_cum_, fitted_tri_incr=tri_fit_incr_,
-        #     trisqrd=trisqrd_, **kwds)
-        #
-
-
-    @staticmethod
-    def get_quantile(*pctl):
-        pass
 
 
     @property
@@ -667,276 +542,690 @@ class MackChainLadder(BaseChainLadder):
 
 
 
-    # @property
-    # def originref(self):
-    #     """
-    #     Intended for internal use only. Contains data by origin year.
-    #     """
-    #     if self._originref is None:
-    #         self._originref = pd.DataFrame({
-    #             'reserve'      :self.reserves,
-    #             'ultimate'     :self.ultimates,
-    #             'process_error':self.process_error,
-    #             'param_error'  :self.parameter_error,
-    #             'msep'         :self.msepi,
-    #             'rmsep'        :self.rmsepi}, index=self.tri.index)
-    #         self._originref = \
-    #             self._originref[
-    #                 ["reserve","ultimate","process_error","param_error","msep","rmsep"]
-    #                 ]
-    #     return(self._originref)
-    #
-    #
-    #
-    # @property
-    # def devpref(self):
-    #     """
-    #     Intended for internal use only. Contains data by development period.
-    #     """
-    #     if self._devpref is None:
-    #         self._devpref = pd.DataFrame({
-    #             "ldf"    :self.ldfs,
-    #             "sse"    :self.devpvar.values,
-    #             "ratio"  :(self.devpvar.values / self.ldfs ** 2),
-    #             "dev"    :self.tri.columns[:-1],
-    #             "inv_sum":self.inverse_sums},
-    #             index=self.tri.columns[:-1]
-    #             )
-    #
-    #         self._devpref["indx"] = \
-    #             self._devpref["dev"].map(
-    #                 lambda x: self.tri.columns.get_loc(x))
-    #
-    #         self._devpref = \
-    #             self._devpref[["dev","indx","ldf","sse","ratio","inv_sum"]]
-    #
-    #     return(self._devpref)
-    #
-    #
-    #
-    # @property
-    # def inverse_sums(self):
-    #     """
-    #     Convenience aggregation for use in parameter error
-    #     calcuation.
-    #     """
-    #     if self._inverse_sums is None:
-    #         devp_sums = \
-    #             self.tri.sum(axis=0)-self.tri.latest_by_origin[::-1].values
-    #         self._inverse_sums = pd.Series(
-    #             data=devp_sums,index=devp_sums.index,name='inverse_sums')
-    #         self._inverse_sums = (1 / (self._inverse_sums))[:-1]
-    #     return(self._inverse_sums)
 
 
 
-    # @property
-    # def inverse_sums2(self):
-    #     """
-    #     Convenience aggregation for use in parameter error
-    #     calcuation.
-    #     """
-    #     if self._inverse_sums is None:
-    #         devp_sums = list()
-    #         for devp in self.tri.columns[:-1]:
-    #             iterep  = self.tri.index.get_loc(self.tri[devp].last_valid_index())
-    #             devpos  = self.tri.columns.get_loc(devp)
-    #             itersum = self.tri.iloc[:iterep,devpos].sum()
-    #             devp_sums.append((devp,(1/itersum)))
-    #         indx, vals = zip(*devp_sums)
-    #         self._inverse_sums = \
-    #             pd.Series(data=vals, index=indx, name='inverse_sums')
-    #     return(self._inverse_sums)
 
 
-    # @property
-    # def devpvar(self) -> np.ndarray:
-    #     """
-    #     devpvar = `development period variance`. Return the variance
-    #     of each n-1 development periods as a Series object.
-    #     """
-    #     if self._devpvar is None:
-    #         n = self.tri.columns.size
-    #         self._devpvar = np.zeros(n - 1, dtype=np.float_)
-    #         for k in range(n - 2):
-    #             iter_ses = 0  # `square of standard error`
-    #             for i in range(n - (k + 1)):
-    #                 c_1, c_2 = self.tri.iloc[i, k], self.tri.iloc[i,k+1]
-    #                 iter_ses+=c_1*((c_2 / c_1) - self.ldfs[k])**2
-    #             iter_ses = iter_ses/(n-k-2)
-    #             self._devpvar[k] = iter_ses
-    #
-    #             # Calculate standard error for dev period n-1.
-    #         self._devpvar[-1] = \
-    #             np.min((
-    #                 self._devpvar[-2]**2 / self._devpvar[-3],
-    #                 np.min([self._devpvar[-2],self._devpvar[-3]])
-    #                 ))
-    #         self._devpvar = pd.Series(
-    #             data=self._devpvar, index=self.tri.columns[:self._devpvar.size],
-    #             name="sqrd_std_error")
-    #     return(self._devpvar)
-    #
-    #
-    #
-    #
-    # @property
-    # def process_error(self):
-    #     """
-    #     Process error (forecast error) calculation. The process error
-    #     component originates from the stochastic movement of the process.
-    #     Returns a pandas Series containing estimates of process variance by
-    #     origin year.
-    #     """
-    #     if self._process_error is None:
-    #         lastcol, pelist = self.tri.columns.size-1, list()
-    #         for rindx in self.tri.rlvi.index:
-    #             iult = self.ultimates[rindx]
-    #             ilvi = self.tri.rlvi.loc[rindx,:].col_offset
-    #             ilvc = self.tri.rlvi.loc[rindx,:].dev
-    #             ipe  = 0
-    #             if ilvi<lastcol:
-    #                 for dev in self.trisqrd.loc[rindx][ilvi:lastcol].index:
-    #                     ipe+=(self.devpref.loc[dev,'RATIO'] / self.trisqrd.loc[rindx,dev])
-    #                 ipe*=(iult**2)
-    #             pelist.append((rindx,ipe))
-    #
-    #         # Convert list of tuples into Series object.
-    #         indx, vals = zip(*pelist)
-    #         self._process_error = \
-    #             pd.Series(data=vals, index=indx, name="process_error")
-    #     return(self._process_error)
-    #
-    #
-    #
-    #
-    # @property
-    # def parameter_error(self):
-    #     """
-    #     Estimation error (parameter error) reflects the uncertainty in
-    #     the estimation of the parameters.
-    #     """
-    #     if self._parameter_error is None:
-    #         lastcol, pelist = self.tri.columns.size-1, list()
-    #         for i in enumerate(self.tri.index):
-    #             ii, rindx = i[0], i[1]
-    #             iult = self.ultimates[rindx]
-    #             ilvi = self.tri.rlvi.loc[rindx,:].col_offset
-    #             ilvc = self.tri.rlvi.loc[rindx,:].dev
-    #             ipe  = 0
-    #             if ilvi<lastcol:
-    #                 for k in range(ilvi,lastcol):
-    #                     ratio  = self.devpref[self.devpref['indx']==k]['ratio'].values[0]
-    #                     invsum = self.devpref[self.devpref['indx']==k]['inv_sum'].values[0]
-    #                     ipe+=(ratio * invsum)
-    #                 ipe*=iult**2
-    #             else:
-    #                 ipe = 0
-    #             pelist.append((rindx, ipe))
-    #         # Convert list of tuples into Series object.
-    #         indx, vals = zip(*pelist)
-    #         self._parameter_error = \
-    #             pd.Series(data=vals, index=indx, name="parameter_error")
-    #     return(self._parameter_error)
-    #
-    #
-    #
-    #
-    # @property
-    # def covariance_term(self):
-    #     """
-    #     Used to derive the conditional mean squared error of total
-    #     reserve prediction. MSE_(i,j) is non-zero only for cells
-    #     in which i < j (i.e., the
-    #     :return:
-    #     """
-    #     pass
-    #
-    #
-    # @property
-    # def msepi(self):
-    #     """
-    #     Return the mean squared error of predicition by origin year.
-    #     Does not contain estimate for total MSEP.
-    #     MSE_i = process error + parameter error
-    #     """
-    #     if self._msepi is None:
-    #         self._msepi = self.process_error + self.parameter_error
-    #     return(self._msepi)
-    #
-    #
-    # @property
-    # def rmsepi(self):
-    #     """
-    #     Return the root mean squared error of predicition by origin
-    #     year. Does not contain estimate for total MSEP.
-    #
-    #         MSE_i = process error + parameter error
-    #     """
-    #     if self._rmsepi is None:
-    #         self._rmsepi = np.sqrt(self.msepi)
-    #     return(self._rmsepi)
-    #
-    #
-    #
-    #
-    # @property
-    # def summary(self):
-    #     """
-    #     Return a DataFrame containing summary statistics resulting
-    #     from applying the development method to tri, in addition
-    #     to Mack-generated range estimates.
-    #     """
-    #     if self._summary is None:
-    #         self._summary = \
-    #             pd.DataFrame(
-    #                 columns=[
-    #                     "LATEST","CLDF","EMERGENCE","ULTIMATE","RESERVE","RMSEP",
-    #                     "CV","NORM_95%_LB","NORM_95%_UB","LNORM_95%_LB","LNORM_95%_UB"
-    #                     ], index=self.tri.index
-    #                 )
-    #
-    #         # Initialize lognormal confidence interval parameters.
-    #         sigma_i = np.log(1 + self.msepi/self.reserves**2)
-    #         mu_i    = np.log(self.reserves - .50 * sigma_i)
-    #
-    #         # Populate self._summary with existing properties if available.
-    #         self._summary['LATEST']       = self.latest_by_origin
-    #         self._summary['CLDF']         = self.cldfs[::-1]
-    #         self._summary['EMERGENCE']    = 1/self.cldfs[::-1]
-    #         self._summary['ULTIMATE']     = self.ultimates
-    #         self._summary['RESERVE']      = self.reserves
-    #         self._summary['RMSEP']        = self.rmsepi
-    #         self._summary['CV']           = self.rmsepi/self.reserves
-    #         self._summary["NORM_95%_LB"]  = self.reserves - (1.96 * self.rmsepi)
-    #         self._summary["NORM_95%_UB"]  = self.reserves + (1.96 * self.rmsepi)
-    #         self._summary["LNORM_95%_LB"] = np.exp(mu_i - 1.96 * sigma_i)
-    #         self._summary["LNORM_95%_UB"] = np.exp(mu_i + 1.96 * sigma_i)
-    #         self._summary.loc['TOTAL']    = self._summary.sum()
-    #
-    #         # Set CLDF Total value to `NaN`.
-    #         self._summary.loc["TOTAL","CLDF","EMERGENCE"] = np.NaN
-    #
-    #     return(self._summary)
-    #
-    #
-    # @staticmethod
-    # def get_quantile(*pctl):
-    #     pass
-    #
-    #
-    #
+
+
+
+
+class MackChainLadderResult(BaseChainLadderResult):
+    """
+    MackChainLadder output.
+    """
+    def __init__(self, summary, tri, trisqrd, alpha, tail, dist, q, two_sided,
+                 ldfs, cldfs, latest, maturity, ultimates, reserves, process_error,
+                 parameter_error, devpvar, ldfvar, mse, mse_total, std_error, cv,
+                 mu, sigma):
+
+        self.summary = summary
+        self.tri = tri
+        self.trisqrd = trisqrd
+        self.aplha = alpha
+        self.tail = tail
+        self.dist = dist
+        self.q = q
+        self.two_sided = two_sided
+        self.ldfs = ldfs
+        self.cldfs = cldfs
+        self.latest = latest
+        self.maturity = maturity
+        self.ultimates = ultimates
+        self.reserves = reserves
+        self.process_error = process_error
+        self.parameter_error = parameter_error
+        self.devpvar = devpvar
+        self.ldfvar = ldfvar
+        self.mse = mse
+        self.mse_total = mse_total
+        self.std_error = std_error
+        self.cv = cv
+        self.mu = mu
+        self.sigma = sigma
+
+
+
+
+        """
+        Container class for ``MackChainLadder``'s output.
+
+        Parameters
+        ----------
+        summary: pd.DataFrame
+            Chain Ladder summary compilation.
+
+        reserve_dist: pd.DataFrame
+            The predicitive distribution of reserve estimates generated via
+            bootstrapping. ``reserve_dist`` is a five column DataFrame
+            consisting of the simulation number, origin period, the latest
+            loss amount for the associated origin period, and the predictive
+            distribution of ultimates and reserves.
+
+        sims_data: pd.DataFrame
+            A DataFrame consiting of all simulated values an intermediate
+            fields. When a large number of bootstrap iterations are run,
+            ``sims_data`` will be correspondingly large. The fields include:
+            **dev**: The simulated development period.
+            **incr**: The actual incremental loss amount obtain from the fitted
+            triangle.
+            **incr_sqrt**: The square root of incr.
+            **l_act_cum**: The latest actual cumulative loss amount for
+            dev/origin.
+            **l_act_dev**: The latest dev period with actual losses for a
+            given origin period.
+            **ldf**: Loss development factors computed on syntehtic triangle
+            data.
+            **origin**: The simulated origin period.
+            **rectype**: Whether the dev/origin combination represent actual
+            or forecast data in the squared triangle.
+            **resid**: The resampled adjusted residuals if ``parametric=False``,
+            otherwise a random sampling from a normal distribution with mean
+            zero and variance based on the variance of the adjusted residuals.
+            **samp_cum**: A syntehtic cumulative loss amount.
+            **samp_incr**: A synthetic incremental loss amount.
+            **sim**: The simulation number.
+            **var**: The variance, computed as scale_param * samp_incr.
+            **sign**: The sign of samp_incr.
+            **param2/param1**: Parameters for the process error distribution.
+            **final_incr**: Final simulated incremetnal loss amount after
+            the incorporation of process error.
+            **final_cum**: Final simulated cumulative loss amount after
+            the incorporation of process error.
+
+        tri: trikit.triangle.CumTriangle
+            A cumulative triangle instance.
+
+        ldfs: pd.Series
+            Loss development factors.
+
+        cldfs: pd.Series
+            Cumulative loss development factors.
+
+        latest: pd.Series
+            Latest loss amounts by origin.
+
+        maturity: pd.Series
+            Represents ther maturity of each origin relative to development
+            period.
+
+        ultimates: pd.Series
+            Represents Chain Ladder ultimate projections.
+
+        reserves: pd.Series
+            Represents the projected reserve amount. For each origin period,
+            this equates to the ultimate loss projection minus the latest
+            loss amount for the origin period (reserve = ultimate - latest).
+
+        scale_param: float
+            The the sum of the squared unscaled Pearson residuals over the
+            triangle's degrees of freedom.
+
+        unscaled_residuals: pd.DataFrame
+            The unscaled residuals.
+
+        adjusted_residuals: pd.DataFrame
+            The adjusted residuals.
+
+        sampling_dist: np.ndarray
+            Same as ``adjusted_residuals`` but as a numpy array with
+            NaN's and 0's removed.
+
+        fitted_tri_cum: pd.DataFrame
+            The cumulative triangle fit using backwards recursion.
+
+        fitted_tri_incr: pd.DataFrame
+            The incremental triangle fit using backwards recursion.
+
+        kwargs: dict
+            Additional keyword arguments passed into
+            ``BootstrapChainLadder``'s ``run`` method.
+        """
+        super().__init__(summary=summary, tri=tri, ldfs=ldfs, cldfs=cldfs,
+                         latest=latest, maturity=maturity, ultimates=ultimates,
+                         reserves=reserves, trisqrd=trisqrd, **kwargs)
+
+        self.unscaled_residuals = unscaled_residuals
+        self.adjusted_residuals = adjusted_residuals
+        self.fitted_tri_incr = fitted_tri_incr
+        self.fitted_tri_cum = fitted_tri_cum
+        self.sampling_dist = sampling_dist
+        self.reserve_dist = reserve_dist
+        self.scale_param = scale_param
+        self.sims_data = sims_data
+        self.ultimates = ultimates
+        self.reserves = reserves
+        self.maturity = maturity
+        self.summary = summary
+        self.trisqrd = trisqrd
+        self.latest = latest
+        self.cldfs = cldfs
+        self.ldfs = ldfs
+        self.tail = 1.0
+        self.tri = tri
+
+        if kwargs is not None:
+            for key_ in kwargs:
+                setattr(self, key_, kwargs[key_])
+
+        # Properties.
+        self._aggregate_distribution = None
+        self._origin_distribution = None
+        self._residuals_detail = None
+        self._fit_assessment = None
+
+        pctlfields_ = [i for i in self.summary.columns if i.endswith("%")]
+        pctlfmts_ = {i:"{:.0f}".format for i in pctlfields_}
+        self._summspecs.update(pctlfmts_)
+
+
+    @property
+    def origin_distribution(self):
+        """
+        Return distribution of bootstrapped ultimates/reserves by
+        origin period.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        if self._origin_distribution is None:
+            keepcols_ = ["latest", "ultimate", "reserve"]
+            self._origin_distribution = self.reserve_dist.groupby(
+                ["sim", "origin"], as_index=False)[keepcols_].sum()
+        return(self._origin_distribution)
+
+
+    @property
+    def aggregate_distribution(self):
+        """
+        Return distribution of boostrapped ultimates/reserves aggregated
+        over all origin periods.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        if self._aggregate_distribution is None:
+            self._aggregate_distribution = self.origin_distribution.drop("origin", axis=1)
+            self._aggregate_distribution = self._aggregate_distribution.groupby("sim", as_index=False).sum()
+        return(self._aggregate_distribution)
+
+
+    @property
+    def fit_assessment(self):
+        """
+        Return a summary assessing the fit of the parametric model used for
+        bootstrap resampling. Applicable when ``parametric`` argument to
+        is True. Returns a dictionary with keys ``kstest``, ``anderson``,
+        ``shapiro``, ``skewtest``, ``kurtosistest`` and ``normaltest``,
+        corresponding to statistical tests available in ``scipy.stats``.
+
+        Returns
+        -------
+        dict
+        """
+        if self._fit_assessment is None:
+            if not self.parametric:
+                mean_ = self.sampling_dist.mean()
+                stddev_ = self.sampling_dist.std(ddof=1)
+                dist_ = stats.norm(loc=mean_, scale=stddev_)
+                D, p_ks = stats.kstest(self.sampling_dist, dist_.cdf)
+                W, p_sw = stats.shapiro(self.sampling_dist)
+                Z, p_sk = stats.skewtest(self.sampling_dist, axis=0, nan_policy="omit")
+                K, p_kt = stats.kurtosistest(self.sampling_dist, axis=0, nan_policy="omit")
+                S, p_nt = stats.normaltest(self.sampling_dist, axis=0, nan_policy="omit")
+                A, crit, sig = stats.anderson(self.sampling_dist, dist="norm")
+                self._fit_assessment = {
+                    "kstest":{"statistic":D, "p-value":p_ks},
+                    "anderson":{"statistic":A, "critical_values":crit, "significance_levels":sig},
+                    "shapiro":{"statistic":W, "p-value":p_sw},
+                    "skewtest":{"statistic":Z, "p-value":p_sk},
+                    "kurtosistest":{"statistic":K, "p-value":p_kt},
+                    "normaltest":{"statistic":S, "p-value":p_nt},
+                }
+        return(self._fit_assessment)
+
+
+    @property
+    def residuals_detail(self):
+        """
+        Summary statistics based on triangle residuals.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        if self._residuals_detail is None:
+            if not self.parametric:
+                unscaled = self.unscaled_residuals.values.ravel()
+                adjusted = self.adjusted_residuals.values.ravel()
+                unscaled = unscaled_[~np.isnan(unscaled)]
+                adjusted = adjusted_[~np.isnan(adjusted)]
+                unscaled = unscaled_[unscaled!=0]
+                adjusted = adjusted_[adjusted!=0]
+                unscaled_size = unscaled.size
+                unscaled_sum = unscaled.sum(axis=0)
+                unscaled_ssqr = np.sum(unscaled_**2, axis=0)
+                unscaled_min  = unscaled.min(axis=0)
+                unscaled_max  = unscaled.max(axis=0)
+                unscaled_mean = unscaled.mean(axis=0)
+                unscaled_skew = stats.skew(unscaled, axis=0, nan_policy="omit")
+                unscaled_mode = stats.mode(unscaled, axis=0, nan_policy="omit").mode[0]
+                unscaled_cvar = stats.variation(unscaled, axis=0, nan_policy="omit")
+                unscaled_kurt = stats.kurtosis(unscaled, axis=0, nan_policy="omit")
+                unscaled_var  = unscaled_.var(ddof=1, axis=0)
+                unscaled_stddev = unscaled_.std(ddof=1, axis=0)
+                unscaled_med  = np.median(unscaled, axis=0)
+                adjusted_size = adjusted_.size
+                adjusted_sum  = adjusted_.sum(axis=0)
+                adjusted_ssqr = np.sum(adjusted**2, axis=0)
+                adjusted_min = adjusted_.min(axis=0)
+                adjusted_max  = adjusted_.max(axis=0)
+                adjusted_mean = adjusted_.mean(axis=0)
+                adjusted_skew = stats.skew(adjusted, axis=0, nan_policy="omit")
+                adjusted_mode = stats.mode(adjusted, axis=0, nan_policy="omit").mode[0]
+                adjusted_cvar = stats.variation(adjusted, axis=0, nan_policy="omit")
+                adjusted_kurt = stats.kurtosis(adjusted, axis=0, nan_policy="omit")
+                adjusted_var  = adjusted_.var(ddof=1, axis=0)
+                adjusted_stddev = adjusted_.std(ddof=1, axis=0)
+                adjusted_med  = np.median(adjusted, axis=0)
+                self._residuals_detail = pd.DataFrame({
+                    "unscaled":[
+                        unscaled_size, unscaled_sum , unscaled_ssqr, unscaled_min,
+                        unscaled_max,  unscaled_mean, unscaled_skew, unscaled_mode,
+                        unscaled_cvar, unscaled_kurt, unscaled_var , unscaled_stdv,
+                        unscaled_med,
+                    ],
+                    "adjusted":[
+                        _adjusted_size, adjusted_sum , adjusted_ssqr, adjusted_min,
+                        _adjusted_max,  adjusted_mean, adjusted_skew, adjusted_mode,
+                        _adjusted_cvar, adjusted_kurt, adjusted_var , adjusted_stdv,
+                        _adjusted_med,
+                    ],
+                },
+                    index=[
+                        "size", "sum", "sum_of_squares", "minimum", "maximum", "mean",
+                        "skew", "mode", "cov", "kurtosis", "variance",
+                        "standard_deviation", "median"
+                    ]
+                )
+        return(self._residuals_detail)
+
+
+    def _bs_data_transform(self,  q):
+        """
+        Starts with ``BaseChainLadderResult``'s ``_data_transform``, and
+        performs additional pre-processing in order to generate plot of
+        bootstrapped reserve ranges by origin period.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        data = self._data_transform()
+        dfsims = self._get_quantile(q=q, two_sided=True)
+        data = pd.merge(data, dfsims, how="outer", on=["origin", "dev"])
+        pctl_hdrs = [i for i in dfsims.columns if i not in ("origin", "dev")]
+        for hdr_ in pctl_hdrs:
+            data[hdr_] = np.where(
+                data["rectype"].values=="actual", np.NaN, data[hdr_].values
+            )
+
+        # Determine the first forecast period by origin, and set q-fields to actuals.
+        data["_ff"] = np.where(
+            data["rectype"].values=="forecast", data["dev"].values, data["dev"].values.max() + 1)
+        data["_minf"] = data.groupby(["origin"])["_ff"].transform("min")
+        for hdr_ in pctl_hdrs:
+            data[hdr_] = np.where(
+                np.logical_and(data["rectype"].values=="forecast", data["_minf"].values==data["dev"].values),
+                data["value"].values, data[hdr_].values
+            )
+
+        data = data.drop(["_ff", "_minf"], axis=1)
+        dfv = data[["origin", "dev", "rectype", "value"]]
+        dfl = data[["origin", "dev", "rectype", pctl_hdrs[0]]]
+        dfu = data[["origin", "dev", "rectype", pctl_hdrs[-1]]]
+        dfl["rectype"] = pctl_hdrs[0]
+        dfl = dfl.rename({pctl_hdrs[0]:"value"}, axis=1)
+        dfu["rectype"] = pctl_hdrs[-1]
+        dfu = dfu.rename({pctl_hdrs[-1]:"value"}, axis=1)
+        return(pd.concat([dfv, dfl, dfu]).sort_index().reset_index(drop=True))
+
+
+    def plot(self, q=.90, actuals_color="#334488", forecasts_color="#FFFFFF",
+             fill_color="#FCFCB1", fill_alpha=.75, axes_style="darkgrid",
+             context="notebook", col_wrap=4, hue_kws=None, **kwargs):
+        """
+        Generate exhibit representing the distribution of reserve estimates
+        resulting from bootstrap resampling, along with percentiles from the
+        distribution given by ``q``, the percentile(s) of interest.
+
+        Parameters
+        ----------
+        q: float in range of [0,1]
+            two_sided percentile interval to highlight, which must be between
+            0 and 1 inclusive. For example, when ``q=.90``, the 5th and
+            95th percentile of the ultimate/reserve distribution will be
+            highlighted in the exhibit $(\frac{1 - q}{2}, \frac(1 + q}{2})$.
+
+        actuals_color: str
+            A color name or hexidecimal code used to represent actual
+            observations. Defaults to "#00264C".
+
+        forecasts_color: str
+            A color name or hexidecimal code used to represent forecast
+            observations. Defaults to "#FFFFFF".
+
+        fill_color: str
+            A color name or hexidecimal code used to represent the fill color
+            between percentiles of the ultimate/reserve bootstrap
+            distribution as specified by ``q``. Defaults to "#FCFCB1".
+
+        fill_alpha: float
+            Control transparency of ``fill_color`` between upper and lower
+            percentile bounds of the ultimate/reserve distribution. Defaults
+            to .75.
+
+        axes_style: {"darkgrid", "whitegrid", "dark", "white", "ticks"}
+            Aesthetic style of seaborn plots. Default values is "darkgrid".
+
+        context: {"paper", "talk", "poster"}.
+            Set the plotting context parameters. According to the seaborn
+            documentation, This affects things like the size of the labels,
+            lines, and other elements of the plot, but not the overall style.
+            Default value is ``"notebook"``.
+
+        col_wrap: int
+            The maximum number of origin period axes to have on a single row
+            of the resulting FacetGrid. Defaults to 5.
+
+        hue_kws: dictionary of param:list of values mapping
+            Other keyword arguments to insert into the plotting call to let
+            other plot attributes vary across levels of the hue variable
+            (e.g. the markers in a scatterplot). Each list of values should
+            have length 4, with each index representing aesthetic
+            overrides for forecasts, actuals, lower percentile and upper
+            percentile renderings respectively. Defaults to ``None``.
+
+        kwargs: dict
+            Additional styling options for scatter points. This should include
+            additional options accepted by ``plt.plot``.
+        """
+        import matplotlib
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        sns.set_context(context)
+
+        data = self._bs_data_transform(q=q)
+
+        pctl_hdrs = sorted(
+            [i for i in data["rectype"].unique() if i not in ("actual", "forecast")]
+        )
+
+        with sns.axes_style(axes_style):
+            huekwargs = dict(
+                marker=["o", "o", None, None,], markersize=[6, 6, None, None,],
+                color=["#000000", "#000000", "#000000", "#000000",],
+                fillstyle=["full", "full", "none", "none",],
+                markerfacecolor=[forecasts_color, actuals_color, None, None,],
+                markeredgecolor=["#000000", "#000000", None, None,],
+                markeredgewidth=[.50, .50, None, None,],
+                linestyle=["-", "-", "-.", "--",], linewidth=[.475, .475, .625, .625,],
+            )
+
+            if hue_kws is not None:
+                # Determine whether the length of each element of hue_kws is 4.
+                if all(len(hue_kws[i])==4 for i in hue_kws):
+                    huekwargs.update(hue_kws)
+                else:
+                    warnings.warn("hue_kws overrides not correct length - Ignoring.")
+
+            titlestr = "bootstrap chainladder ultimate range projections"
+
+            grid = sns.FacetGrid(
+                data, col="origin", hue="rectype", hue_kws=huekwargs,
+                col_wrap=col_wrap, margin_titles=False, despine=True,
+                sharex=False, sharey=False,
+                hue_order=["forecast", "actual", pctl_hdrs[0], pctl_hdrs[-1]]
+            )
+
+            mean_ = grid.map(plt.plot, "dev", "value",)
+            grid.set_axis_labels("", "")
+            grid.set(xticks=data["dev"].unique().tolist())
+            grid.set_titles("", size=5)
+            # grid_.set_titles("{col_name}", size=9)
+            grid.set_xticklabels(data["dev"].unique().tolist(), size=8)
+
+            # Change ticklabel font size and place legend on each facet.
+            for ii, _ in enumerate(grid.axes):
+                ax_ = grid.axes[ii]
+                origin_ = str(self.tri.origins.get(ii))
+                legend_ = ax_.legend(
+                    loc="upper left", fontsize="x-small", frameon=True,
+                    fancybox=True, shadow=False, edgecolor="#909090",
+                    framealpha=1, markerfirst=True,)
+                legend_.get_frame().set_facecolor("#FFFFFF")
+
+                # Include thousandths separator on each facet's y-axis label.
+                ax_.set_yticklabels(
+                    ["{:,.0f}".format(i) for i in ax_.get_yticks()], size=8
+                )
+
+                ax_.annotate(
+                    origin_, xy=(.85, .925), xytext=(.85, .925), xycoords='axes fraction',
+                    textcoords='axes fraction', fontsize=9, rotation=0, color="#000000",
+                )
+
+                # Fill between upper and lower range bounds.
+                axc = ax_.get_children()
+                lines_ = [jj for jj in axc if isinstance(jj, matplotlib.lines.Line2D)]
+                xx = [jj._x for jj in lines_ if len(jj._x)>0]
+                yy = [jj._y for jj in lines_ if len(jj._y)>0]
+                x_, lb_, ub_ = xx[0], yy[-2], yy[-1]
+                ax_.fill_between(x_, lb_, ub_, color=fill_color, alpha=fill_alpha)
+
+                # Draw border around each facet.
+                for _, spine_ in ax_.spines.items():
+                    spine_.set(visible=True, color="#000000", linewidth=.50)
+
+        plt.show()
+
+
+    def hist(self, color="#FFFFFF", axes_style="darkgrid", context="notebook",
+             col_wrap=4, **kwargs):
+        """
+        Generate visual representation of full predicitive distribtion
+        of ultimates/reserves by origin and in aggregate. Additional
+        options to style seaborn's distplot can be passed as keyword
+        arguments.
+
+        Parameters
+        ----------
+        color: str
+            Determines histogram color in each facet. Can also be specified as
+            a key-value pair in ``kwargs``.
+        axes_style: str
+            Aesthetic style of plots. Defaults to "darkgrid". Other options
+            include {whitegrid, dark, white, ticks}.
+
+        context: str
+            Set the plotting context parameters. According to the seaborn
+            documentation, This affects things like the size of the labels,
+            lines, and other elements of the plot, but not the overall style.
+            Defaults to ``"notebook"``. Additional options include
+            {paper, talk, poster}.
+
+        col_wrap: int
+            The maximum number of origin period axes to have on a single row
+            of the resulting FacetGrid. Defaults to 5.
+
+        kwargs: dict
+            Dictionary of optional matplotlib styling parameters.
+
+        """
+        import matplotlib
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        sns.set_context(context)
+
+        which_ = "ultimate"
+        data0 = self.sims_data[["sim", "origin", "dev", "rectype", "latest", "ultimate", "reserve",]]
+        data0 = data0[(data0["dev"]==data0["dev"].max()) & (data0["rectype"]=="forecast")].reset_index(drop=True)
+        tot_origin = data0["origin"].max() + 1
+        data0 = data0.drop(["dev", "rectype", "latest"], axis=1)
+
+        # Include additional origin representing aggregate distribution.
+        data1 = data0.groupby("sim", as_index=False)[["ultimate", "reserve"]].sum()
+        data1["origin"] = tot_origin
+        data = pd.concat([data0, data1])
+
+        # Get mean, min and max ultimate and reserve by origin.
+        med_data = data.groupby("origin", as_index=False)[["ultimate", "reserve"]].median().rename(
+            {"ultimate":"med_ult", "reserve":"med_res"}, axis=1).set_index("origin")
+        min_data = data.groupby("origin", as_index=False)[["ultimate", "reserve"]].min().rename(
+            {"ultimate":"min_ult", "reserve":"min_res"}, axis=1).set_index("origin")
+        max_data = data.groupby("origin", as_index=False)[["ultimate", "reserve"]].max().rename(
+            {"ultimate":"max_ult", "reserve":"max_res"}, axis=1).set_index("origin")
+        dfmetrics = functools.reduce(lambda df1, df2: df1.join(df2), (med_data, min_data, max_data))
+        dfmetrics = dfmetrics.reset_index(drop=False).applymap(lambda v: 0 if v<0 else v)
+
+
+        with sns.axes_style(axes_style):
+
+            pltkwargs = {
+                "color":color, "bins":20, "edgecolor":"#484848", "alpha":1.,
+                "linewidth":.45,
+            }
+
+            if kwargs is not None:
+                pltkwargs.update(kwargs)
+
+            grid = sns.FacetGrid(
+                data, col="origin", col_wrap=col_wrap, margin_titles=False,
+                despine=True, sharex=False, sharey=False,
+            )
+            hists_ = grid.map(
+                plt.hist, "ultimate", **pltkwargs
+            )
+
+            grid.set_axis_labels("", "")
+            grid.set_titles("", size=6)
+
+            # Change ticklabel font size and place legend on each facet.
+            uniq_origins = np.sort(data.origin.unique())
+            med_hdr = "med_ult" if which_.startswith("ult") else "med_res"
+            min_hdr = "min_ult" if which_.startswith("ult") else "min_res"
+            max_hdr = "max_ult" if which_.startswith("ult") else "max_res"
+
+            for ii, ax_ in enumerate(grid.axes.flatten()):
+
+                origin_ = uniq_origins[ii]
+                xmin = np.max([0, dfmetrics[dfmetrics.origin==origin_][min_hdr].item()])
+                xmax = dfmetrics[dfmetrics.origin==origin_][max_hdr].item() * 1.025
+                xmed = dfmetrics[dfmetrics.origin==origin_][med_hdr].item()
+                origin_str = "total {}".format(which_) if origin_==tot_origin else "{} {}".format(origin_, which_)
+                ax_.set_xlim([0, xmax])
+                ax_.axvline(xmed)
+                ax_.grid(True)
+
+                ymedloc = max(rect.get_height() for rect in ax_.patches) * .30
+
+                ax_.tick_params(
+                    axis="x", which="both", bottom=True, top=False, labelbottom=True
+                )
+                ax_.set_xticklabels(
+                    ["{:,.0f}".format(jj) for jj in ax_.get_xticks()], size=7
+                )
+                ax_.annotate(
+                    origin_str, xy=(.85, .925), xytext=(.65, .925), xycoords='axes fraction',
+                    textcoords='axes fraction', fontsize=8, rotation=0, color="#000000",
+                )
+                ax_.annotate(
+                    "median = {:,.0f}".format(xmed), (xmed, ymedloc), xytext=(7.5, 0),
+                    textcoords="offset points", ha="center", va="bottom", fontsize=6,
+                    rotation=90, color="#4b0082"
+                )
+
+                # Draw border around each facet.
+                for _, spine_ in ax_.spines.items():
+                    spine_.set(visible=True, color="#000000", linewidth=.50)
+
+        plt.show()
+
+
+    def _get_quantile(self, q, two_sided=True, interpolation="linear"):
+        """
+        Return percentile of bootstrapped ultimate or reserve range
+        distribution as specified by ``q``.
+
+        Parameters
+        ----------
+        q: float in range of [0,1] (or sequence of floats)
+            Percentile to compute, which must be between 0 and 1 inclusive.
+
+        two_sided: bool
+            Whether the two_sided interval should be returned. For example, if
+            ``two_sided==True`` and ``q=.95``, then the 2.5th and 97.5th
+            quantiles of the predictive reserve distribution will be returned
+            [(1 - .95) / 2, (1 + .95) / 2]. When False, only the specified
+            quantile(s) will be computed.
+
+        interpolation: {'linear', 'lower', 'higher', 'midpoint', 'nearest'}
+            This optional parameter specifies the interpolation method to use when
+            the desired quantile lies between two data points i < j:
+
+                - linear: i + (j - i) * fraction, where fraction is the fractional
+                part of the index surrounded by i and j.
+                - lower: i.
+                - higher: j.
+                - nearest: i or j, whichever is nearest.
+                - midpoint: (i + j) / 2.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        dfsims = self.sims_data[["origin", "dev", "ultimate"]]
+        pctl = np.asarray([q] if isinstance(q, (float, int)) else q)
+        if np.any(np.logical_and(pctl <= 1, pctl >= 0)):
+            if two_sided:
+                pctlarr = np.sort(np.unique(np.append((1 - pctl) / 2, (1 + pctl) / 2)))
+            else:
+                pctlarr = np.sort(np.unique(pctl))
+        else:
+            raise ValueError("Values for percentiles must fall between [0, 1].")
+
+        # Initialize DataFrame for percentile data.
+        pctlfmt = ["{:.5f}".format(i).rstrip("0").rstrip(".") + "%" for i in 100 * pctlarr]
+        dfpctl = dfsims.groupby(["origin", "dev"]).aggregate(
+            "quantile", q=.50, interpolation=interpolation)
+        dfpctl = dfpctl.rename({"ultimate":"50%"}, axis=1)
+        dfpctl.columns.name = None
+
+        for q_, pctlstr_ in zip(pctlarr, pctlfmt):
+            if q_!=.50:
+                df_ = dfsims.groupby(["origin", "dev"]).aggregate(
+                    "quantile", q=q_, interpolation=interpolation)
+                df_ = df_.rename({"ultimate":pctlstr_}, axis=1)
+                df_.columns.name = None
+                dfpctl = dfpctl.join(df_)
+
+        if .50 not in pctl:
+            dfpctl = dfpctl.drop("50%", axis=1)
+
+        return(dfpctl.reset_index(drop=False).sort_index())
+
+
+
+    def __str__(self):
+        return(self.summary.to_string(formatters=self._summspecs))
+
+
     # def __repr__(self):
-    #     """
-    #     Override default numerical precision used for representing
-    #     ultimate loss projections and age-to-ultimate factors.
-    #     """
-    #     summary_cols = [
-    #         "LATEST","CLDF","EMERGENCE","ULTIMATE","RESERVE","RMSEP",
-    #         "CV","NORM_95%_LB","NORM_95%_UB","LNORM_95%_LB","LNORM_95%_UB"
-    #         ]
-    #
-    #     summ_specs = pd.Series([0, 5, 5, 0, 0, 0, 5, 0, 0, 0, 0], index=summary_cols)
-    #     return(self.summary.round(summ_specs).to_string())
-    #
-    #
+    #     # pctls_ = [i for i in self.summary.columns if i.endswith("%")]
+    #     # pctlfmts_ = {i:"{:.0f}".format for i in pctls_}
+    #     # formats_ = {"ultimate":"{:.0f}".format, "reserve":"{:.0f}".format,
+    #     #             "latest":"{:.0f}".format, "cldf":"{:.5f}".format,}
+    #     return(self.summary.to_string(formatters=self._summspecs))

@@ -171,23 +171,23 @@ class BootstrapChainLadder(BaseChainLadder):
         BootstrapChainLadderResult
         """
         # Obtain reference to Chain ladder point estimates.
-        ldfs_ = self._ldfs(sel="all-weighted")
-        cldfs_ = self._cldfs(ldfs=ldfs_)
-        ultimates_ = self._ultimates(cldfs=cldfs_)
-        reserves_ = self._reserves(ultimates=ultimates_)
-        maturity_ = self.tri.maturity.astype(np.str)
-        latest_ = self.tri.latest_by_origin
-        trisqrd_ = self._trisqrd(ldfs=ldfs_)
+        ldfs = self._ldfs(sel="all-weighted")
+        cldfs = self._cldfs(ldfs=ldfs)
+        ultimates = self._ultimates(cldfs=cldfs)
+        reserves = self._reserves(ultimates=ultimates)
+        maturity = self.tri.maturity.astype(np.str)
+        latest = self.tri.latest_by_origin
+        trisqrd = self._trisqrd(ldfs=ldfs)
 
         # Obtain reference to Bootstrap estimates.
-        tri_fit_cum_ = self._tri_fit_cum(sel="all-weighted")
-        tri_fit_incr_ = self._tri_fit_incr(fitted_tri_cum=tri_fit_cum_)
-        unscld_residuals_ = self._resid_us(fitted_tri_incr=tri_fit_incr_)
-        adjust_residuals_ = self._resid_adj(resid_us=unscld_residuals_)
-        scale_param = self._scale_param(resid_us=unscld_residuals_)
-        sampling_dist_ = self._sampling_dist(resid_adj=adjust_residuals_)
+        tri_fit_cum = self._tri_fit_cum(sel="all-weighted")
+        tri_fit_incr = self._tri_fit_incr(fitted_tri_cum=tri_fit_cum)
+        unscld_residuals = self._resid_us(fitted_tri_incr=tri_fit_incr)
+        adjust_residuals = self._resid_adj(resid_us=unscld_residuals)
+        scale_param = self._scale_param(resid_us=unscld_residuals)
+        sampling_dist = self._sampling_dist(resid_adj=adjust_residuals)
         dfsamples = self._bs_samples(
-            sampling_dist=sampling_dist_, fitted_tri_incr=tri_fit_incr_,
+            sampling_dist=sampling_dist, fitted_tri_incr=tri_fit_incr,
             sims=sims, neg_handler=neg_handler, parametric=parametric,
             random_state=random_state
             )
@@ -207,28 +207,28 @@ class BootstrapChainLadder(BaseChainLadder):
 
         dfreserves = self._bs_reserves(dfprocerror=dfprocerror)
 
-        pctl_ = np.asarray([q] if isinstance(q, (float, int)) else q)
+        qtls = np.asarray([q] if isinstance(q, (float, int)) else q)
 
-        if np.any(np.logical_or(pctl_ <= 1, pctl_ >= 0)):
+        if np.any(np.logical_or(qtls <= 1, qtls >= 0)):
             if two_sided:
-                pctlarr = np.sort(np.unique(np.append((1 - pctl_) / 2., (1 + pctl_) / 2.)))
+                qtls = np.sort(np.unique(np.append((1 - qtls) / 2., (1 + qtls) / 2.)))
             else:
-                pctlarr = np.sort(np.unique(pctl_))
+                qtls = np.sort(np.unique(qtls))
         else:
             raise ValueError("Values for quantiles must fall between [0, 1].")
 
         # Compile Chain Ladder point estimate summary.
-        dfmatur_ = maturity_.to_frame().reset_index(drop=False).rename({"index":"origin"}, axis=1)
-        dfcldfs_ = cldfs_.to_frame().reset_index(drop=False).rename({"index":"maturity"}, axis=1)
-        dfcldfs_["maturity"] = dfcldfs_["maturity"].astype(np.str)
-        dfsumm = dfmatur_.merge(dfcldfs_, on=["maturity"], how="left").set_index("origin")
+        dfmatur = maturity.to_frame().reset_index(drop=False).rename({"index":"origin"}, axis=1)
+        dfcldfs = cldfs.to_frame().reset_index(drop=False).rename({"index":"maturity"}, axis=1)
+        dfcldfs["maturity"] = dfcldfs["maturity"].astype(np.str)
+        dfsumm = dfmatur.merge(dfcldfs, on=["maturity"], how="left").set_index("origin")
         dfsumm.index.name = None
-        dflatest_ = latest_.to_frame().rename({"latest_by_origin":"latest"}, axis=1)
-        dfultimates_ = ultimates_.to_frame()
-        dfreserves_ = reserves_.to_frame()
+        dflatest = latest.to_frame().rename({"latest_by_origin":"latest"}, axis=1)
+        dfultimates = ultimates.to_frame()
+        dfreserves = reserves.to_frame()
         dfsumm = functools.reduce(
             lambda df1, df2: df1.join(df2),
-            (dflatest_, dfultimates_, dfreserves_), dfsumm
+            (dflatest, dfultimates, dfreserves), dfsumm
             )
 
         dfsumm = dfsumm.rename({"reserve":"cl_reserve"}, axis=1)
@@ -242,12 +242,12 @@ class BootstrapChainLadder(BaseChainLadder):
             )
 
         # Attach percentile fields to dfsumm.
-        pctlfmt = ["{:.5f}".format(i).rstrip("0").rstrip(".") + "%" for i in 100 * pctlarr]
-        for q_, pctlstr_ in zip(pctlarr, pctlfmt):
-            dfsumm[pctlstr_] = dfsumm.index.map(
+        qtlsfmt = ["{:.5f}".format(i).rstrip("0").rstrip(".") + "%" for i in 100 * qtls]
+        for ii, jj in zip(qtls, qtlsfmt):
+            dfsumm[jj] = dfsumm.index.map(
                 lambda v: np.percentile(
                     dfreserves[dfreserves["origin"]==v]["reserve"].values,
-                    100 * q_, interpolation=interpolation
+                    100 * ii, interpolation=interpolation
                     )
                 )
 
@@ -262,16 +262,16 @@ class BootstrapChainLadder(BaseChainLadder):
                 "procdist":procdist, "parametric":parametric,
                 "q":q, "interpolation":interpolation,}
 
-        sampling_dist_res = None if parametric==True else sampling_dist_
+        sampling_dist_res = None if parametric else sampling_dist
 
         bclresult = BootstrapChainLadderResult(
             summary=dfsumm, reserve_dist=dfreserves, sims_data=dfprocerror,
-            tri=self.tri, ldfs=ldfs_, cldfs=cldfs_, latest=latest_,
-            maturity=maturity_, ultimates=ultimates_, reserves=reserves_,
-            scale_param=scale_param, unscaled_residuals=unscld_residuals_,
-            adjusted_residuals=adjust_residuals_, sampling_dist=sampling_dist_res,
-            fitted_tri_cum=tri_fit_cum_, fitted_tri_incr=tri_fit_incr_,
-            trisqrd=trisqrd_, **kwds)
+            tri=self.tri, ldfs=ldfs, cldfs=cldfs, latest=latest,
+            maturity=maturity, ultimates=ultimates, reserves=reserves,
+            scale_param=scale_param, unscaled_residuals=unscld_residuals,
+            adjusted_residuals=adjust_residuals, sampling_dist=sampling_dist_res,
+            fitted_tri_cum=tri_fit_cum, fitted_tri_incr=tri_fit_incr,
+            trisqrd=trisqrd, **kwds)
 
         return(bclresult)
 
@@ -855,14 +855,14 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         self.reserve_dist = reserve_dist
         self.scale_param = scale_param
         self.sims_data = sims_data
-        self.ultimates = ultimates
-        self.reserves = reserves
-        self.maturity = maturity
-        self.summary = summary
-        self.trisqrd = trisqrd
-        self.latest = latest
-        self.cldfs = cldfs
-        self.ldfs = ldfs
+        # self.ultimates = ultimates
+        # self.reserves = reserves
+        # self.maturity = maturity
+        # self.summary = summary
+        # self.trisqrd = trisqrd
+        # self.latest = latest
+        # self.cldfs = cldfs
+        # self.ldfs = ldfs
         self.tail = 1.0
         self.tri = tri
 
