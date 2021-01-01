@@ -98,7 +98,9 @@ class BootstrapChainLadder(BaseChainLadder):
         """
         super().__init__(cumtri=cumtri)
 
+        self._dfrlvi = None
         self._dof = None
+
 
 
 
@@ -180,7 +182,7 @@ class BootstrapChainLadder(BaseChainLadder):
         trisqrd = self._trisqrd(ldfs=ldfs)
 
         # Obtain reference to Bootstrap estimates.
-        tri_fit_cum = self._tri_fit_cum(sel="all-weighted")
+        tri_fit_cum = self._tri_fit_cum(ldfs=ldfs)
         tri_fit_incr = self._tri_fit_incr(fitted_tri_cum=tri_fit_cum)
         unscld_residuals = self._resid_us(fitted_tri_incr=tri_fit_incr)
         adjust_residuals = self._resid_adj(resid_us=unscld_residuals)
@@ -191,15 +193,9 @@ class BootstrapChainLadder(BaseChainLadder):
             sims=sims, neg_handler=neg_handler, parametric=parametric,
             random_state=random_state
             )
-
         dfldfs = self._bs_ldfs(dfsamples=dfsamples)
-        dflvi = self.tri.rlvi.reset_index(drop=False)
-        dflvi = dflvi.rename({"index":"origin", "dev":"l_act_dev"}, axis=1)
-        dflvi = dflvi.drop("col_offset", axis=1)
-        dfcombined = dfsamples.merge(dfldfs, on=["sim", "dev"], how="left")
-        dfcombined = dfcombined.merge(dflvi, on=["origin"], how="left")
-        dfcombined = dfcombined.reset_index(drop=True).sort_values(by=["sim", "origin", "dev"])
-        dfforecasts = self._bs_forecasts(dfcombined=dfcombined, scale_param=scale_param)
+        dfcombined = self._get_dfcombined(dfsamples, dfldfs)
+        dfforecasts = self._bs_forecasts(dfsamples, dfldfs, scale_param)
         dfprocerror = self._bs_process_error(
             dfforecasts=dfforecasts, scale_param=scale_param, procdist=procdist,
             random_state=random_state
@@ -272,8 +268,44 @@ class BootstrapChainLadder(BaseChainLadder):
             adjusted_residuals=adjust_residuals, sampling_dist=sampling_dist_res,
             fitted_tri_cum=tri_fit_cum, fitted_tri_incr=tri_fit_incr,
             trisqrd=trisqrd, **kwds)
-
         return(bclresult)
+
+
+    @property
+    def dfrlvi(self):
+        """
+        Transform triangle's last valid origin index into DataFrame format.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        if self._dfrlvi is None:
+            df = self.tri.rlvi.reset_index(drop=False)
+            df = df.rename({"index":"origin", "dev":"l_act_dev"}, axis=1)
+            self._dfrlvi = df.drop("col_offset", axis=1)
+        return(self._dfrlvi)
+
+
+    def _get_dfcombined(self, dfsamples, dfldfs):
+        """
+        Merge output of ``self._bs_samples`` and ``self._bs_ldfs``.
+
+        Parameters
+        ----------
+        dfsamples: pd.DataFrame
+            Output from ``self._bs_samples``.
+
+        dfldfs: pd.DataFrame
+            Output from ``self._bs_ldfs``.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        dfcombined = dfsamples.merge(dfldfs, on=["sim", "dev"], how="left")
+        dfcombined = dfcombined.merge(self.dfrlvi, on=["origin"], how="left")
+        return(dfcombined.reset_index(drop=True).sort_values(by=["sim", "origin", "dev"]))
 
 
     @property
@@ -310,7 +342,7 @@ class BootstrapChainLadder(BaseChainLadder):
 
 
 
-    def _tri_fit_cum(self, sel="all-weighted"):
+    def _tri_fit_cum(self, ldfs):
         """
         Return the cumulative fitted triangle using backwards recursion,
         starting with the observed cumulative paid/incurred-to-date along the
@@ -318,19 +350,16 @@ class BootstrapChainLadder(BaseChainLadder):
 
         Parameters
         ----------
-        sel: str
-            The ldf average to select from ``triangle._CumTriangle.a2a_avgs``.
-            Defaults to "all-weighted".
+        ldfs: pd.Series
+            Selected ldfs, typically the output of calling ``self._ldfs``.
 
         Returns
         -------
         pd.DataFrame
         """
-        ldfs = self._ldfs(sel=sel)
         fitted_tri_cum = self.tri.copy(deep=True)
 
         for ii in range(fitted_tri_cum.shape[0]):
-
             iterrow = fitted_tri_cum.iloc[ii, :]
             if iterrow.isnull().any():
                 # Find first NaN element in iterrow.
@@ -350,7 +379,6 @@ class BootstrapChainLadder(BaseChainLadder):
                 prev_col_val = fitted_tri_cum.iloc[ii, prev_col_idx]
                 curr_ldf_val = ldfs.iloc[curr_ldf_idx]
                 fitted_tri_cum.iloc[ii, curr_col_idx] = (prev_col_val / curr_ldf_val)
-
         return(fitted_tri_cum)
 
 
@@ -390,7 +418,7 @@ class BootstrapChainLadder(BaseChainLadder):
         pd.DataFrame
         """
         # I represents actual incremental losses, m fitted incremental losses.
-        I = self.tri.to_incr()
+        I = pd.DataFrame(self.tri.to_incr())
         m = fitted_tri_incr
         return((I - m) / np.sqrt(m.abs()))
 
@@ -499,24 +527,23 @@ class BootstrapChainLadder(BaseChainLadder):
         fti = fitted_tri_incr.reset_index(drop=False).rename({"index":"origin"}, axis=1)
         dfm = pd.melt(fti, id_vars=["origin"], var_name="dev", value_name="value")
         dfm = dfm[~np.isnan(dfm["value"])].astype(
-            {"origin":np.int_, "dev":np.int_, "value":np.float_}
+            {"origin":np.int, "dev":np.int, "value":np.float}
             )
 
-        # Handle first period negative cells as specified by `neg_handler`.
-        if np.any(dfm["value"]<0):
+        # Make positive any first development period negative values.
+        if np.any(dfm["value"]<=0):
 
             if neg_handler=="first":
+                min_devp = dfm["dev"].min()
                 dfm["value"] = np.where(
-                    np.logical_and(dfm["dev"].values==1, dfm["value"].values<0),
+                    np.logical_and(dfm["dev"].values==min_devp, dfm["value"].values<0),
                     1., dfm["value"].values
                     )
 
             elif neg_handler=="all":
-                # Obtain reference to minimum triangle cell value, then
-                # add the absolute value of that amount plus one to all
-                # other triangle cells.
-                add2cells = np.abs(dfm["value"].min()) + 1
-                dfm["value"] = dfm["value"] + add2cells
+                # Add the absolute value of the minimum triangle amount plus
+                # one to all other triangle  cells.
+                dfm["value"] = dfm["value"] + np.abs(dfm["value"].min()) + 1
 
             else:
                 raise ValueError("`neg_handler` must be in ['first', 'all'].")
@@ -539,12 +566,12 @@ class BootstrapChainLadder(BaseChainLadder):
         sample_size = dfr.shape[0]
 
         if parametric:
-            # Sample random residuals from normal distribution with zero mean.
+            # Sample random standard normal residuals.
             dfr["resid"] = prng.normal(
                 loc=0, scale=sampling_dist.std(ddof=1), size=sample_size
                 )
         else:
-            # Sample random residual from adjusted pearson residuals.
+            # Randomly sample residual from sampling_dist.
             dfr["resid"] = prng.choice(
                 sampling_dist, sample_size, replace=True
                 )
@@ -559,9 +586,8 @@ class BootstrapChainLadder(BaseChainLadder):
 
     def _bs_ldfs(self, dfsamples):
         """
-        Compute and return loss development factors for each set of
-        synthetic loss data. This method is intended for internal use
-        only.
+        Compute and return loss development factors for each set of synthetic
+        loss data.
 
         Parameters
         ----------
@@ -573,16 +599,17 @@ class BootstrapChainLadder(BaseChainLadder):
         pd.DataFrame
         """
         keepcols = ["sim", "origin", "dev", "samp_cum", "last_origin"]
-        dflvi = self.tri.clvi.reset_index(drop=False)
-        dflvi = dflvi.rename(
-            {"index":"dev", "origin":"last_origin", "row_offset":"origin_offset"}, axis=1)
+        new_col_names = {"index":"dev", "origin":"last_origin", "row_offset":"origin_offset"}
+        dflvi = self.tri.clvi.reset_index(drop=False).rename(new_col_names, axis=1)
         dfinit = dfsamples.merge(dflvi, how="left", on=["dev"])
         dfinit = dfinit[keepcols].sort_values(by=["sim", "dev", "origin"])
         df = dfinit[~np.isnan(dfinit["samp_cum"])].reset_index(drop=True)
         df["_aggdev2"] = np.where(
-            df["origin"].values==df["last_origin"].values, 0, df["samp_cum"].values)
+            df["origin"].values==df["last_origin"].values, 0, df["samp_cum"].values
+            )
         df2 = df.groupby(["sim", "dev"], as_index=False)[["samp_cum", "_aggdev2"]].sum().rename(
-            {"samp_cum":"_aggdev1"}, axis=1)
+            {"samp_cum":"_aggdev1"}, axis=1
+            )
         df2["_aggdev2"] = df2["_aggdev2"].shift(periods=1)
         df2["dev"] = df2["dev"].shift(periods=1)
         dfldfs = df2[df2["_aggdev2"]!=0].dropna(how="any")
@@ -591,27 +618,32 @@ class BootstrapChainLadder(BaseChainLadder):
         return(dfldfs[["sim", "dev", "ldf"]].reset_index(drop=True))
 
 
-    @staticmethod
-    def _bs_forecasts(dfcombined, scale_param):
+
+    def _bs_forecasts(self, dfsamples, dfldfs, scale_param):
         """
         Populate lower-right of each simulated triangle using values from
         ``self._bs_samples`` and development factors from ``self._bs_ldfs``.
 
         Parameters
         ----------
-        dfcombined: pd.DataFrame
-            Combination of ``self._bs_samples``, ``self._bs_ldfs`` and
-            ``self.tri.latest_by_origin``.
+        Parameters
+        ----------
+        dfsamples: pd.DataFrame
+            Output from ``self._bs_samples``.
+
+        dfldfs: pd.DataFrame
+            Output from ``self._bs_ldfs``.
 
         scale_param: float
             the sum of the squared unscaled Pearson residuals over the
-            degrees of freedom. Computed within ``self._scale_param``.
+            degrees of freedom. Output from ``self._scale_param``.
 
         Returns
         -------
         pd.DataFrame
         """
-        min_origin_year = dfcombined["origin"].values.min()
+        dfcombined = self._get_dfcombined(dfsamples, dfldfs)
+        min_origin_year = dfcombined["origin"].min()
         dfcombined["_l_init_indx"] = np.where(
             dfcombined["dev"].values>=dfcombined["l_act_dev"].values, dfcombined.index.values, -1)
         dfacts = dfcombined[(dfcombined["origin"].values==min_origin_year) | (dfcombined["_l_init_indx"].values==-1)]
@@ -651,7 +683,7 @@ class BootstrapChainLadder(BaseChainLadder):
         incremental values is described in  Shapland[1], and replaces the
         distribution mean with the absolute value of the mean, and the
         variance to the absolute value of the mean multiplied by
-        ``self.scale_param``.
+        ``scale_param``.
 
         Parameters
         ----------
@@ -666,11 +698,7 @@ class BootstrapChainLadder(BaseChainLadder):
         procdist: str
             Specifies the distribution used to incorporate process error.
             Currently, can only be set to "gamma". Any other distribution
-            will result in an error. Future release will also allow
-            over-dispersed poisson ("odp"). If in the future ``procdist``
-            is set to "odp", the negative binomial distribution is
-            parameterized in such a way that results in a linear relationship
-            between mean and variance.
+            will result in an error.
 
         random_state: np.random.RandomState
             If int, random_state is the seed used by the random number
