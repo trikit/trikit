@@ -128,6 +128,11 @@ class MackChainLadder(BaseChainLadder):
         std_error = pd.Series(np.sqrt(mse), name="std_error")
         cv = pd.Series(std_error / ibnr, name="cv")
 
+        trisqrd_ldfs = ldfs.copy(deep=True)
+        increment = np.unique(ldfs.index[1:] - ldfs.index[:-1])[0]
+        trisqrd_ldfs.loc[ldfs.index.max() + increment] = tail
+        trisqrd = self._trisqrd(ldfs=trisqrd_ldfs)
+
         dfmatur = maturity.to_frame().reset_index(drop=False).rename({"index":"origin"}, axis=1)
         dfcldfs = cldfs.to_frame().reset_index(drop=False).rename({"index":"maturity"}, axis=1)
         dfcldfs["maturity"] = dfcldfs["maturity"].astype(np.str)
@@ -152,7 +157,7 @@ class MackChainLadder(BaseChainLadder):
 
         if dist=="lognorm":
             std_params = np.sqrt(np.log(1 + (std_error/ ibnr)**2))
-            mean_params = np.log(ibnr) - .50 * std_params**2
+            mean_params = np.clip(np.log(ibnr), a_min=0, a_max=None) - .50 * std_params**2
 
             def rv(mu, sigma, z):
                 """
@@ -161,10 +166,12 @@ class MackChainLadder(BaseChainLadder):
                 """
                 return(np.exp(mu + sigma * z))
 
+        sigma = pd.Series(std_params, name="sigma", dtype=np.float)
+        mu = pd.Series(mean_params, name="mu", dtype=np.float)
+        dfsumm = dfsumm.join(mu.to_frame()).join(sigma.to_frame())
 
-
-        q = [.75, .95]
-        two_sided = False
+        # q = [.75, .95]
+        # two_sided = False
 
 
         qtls = np.asarray([q] if isinstance(q, (float, int)) else q)
@@ -176,28 +183,65 @@ class MackChainLadder(BaseChainLadder):
         else:
             raise ValueError("Values for quantiles must fall between [0, 1].")
 
-        qtlsfmt = ["{:.5f}".format(i).rstrip("0").rstrip(".") + "%" for i in 100 * qtls]
+        qtlsfmt = [
+            "{:.5f}".format(i).rstrip("0").rstrip(".") + "%" for i in 100 * qtls
+            ]
 
         for ii, jj in zip(qtls, qtlsfmt):
-
-
-            dfsumm[pctlstr_] = dfsumm.index.map(
-                lambda v: np.percentile(
-                    dfreserves[dfreserves["origin"]==v]["reserve"].values,
-                    100 * q_, interpolation=interpolation
+            dfsumm[jj] = dfsumm.apply(
+                lambda rec: rv(rec.mu, rec.sigma, norm().ppf(ii)), axis=1
                 )
-            )
-        for ii in q:
 
-            qtls = np.asarray([q] if isinstance(q, (float, int)) else q)
-
-            ii = .95
-
-            Z = norm().ppf(ii)
-
-            print(Z)
+        # # Add "Total" index and set to NaN fields that shouldn't be aggregated.
+        dfsumm.loc["total"] = dfsumm.sum()
+        dfsumm.loc["total", "maturity"] = ""
+        dfsumm.loc["total", ["cldf", "cv", "std_error"] + qtlsfmt] = np.NaN
+        dfsumm = dfsumm.drop(["mu", "sigma"], axis=1)
 
 
+        # Compute mse for aggregate reserve.
+        mse_total = pd.Series(index=dfsumm.index[:-1], dtype=np.float)
+        quotient = pd.Series(devpvar / ldfs**2, dtype=np.float).reset_index(drop=True)
+        quotient.index = quotient.index + 1
+
+        # Create latest and trisqrd reference using 1-based indexing.
+        latest = self.tri.latest.sort_index()
+        latest.origin = range(1, latest.index.size + 1)
+        latest.dev = range(latest.index.size, 0, -1)
+
+        trisqrd = self._trisqrd(ldfs).drop("ultimate", axis=1)
+        trisqrd.index = range(1, trisqrd.index.size + 1)
+        trisqrd.columns = range(1, trisqrd.columns.size + 1)
+        n = self.tri.devp.size
+
+
+
+        for indx, ii in enumerate(mse_total.index[1:], start=2):
+
+            # indx, ii = 2, 2002
+
+            mse_ii, ult_ii = mse[ii],  ults[ii]
+            ults_sum = ults[ults.index>ii].dropna().sum()
+            rh_sum = sum(
+                quotient[jj] / sum(trisqrd.loc[mm, jj] for mm in range(1, (n - jj) + 1))
+                for jj in range(n + 1 - indx, n)
+                )
+
+            mse_total[ii] = mse_ii + 2 * ult_ii * ults_sum * rh_sum
+
+
+
+            # # jj0 = n + 1 - indx
+            #
+            # for jj in range(jj0, n): # over development period.
+            #
+            #     # jj = 9
+            #     numer = quotient[jj]
+            #     denom = sum(trisqrd.loc[mm, jj] for mm in range(1, (n - jj) + 1))
+            #
+            #         # m = 1
+
+        std_error_total = np.sqrt(mse_total.dropna().sum())
 
 
 
@@ -205,7 +249,17 @@ class MackChainLadder(BaseChainLadder):
 
 
 
-        # Compute correlation term for aggregate reserve estimate.
+
+
+
+
+
+
+
+
+
+
+
 
 
         #
