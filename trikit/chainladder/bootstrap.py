@@ -68,24 +68,24 @@ class BootstrapChainLadder(BaseChainLadder):
 
     References
     ----------
-    - England, P., and R. Verrall, (2002), *Stochastic Claims Reserving in General
-      Insurance*, British Actuarial Journal 8(3): 443-518.
+    1. England, P., and R. Verrall, (2002), *Stochastic Claims Reserving in General
+       Insurance*, British Actuarial Journal 8(3): 443-518.
 
-    - CAS Working Party on Quantifying Variability in Reserve Estimates,
-      *The Analysis and Estimation of Loss & ALAE Variability: A Summary Report*,
-      Casualty Actuarial Society Forum, Fall 2005.
+    2. CAS Working Party on Quantifying Variability in Reserve Estimates,
+       *The Analysis and Estimation of Loss & ALAE Variability: A Summary Report*,
+       Casualty Actuarial Society Forum, Fall 2005.
 
-    - Leong et al., (2012), *Back-Testing the ODP Bootstrap of the Paid
-      Chain-Ladder Model with Actual Historical Claims Data*, Casualty Actuarial
-      Society E-Forum.
+    3. Leong et al., (2012), *Back-Testing the ODP Bootstrap of the Paid
+       Chain-Ladder Model with Actual Historical Claims Data*, Casualty Actuarial
+       Society E-Forum.
 
-    - Kirschner, et al., *Two Approaches to Calculating Correlated Reserve
-      Indications Across Multiple Lines of Business* Appendix III, Variance
-      Journal, Volume 2/Issue 1.
+    4. Kirschner, et al., *Two Approaches to Calculating Correlated Reserve
+       Indications Across Multiple Lines of Business* Appendix III, Variance
+       Journal, Volume 2/Issue 1.
 
-    - Shapland, Mark R., (2016), *Using the ODP Bootstrap Model: A
-      Practicioner's Guide*, CAS Monograph Series Number 4: Casualty Actuarial
-      Society, 2016.
+    5. Shapland, Mark R., (2016), *Using the ODP Bootstrap Model: A
+       Practicioner's Guide*, CAS Monograph Series Number 4: Casualty Actuarial
+       Society, 2016.
     """
     def __init__(self, cumtri):
         """
@@ -216,6 +216,7 @@ class BootstrapChainLadder(BaseChainLadder):
         dfmatur = maturity.to_frame().reset_index(drop=False).rename({"index":"origin"}, axis=1)
         dfcldfs = cldfs.to_frame().reset_index(drop=False).rename({"index":"maturity"}, axis=1)
         dfcldfs["maturity"] = dfcldfs["maturity"].astype(np.str)
+        dfcldfs["emergence"] = 1 / dfcldfs["cldf"]
         dfsumm = dfmatur.merge(dfcldfs, on=["maturity"], how="left").set_index("origin")
         dfsumm.index.name = None
         dflatest = latest.to_frame().rename({"latest_by_origin":"latest"}, axis=1)
@@ -238,24 +239,22 @@ class BootstrapChainLadder(BaseChainLadder):
         # Add "Total" index and set to NaN fields that shouldn't be aggregated.
         dfsumm.loc["total"] = dfsumm.sum()
         dfsumm.loc["total", "maturity"] = ""
-        dfsumm.loc["total", "cldf"] = np.NaN
+        dfsumm.loc["total", ["cldf", "emergence"]] = np.NaN
 
         kwds = {
-            "sel":"all-weighted", "sims": sims, "neg_handler":neg_handler,
+            "sel":"all-weighted", "sims":sims, "neg_handler":neg_handler,
             "procdist":procdist, "parametric":parametric, "q":q,
             "interpolation":interpolation,
             }
 
         # Instantiate and return BootstrapChainLadderResult instance.
         bcl_result = BootstrapChainLadderResult(
-            summary=dfsumm, reserve_dist=dfreserves, sims_data=dfprocerror,
-            tri=self.tri, tail=1.0, ldfs=ldfs, cldfs=cldfs, latest=latest,
-            maturity=maturity, ultimates=ultimates, reserves=reserves,
-            scale_param=scale_param, unscaled_residuals=unscld_residuals,
+            summary=dfsumm, tri=self.tri, ldfs=ldfs, tail=1.0, trisqrd=trisqrd,
+            reserve_dist=dfreserves, sims_data=dfprocerror, scale_param=scale_param,
+            dof=self.dof, unscaled_residuals=unscld_residuals,
             adjusted_residuals=adjust_residuals,
             sampling_dist=None if parametric else sampling_dist,
-            fitted_tri_cum=tri_fit_cum, fitted_tri_incr=tri_fit_incr,
-            trisqrd=trisqrd, **kwds
+            fitted_tri_cum=tri_fit_cum, fitted_tri_incr=tri_fit_incr, **kwds
             )
 
         return(bcl_result)
@@ -329,7 +328,6 @@ class BootstrapChainLadder(BaseChainLadder):
         float
         """
         return((resid_us**2).sum().sum() / self.dof)
-
 
 
     def _tri_fit_cum(self, ldfs):
@@ -764,10 +762,9 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
     """
     BootstrapChainLadder output.
     """
-    def __init__(self, summary, reserve_dist, sims_data, tri, ldfs, cldfs,
-                 latest, maturity, ultimates, reserves, scale_param,
-                 unscaled_residuals, adjusted_residuals, sampling_dist,
-                 fitted_tri_cum, fitted_tri_incr, trisqrd, **kwargs):
+    def __init__(self, summary, tri, ldfs, tail, trisqrd, reserve_dist, sims_data,
+                 scale_param, dof, unscaled_residuals, adjusted_residuals,
+                 sampling_dist, fitted_tri_cum, fitted_tri_incr, **kwargs):
         """
         Container class for ``BootstrapChainLadder``'s output.
 
@@ -820,27 +817,12 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         ldfs: pd.Series
             Loss development factors.
 
-        cldfs: pd.Series
-            Cumulative loss development factors.
-
-        latest: pd.Series
-            Latest loss amounts by origin.
-
-        maturity: pd.Series
-            Represents ther maturity of each origin relative to development
-            period.
-
-        ultimates: pd.Series
-            Represents Chain Ladder ultimate projections.
-
-        reserves: pd.Series
-            Represents the projected reserve amount. For each origin period,
-            this equates to the ultimate loss projection minus the latest
-            loss amount for the origin period (reserve = ultimate - latest).
-
         scale_param: float
             The the sum of the squared unscaled Pearson residuals over the
             triangle's degrees of freedom.
+
+        dof: int
+            Triangle degrees of freedom.
 
         unscaled_residuals: pd.DataFrame
             The unscaled residuals.
@@ -862,9 +844,8 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
             Additional keyword arguments passed into ``BootstrapChainLadder``'s
             ``__call__`` method.
         """
-        super().__init__(summary=summary, tri=tri, ldfs=ldfs, cldfs=cldfs,
-                         latest=latest, maturity=maturity, ultimates=ultimates,
-                         reserves=reserves, trisqrd=trisqrd, **kwargs)
+        super().__init__(summary=summary, tri=tri, ldfs=ldfs, tail=tail,
+                         trisqrd=trisqrd, **kwargs)
 
         self.unscaled_residuals = unscaled_residuals
         self.adjusted_residuals = adjusted_residuals
@@ -874,10 +855,23 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         self.reserve_dist = reserve_dist
         self.scale_param = scale_param
         self.sims_data = sims_data
+        self.summary = summary
+        self.trisqrd = trisqrd
+        self.ldfs = ldfs
+        self.tail = tail
+        self.tri = tri
+
+        # Create DataFrame with reserve and specified quantile estimates.
+        qtlsfields = [i for i in self.summary.columns if i.endswith("%")]
+        self.dfqtls = self.summary[["reserve"] + qtlsfields]
 
         if kwargs is not None:
             for kk in kwargs:
                 setattr(self, kk, kwargs[kk])
+
+        self.qtlhdrs = {i:"{:,.0f}".format for i in qtlsfields}
+        self.qtlhdrs.update({"std_error":"{:,.0f}".format, "cv":"{:.5f}".format})
+        self._summspecs.update(self.qtlhdrs)
 
         # Properties.
         self._aggregate_distribution = None
@@ -885,9 +879,6 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         self._residuals_detail = None
         self._fit_assessment = None
 
-        qtlsfields = [i for i in self.summary.columns if i.endswith("%")]
-        qtlsfmt = {i:"{:,.0f}".format for i in qtlsfields}
-        self._summspecs.update(qtlsfmt)
 
 
     @property
@@ -927,10 +918,10 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
     def fit_assessment(self):
         """
         Return a summary assessing the fit of the parametric model used for
-        bootstrap resampling. Applicable when ``parametric`` argument to
-        is True. Returns a dictionary with keys ``kstest``, ``anderson``,
-        ``shapiro``, ``skewtest``, ``kurtosistest`` and ``normaltest``,
-        corresponding to statistical tests available in ``scipy.stats``.
+        bootstrap resampling. Applicable when ``parametric=True``. Returns a
+        dictionary with keys ``kstest``, ``anderson``, ``shapiro``, ``skewtest``,
+        ``kurtosistest`` and ``normaltest``, corresponding to statistical
+        tests available in ``scipy.stats``.
 
         Returns
         -------
@@ -1021,10 +1012,11 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
                         "standard_deviation", "median"
                         ]
                     )
+
         return(self._residuals_detail)
 
 
-    def _bs_data_transform(self,  q):
+    def _bs_data_transform(self, q):
         """
         Starts with ``BaseChainLadderResult``'s ``_data_transform``, and
         performs additional pre-processing in order to generate plot of

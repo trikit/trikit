@@ -20,21 +20,25 @@ class MackChainLadder(BaseChainLadder):
 
     References
     ----------
-    - Mack, Thomas (1993) *Measuring the Variability of Chain Ladder Reserve
-      Estimates*, 1993 CAS Prize Paper Competition on 'Variability of Loss Reserves'.
+    1. Mack, Thomas (1993) *Measuring the Variability of Chain Ladder Reserve
+       Estimates*, 1993 CAS Prize Paper Competition on 'Variability of Loss Reserves'.
 
-    - Mack, Thomas, (1993), *Distribution-Free Calculation of the Standard Error
-      of Chain Ladder Reserve Estimates*, ASTIN Bulletin 23, no. 2:213-225.
+    2. Mack, Thomas, (1993), *Distribution-Free Calculation of the Standard Error
+       of Chain Ladder Reserve Estimates*, ASTIN Bulletin 23, no. 2:213-225.
 
-    - Mack, Thomas, (1999), *The Standard Error of Chain Ladder Reserve Estimates:
-      Recursive Calculation and Inclusion of a Tail Factor*, ASTIN Bulletin 29,
-      no. 2:361-366.
+    3. Mack, Thomas, (1999), *The Standard Error of Chain Ladder Reserve Estimates:
+       Recursive Calculation and Inclusion of a Tail Factor*, ASTIN Bulletin 29,
+       no. 2:361-366.
 
-    - England, P., and R. Verrall, (2002), *Stochastic Claims Reserving in General
+    4. England, P., and R. Verrall, (2002), *Stochastic Claims Reserving in General
       Insurance*, British Actuarial Journal 8(3): 443-518.
 
-    - Murphy, Daniel, (2007), *Chain Ladder Reserve Risk Estimators*, CAS E-Forum,
-      Summer 2007.
+    5. Murphy, Daniel, (2007), *Chain Ladder Reserve Risk Estimators*, CAS E-Forum,
+       Summer 2007.
+
+    6. Carrato, A., McGuire, G. and Scarth, R. 2016. *A Practitioner's
+       Introduction to Stochastic Reserving*, The Institute and Faculty of
+       Actuaries. 2016.
     """
     def __init__(self, cumtri):
         """
@@ -43,7 +47,6 @@ class MackChainLadder(BaseChainLadder):
         cumtri: triangle._CumTriangle
             A cumulative.CumTriangle instance
         """
-
         super().__init__(cumtri)
 
         # Properties.
@@ -52,7 +55,7 @@ class MackChainLadder(BaseChainLadder):
 
 
 
-    def __call__(self, alpha=1, tail=1.0, dist="lnorm", q=[.75, .95], two_sided=False):
+    def __call__(self, alpha=1, tail=1.0, dist="lognorm", q=[.75, .95], two_sided=False):
         """
         Return a summary of ultimate and reserve estimates resulting from
         the application of the development technique over self.tri. Summary
@@ -62,7 +65,7 @@ class MackChainLadder(BaseChainLadder):
         aggregate.
 
         ### TODO ###
-        Implement tail factor functionality.
+        Allow for tail factor other than 1.0.
 
         Parameters
         ----------
@@ -108,15 +111,8 @@ class MackChainLadder(BaseChainLadder):
         -------
         MackChainLadderResult
         """
-        alpha = 1
-        tail = 1.0
-        dist = "lognorm"
-        q = [.75, .95]
-        two_sided = False
-
-
         ldfs = self._ldfs(alpha=alpha)
-        cldfs = self._cldfs(ldfs=ldfs, tail=1.0)
+        cldfs = self._cldfs(ldfs=ldfs)
         maturity = self.tri.maturity.astype(np.str)
         latest = self.tri.latest_by_origin
         ultimates = self._ultimates(cldfs=cldfs)
@@ -131,10 +127,11 @@ class MackChainLadder(BaseChainLadder):
             self._parameter_error(ldfs=ldfs, ldfvar=ldfvar).iloc[:,-1].replace(np.NaN, 0),
             name="parameter_error", dtype=np.float
             )
-        mse = self._mean_squared_error(process_error=proc_error, parameter_error=param_error)
+        mse = self._mean_squared_error(
+            process_error=proc_error, parameter_error=param_error
+            )
         std_error = pd.Series(np.sqrt(mse), name="std_error")
         cv = pd.Series(std_error / reserves, name="cv")
-
         trisqrd_ldfs = ldfs.copy(deep=True)
         increment = np.unique(ldfs.index[1:] - ldfs.index[:-1])[0]
         trisqrd_ldfs.loc[ldfs.index.max() + increment] = tail
@@ -143,6 +140,7 @@ class MackChainLadder(BaseChainLadder):
         dfmatur = maturity.to_frame().reset_index(drop=False).rename({"index":"origin"}, axis=1)
         dfcldfs = cldfs.to_frame().reset_index(drop=False).rename({"index":"maturity"}, axis=1)
         dfcldfs["maturity"] = dfcldfs["maturity"].astype(np.str)
+        dfcldfs["emergence"] = 1 / dfcldfs["cldf"]
         dfsumm = dfmatur.merge(dfcldfs, on=["maturity"], how="left").set_index("origin")
         dfsumm.index.name = None
         dflatest = latest.to_frame().rename({"latest_by_origin":"latest"}, axis=1)
@@ -155,8 +153,7 @@ class MackChainLadder(BaseChainLadder):
         # Add total index and set to NaN fields that shouldn't be aggregated.
         dfsumm.loc["total"] = dfsumm.sum()
         dfsumm.loc["total", "maturity"] = ""
-        dfsumm.loc["total", "cldf"] = np.NaN
-
+        dfsumm.loc["total", ["cldf", "emergence"]] = np.NaN
 
         # Create latest and trisqrd reference using 1-based indexing.
         latest = self.tri.latest.sort_index()
@@ -194,7 +191,7 @@ class MackChainLadder(BaseChainLadder):
                 """
                 return(mu + sigma * z)
 
-        if dist=="lognorm":
+        elif dist=="lognorm":
             with np.errstate(divide="ignore"):
                 std_params = np.sqrt(np.log(1 + (dfsumm["std_error"] / dfsumm["reserve"])**2)).replace(np.NaN, 0)
                 mean_params = np.clip(np.log(dfsumm["reserve"]), a_min=0, a_max=None) - .50 * std_params**2
@@ -205,6 +202,11 @@ class MackChainLadder(BaseChainLadder):
                 standard deviation ``sigma`` at ``z``.
                 """
                 return(np.exp(mu + sigma * z))
+
+        else:
+            raise ValueError(
+                "dist must be one of {'norm', 'lognorm'}, not `{}`.".format(dist)
+                )
 
         sigma = pd.Series(std_params, name="sigma", dtype=np.float)
         mu = pd.Series(mean_params, name="mu", dtype=np.float)
@@ -220,14 +222,14 @@ class MackChainLadder(BaseChainLadder):
         else:
             raise ValueError("Values for quantiles must fall between [0, 1].")
 
-        qtlsfmt = [
+        qtlhdrs = [
             "{:.5f}".format(i).rstrip("0").rstrip(".") + "%" for i in 100 * qtls
             ]
-        for ii, jj in zip(qtls, qtlsfmt):
+        for ii, jj in zip(qtls, qtlhdrs):
             dfsumm[jj] = dfsumm.apply(
                 lambda rec: rv(rec.mu, rec.sigma, norm().ppf(ii)), axis=1
                 )
-        dfsumm.loc[self.tri.index.min(), ["cv"] + qtlsfmt] = np.NaN
+        dfsumm.loc[self.tri.index.min(), ["cv"] + qtlhdrs] = np.NaN
         dfsumm = dfsumm.drop(["mu", "sigma"], axis=1)
 
         # Instantiate and return MackChainLadderResult instance.
@@ -236,11 +238,10 @@ class MackChainLadder(BaseChainLadder):
             }
         
         mcl_result = MackChainLadderResult(
-            summary=dfsumm, tri=self.tri, tail=tail, trisqrd=trisqrd, ldfs=ldfs,
-            cldfs=cldfs, latest=latest, maturity=maturity, ultimates=ultimates,
-            reserves=reserves, process_error=proc_error, parameter_error=param_error,
-            devpvar=devpvar, ldfvar=ldfvar, mse=mse, mse_total=mse_total,
-            std_error=std_error, cv=cv, mu=mu, sigma=sigma, **kwds
+            summary=dfsumm, tri=self.tri, ldfs=ldfs, tail=tail, trisqrd=trisqrd,
+            process_error=proc_error, parameter_error=param_error, devpvar=devpvar,
+            ldfvar=ldfvar, mse=mse, mse_total=mse_total, std_error=std_error,
+            cv=cv, mu=mu, sigma=sigma, **kwds
             )
 
         return(mcl_result)
@@ -281,7 +282,7 @@ class MackChainLadder(BaseChainLadder):
         return(self._mod_a2aind)
 
 
-    def _ldfs(self, alpha=1):
+    def _ldfs(self, alpha=1, tail=1.0):
         """
         Compute Mack loss development factors.
 
@@ -301,40 +302,10 @@ class MackChainLadder(BaseChainLadder):
         pd.Series
         """
         C, w = self.mod_tri, self.mod_a2aind
-        # ldfs = (self.tri.a2a * w * C**alpha).sum(axis=0) / (w * C**alpha).sum(axis=0)
-        return((self.tri.a2a * w * C**alpha).sum(axis=0) / (w * C**alpha).sum(axis=0))
-
-
-    def _cldfs(self, ldfs, tail=1.0):
-        """
-        Calculate cumulative loss development factors by successive
-        multiplication beginning with the tail factor and the oldest
-        age-to-age factor. The cumulative claim development factor projects
-        the total growth over the remaining valuations. Cumulative claim
-        development factors are also known as "Age-to-Ultimate Factors"
-        or "Claim Development Factors to Ultimate".
-
-        Parameters
-        ----------
-        ldfs: pd.Series
-            Selected ldfs, typically the output of calling ``self._ldfs``.
-
-        tail: float
-            Tail factor. At present, must be 1.0. This will change in a
-            future release.
-
-        Returns
-        -------
-        pd.Series
-        """
-        # Determine increment for tail factor development period.
-        # # ldfs = ldfs.copy(deep=True)
+        ldfs = (self.tri.a2a * w * C**alpha).sum(axis=0) / (w * C**alpha).sum(axis=0)
         increment = np.unique(ldfs.index[1:] - ldfs.index[:-1])[0]
-        # ldfs[ldfs.index.max() + increment] = tail
-        cldfs_indx = np.append(ldfs.index.values, ldfs.index.max() + increment)
-        cldfs = np.cumprod(np.append(ldfs.values, tail)[::-1])[::-1]
-        cldfs = pd.Series(data=cldfs, index=cldfs_indx, name="cldf")
-        return(cldfs.astype(np.float).sort_index())
+        ldfs.loc[ldfs.index.max() + increment] = tail
+        return(ldfs)
 
 
     def _ldf_variance(self, devpvar, alpha=1):
@@ -384,7 +355,7 @@ class MackChainLadder(BaseChainLadder):
         -------
         pd.Series
         """
-        devpvar = pd.Series(index=ldfs.index, dtype=np.float, name="devpvar")
+        devpvar = pd.Series(index=ldfs.index[:-1], dtype=np.float, name="devpvar")
         C, w, F = self.mod_tri, self.mod_a2aind, self.tri.a2a
         n = self.tri.origins.size
         for indx, jj in enumerate(self.tri.devp[:-2]):
@@ -516,10 +487,15 @@ class MackChainLadder(BaseChainLadder):
         Parameters
         ----------
         process_error: pd.Series
-            Reserve estimate process error indexed by origin.
+            Reserve estimate process error indexed by origin. Represents the
+            risk associated with the projection of future contingencies that
+            are inherently variable, even if/when the parameters are known
+            with certainty.
 
         parameter_error: pd.Series
-            Reserve estimate parameter error indexed by origin.
+            Reserve estimate parameter error indexed by origin. Represents
+            the risk that the parameters used in the methods or models are not
+            representative of future outcomes.
 
         Returns
         -------
@@ -544,18 +520,15 @@ class MackChainLadderResult(BaseChainLadderResult):
     """
     MackChainLadder output.
     """
-    def __init__(self, summary, tri, trisqrd, alpha, tail, dist, q, two_sided,
-                 ldfs, cldfs, latest, maturity, ultimates, reserves, process_error,
-                 parameter_error, devpvar, ldfvar, mse, mse_total, std_error, cv,
-                 mu, sigma, **kwargs):
-
+    def __init__(self, summary, tri, ldfs, tail, trisqrd, process_error, parameter_error,
+                 devpvar, ldfvar, mse, mse_total, std_error, cv, mu, sigma, **kwargs):
         """
         Container class for ``MackChainLadder`` output.
 
         Parameters
         ----------
         summary: pd.DataFrame
-            Chain Ladder summary compilation.
+            ``MackChainLadder`` summary.
 
         tri: trikit.triangle.CumTriangle
             A cumulative triangle instance.
@@ -563,52 +536,100 @@ class MackChainLadderResult(BaseChainLadderResult):
         ldfs: pd.Series
             Loss development factors.
 
-        cldfs: pd.Series
-            Cumulative loss development factors.
+        process_error: pd.Series
+            Reserve estimate process error indexed by origin. Represents the
+            risk associated with the projection of future contingencies that
+            are inherently variable, even if/when the parameters are known
+            with certainty.
 
-        latest: pd.Series
-            Latest loss amounts by origin.
+        parameter_error: pd.Series
+            Reserve estimate parameter error indexed by origin. Represents
+            the risk that the parameters used in the methods or models are not
+            representative of future outcomes.
 
-        maturity: pd.Series
-            Represents ther maturity of each origin relative to development
-            period.
+        mse: pd.Series
+            Estimated mean squared error (mse) of each origin period. The
+            earliest origin period's mse will be 0, since it is assumed to be
+            fully developed.
 
-        ultimates: pd.Series
-            Represents Chain Ladder ultimate projections.
+        mse_total: pd.Series
+            Mean squared error (mse) of aggregate reserve estimate. Reserve
+            estimators for individual origin periods are correlated due to the
+            fact that they rely on the same parameters $\hat{f}_{j}$ and
+            $\hat{\sigma}^2_{j}$ (``ldfs`` and ``devpvar`` respectively). To
+            compute the mean square error for the total reserve, we aggregate
+            mean square error estimates for individual origin periods
+            (available in ``mse`` parameter), plus an allowance for the
+            correlation between estimators[6]. The values in ``mse_total`` are
+            aggregated to obtain an estimate for the mean squared error of the
+            total reserve.
 
-        reserves: pd.Series
-            Represents the projected reserve amount. For each origin period,
-            this equates to the ultimate loss projection minus the latest
-            loss amount for the origin period (reserve = ultimate - latest).
+        std_error: pd.Series
+            The standard error of chain ladder reserve estimates, defined
+            as $\sqrt{mse}$.
 
+        devpvar: pd.Series
+            The development period variance, usually represented as
+            $\hat{\sigma}^{2}_{k}$ in the literature. For a triangle having
+            ``n`` development periods, ``devpvar`` will contain ``n-1``
+            elements.
+
+        ldfvar: pd.Series
+            Variance of age-to-age factors. Required for Murphy's recursive
+            estimator of parameter risk. For a triangle having ``n``
+            development periods, ``ldfvar`` will contain ``n-1`` elements.
+
+        sigma: pd.Series
+            Standard deviation of estimated reserve distribution for each
+            origin period and in total. If ``dist="norm"``, sigma is set to
+            ``std_error``. If ``dist="lognorm"``, sigma is set to
+            $\sqrt{\mathrm{Ln}(1 + (\mathrm{std_error} / \mathrm{reserves})^2)}$.
+
+        mu: pd.Series
+            Mean of estimated reserve distribution for each origin period and
+            in total. If ``dist="norm"``, mu is set to ``reserves``. If
+            ``dist="lognorm"``, mu is set to
+            $\mathrm{Ln}(\mathrm{reserves}) - 0.50 * \mathrm{sigma}^2$.
+
+        cv: pd.Series.
+            Coefficient of variation, the ratio of standard deviation and mean.
+             Here, ``cv = std_error / reserves``.
 
         kwargs: dict
-            Additional keyword arguments passed into ``MackChainLadder``'s
+            Additional parameters originally passed into ``MackChainLadder``'s
             ``__call__`` method.
         """
-        super().__init__(summary=summary, tri=tri, tail=tail, ldfs=ldfs, cldfs=cldfs,
-                         latest=latest, maturity=maturity, ultimates=ultimates,
-                         reserves=reserves, trisqrd=trisqrd, **kwargs)
+        super().__init__(summary=summary, tri=tri, ldfs=ldfs, tail=tail,
+                         trisqrd=trisqrd, **kwargs)
+
+        self.cv = summary["cv"]
 
         self.parameter_error = parameter_error
         self.process_error = process_error
         self.mse_total = mse_total
         self.std_error = std_error
+        self.summary = summary
         self.devpvar = devpvar
+        self.trisqrd = trisqrd
         self.ldfvar = ldfvar
         self.sigma = sigma
-        self.mu = mu
+        self.ldfs = ldfs
+        self.tail = tail
+        self.tri = tri
         self.mse = mse
-        self.cv = cv
-        
+        self.mu = mu
+
+        # Create DataFrame with reserve and specified quantile estimates.
+        qtlsfields = [i for i in self.summary.columns if i.endswith("%")]
+        self.dfqtls = self.summary[["reserve"] + qtlsfields]
+
         if kwargs is not None:
             for kk in kwargs:
                 setattr(self, kk, kwargs[kk])
 
-        qtlsfields = [i for i in self.summary.columns if i.endswith("%")]
-        qtlsfmt = {i:"{:,.0f}".format for i in qtlsfields}
-        qtlsfmt.update({"std_error":"{:,.0f}".format, "cv":"{:.5f}".format})
-        self._summspecs.update(qtlsfmt)
+        self.qtlhdrs = {i:"{:,.0f}".format for i in qtlsfields}
+        self.qtlhdrs.update({"std_error":"{:,.0f}".format, "cv":"{:.5f}".format})
+        self._summspecs.update(self.qtlhdrs)
 
 
 

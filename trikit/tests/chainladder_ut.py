@@ -71,6 +71,10 @@ class ChainLadderTestCase(unittest.TestCase):
             "Non-equality between computed vs. reference LDFs."
             )
 
+    def test_custom_ldfs(self):
+        pass
+
+
     def test_sel_cldfs(self):
         # Test computed vs. reference selected LDF pattern.
         refcldfs = pd.Series(data=self.ref_cldfs).to_frame().reset_index(drop=False).rename({"index":"dev", 0:"cldf0"}, axis=1)
@@ -133,38 +137,77 @@ class ChainLadderTestCase(unittest.TestCase):
 # MackChainLadder.
 # Test developemnt/origin periods other than 1-10.
 
-# class MackChainLadderTestCase(unittest.TestCase):
-#     def setUp(self):
-#         data = trikit.load(dataset="ta83")
-#         tri = trikit.totri(data, type_="cum", data_shape="tabular", data_format="incr")
-#         self.mcl = trikit.chainladder.mack.MackBaseChainLadder(cumtri=tri).__call__(alpha=1)
-#
-#         raa_cl_ref = pd.DataFrame({
-#             "origin":[1981, 1982, 1983, 1984, 1985, 1986, 1987, 1988, 1989, 1990,],
-#             "maturity":['10', '9', '8', '7', '6', '5', '4', '3', '2', '1',],
-#             "cldf":[1., 1.00922, 1.02631, 1.06045, 1.10492, 1.2302 , 1.44139, 1.83185, 2.97405, 8.92023,],
-#             "latest":[ 18834.,  16704.,  23466.,  27067.,  26180.,  15852.,  12314.,  13112.,   5395.,   2063.,],
-#             "ultimate":[ 18834.,  16857.95392,  24083.37092,  28703.14216,  28926.73634,  19501.10318,  17749.30259,
-#                          24019.19251,  16044.9841 ,  18402.44253,],
-#             "reserve":[0.,   153.95392,   617.37092,  1636.14216,  2746.73634,  3649.10318,  5435.30259, 10907.19251,
-#                        10649.9841 , 16339.44253,]
-#         })
-#
-#         ref_ldfs = pd.Series(
-#             [2.99936, 1.62352, 1.27089, 1.17167, 1.11338, 1.04193, 1.03326, 1.01694, 1.00922, 1.,],
-#             dtype=np.float
-#         )
-#
-#         ref_cldfs =  np.asarray(
-#             [8.92023, 2.97405, 1.83185, 1.44139, 1.2302 , 1.10492, 1.06045, 1.02631, 1.00922, 1.],
-#             dtype=np.float
-#         )
-#
-#         self.raa_cl_ref = raa_cl_ref#[raa_cl_ref.index!="total"]
-#         self.ref_ldfs = ref_ldfs
-#         self.ref_cldfs = ref_cldfs
-#
-#         self.dactual = {}
+class MackChainLadderTestCase(unittest.TestCase):
+    def setUp(self):
+        df = trikit.load(dataset="ta83")
+
+        # Modify origin and development periods to test not sequentials.
+        df["dev"] = df["dev"] * 12
+        df["origin"] = df["origin"] + 2000
+        tri = trikit.totri(df, type_="cum", data_shape="tabular", data_format="incr")
+        mcl = trikit.chainladder.mack.MackBaseChainLadder(cumtri=tri)
+        res_norm = mcl(dist="norm")
+        res_lognorm = mcl(dist="lognorm")
+
+        # Reference values for alpha=1 & tail=1.0.
+        ta83_cl_ref = pd.DataFrame({
+            "origin"  :[2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010],
+            "maturity":[str(ii) for ii in [120, 108,  96,  84,  72,  60,  48,  36,  24,  12]],
+            "ldf"     :[3.49062, 1.74733, 1.45741, 1.17385, 1.10382, 1.08627, 1.05387, 1.07656, 1.01772, 1.],
+            "cldf"    :[14.44662, 4.1387, 2.36858, 1.6252 , 1.3845, 1.25428, 1.15466, 1.09564, 1.01772, 1.],
+            "latest"  :[3901463., 5339085., 4909315., 4588268., 3873311., 3691712.,
+                        3483130., 2864498.,1363294., 344014.],
+            "ultimate":[3901463., 5433718.81455, 5378826.29006, 5297905.82083, 4858199.63905,
+                        5111171.45766, 5660770.62014, 6784799.01195, 5642266.26326, 4969838.13703],
+            "reserve":[0., 94633.81455, 469511.29006, 709637.82083, 984888.63905, 1419459.45766, 2177640.62014,
+                       3920301.01195, 4278972.26326, 4625824.13703]
+            })
+        dactual_ta83 = {
+            "norm_mu_sum"        :0,
+            "norm_sigma_sum"     :0,
+            "norm_75_sum"        :0,
+            "norm_95_sum"        :0,
+            "lognorm_mu_sum"     :0,
+            "lognorm_sigma_sum"  :0,
+            "mse_sum"            :0,
+            "std_error_sum"      :0,
+            "cv_sum"             :0,
+            "mse_total_sum"      :0,
+            "process_error_sum"  :0,
+            "parameter_error_sum":0,
+            ""
+
+
+
+
+
+        }
+
+
+
+        alpha, tail = 1, 1.0
+
+        ldfs = mcl._ldfs(alpha=alpha, tail=tail)
+        cldfs = mcl._cldfs(ldfs=ldfs)
+        maturity = mcl.tri.maturity.astype(np.str)
+        latest = mcl.tri.latest_by_origin
+        ultimates = mcl._ultimates(cldfs=cldfs)
+        reserves = mcl._reserves(ultimates=ultimates)
+        devpvar = mcl._devp_variance(ldfs=ldfs, alpha=alpha)
+        ldfvar = mcl._ldf_variance(devpvar=devpvar, alpha=alpha)
+        proc_error = pd.Series(
+            mcl._process_error(ldfs=ldfs, devpvar=devpvar).iloc[:,-1].replace(np.NaN, 0),
+            name="process_error", dtype=np.float
+            )
+        param_error = pd.Series(
+            mcl._parameter_error(ldfs=ldfs, ldfvar=ldfvar).iloc[:,-1].replace(np.NaN, 0),
+            name="parameter_error", dtype=np.float
+            )
+        mse = mcl._mean_squared_error(proc_error, param_error)
+        std_error = pd.Series(np.sqrt(mse), name="std_error")
+        cv = pd.Series(std_error / ibnr, name="cv")
+
+
 
 
 
