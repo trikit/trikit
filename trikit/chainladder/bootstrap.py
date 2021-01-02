@@ -172,7 +172,6 @@ class BootstrapChainLadder(BaseChainLadder):
         -------
         BootstrapChainLadderResult
         """
-        # Obtain reference to Chain ladder point estimates.
         ldfs = self._ldfs(sel="all-weighted")
         cldfs = self._cldfs(ldfs=ldfs)
         ultimates = self._ultimates(cldfs=cldfs)
@@ -220,29 +219,18 @@ class BootstrapChainLadder(BaseChainLadder):
         dfsumm = dfmatur.merge(dfcldfs, on=["maturity"], how="left").set_index("origin")
         dfsumm.index.name = None
         dflatest = latest.to_frame().rename({"latest_by_origin":"latest"}, axis=1)
-        dfultimates = ultimates.to_frame()
-        dfreserves = reserves.to_frame()
         dfsumm = functools.reduce(
             lambda df1, df2: df1.join(df2),
-            (dflatest, dfultimates, dfreserves), dfsumm
+            (dflatest, ultimates.to_frame(), reserves.to_frame()),
+            dfsumm
             )
 
-        dfsumm = dfsumm.rename({"reserve":"cl_reserve"}, axis=1)
-
-        # Compute median distribution of bootstrap samples.
-        dfsumm["bcl_reserve"] = dfsumm.index.map(
-            lambda v: np.percentile(
-                dfreserves[dfreserves["origin"]==v]["reserve"].values,
-                100 * .50, interpolation=interpolation
-                )
-            )
-
-        # Attach percentile fields to dfsumm.
+        # Attach quantiles.
         qtlsfmt = ["{:.5f}".format(i).rstrip("0").rstrip(".") + "%" for i in 100 * qtls]
         for ii, jj in zip(qtls, qtlsfmt):
             dfsumm[jj] = dfsumm.index.map(
                 lambda v: np.percentile(
-                    dfreserves[dfreserves["origin"]==v]["reserve"].values,
+                    dfreserves[dfreserves.origin==v]["reserve"].values,
                     100 * ii, interpolation=interpolation
                     )
                 )
@@ -252,23 +240,25 @@ class BootstrapChainLadder(BaseChainLadder):
         dfsumm.loc["total", "maturity"] = ""
         dfsumm.loc["total", "cldf"] = np.NaN
 
-        dfsumm = dfsumm.reset_index(drop=False).rename({"index":"origin"}, axis=1)
+        kwds = {
+            "sel":"all-weighted", "sims": sims, "neg_handler":neg_handler,
+            "procdist":procdist, "parametric":parametric, "q":q,
+            "interpolation":interpolation,
+            }
 
-        kwds = {"sel":"all-weighted", "sims": sims, "neg_handler":neg_handler,
-                "procdist":procdist, "parametric":parametric,
-                "q":q, "interpolation":interpolation,}
-
-        sampling_dist_res = None if parametric else sampling_dist
-
-        bclresult = BootstrapChainLadderResult(
+        # Instantiate and return BootstrapChainLadderResult instance.
+        bcl_result = BootstrapChainLadderResult(
             summary=dfsumm, reserve_dist=dfreserves, sims_data=dfprocerror,
-            tri=self.tri, ldfs=ldfs, cldfs=cldfs, latest=latest,
+            tri=self.tri, tail=1.0, ldfs=ldfs, cldfs=cldfs, latest=latest,
             maturity=maturity, ultimates=ultimates, reserves=reserves,
             scale_param=scale_param, unscaled_residuals=unscld_residuals,
-            adjusted_residuals=adjust_residuals, sampling_dist=sampling_dist_res,
+            adjusted_residuals=adjust_residuals,
+            sampling_dist=None if parametric else sampling_dist,
             fitted_tri_cum=tri_fit_cum, fitted_tri_incr=tri_fit_incr,
-            trisqrd=trisqrd, **kwds)
-        return(bclresult)
+            trisqrd=trisqrd, **kwds
+            )
+
+        return(bcl_result)
 
 
     @property
@@ -728,6 +718,7 @@ class BootstrapChainLadder(BaseChainLadder):
                 return(prng.gamma(param1, param2))
         else:
             raise ValueError("Invalid procdist specification: `{}`".format(procdist))
+
         dfforecasts["final_incr"] = np.where(
             dfforecasts["rectype"].values=="forecast",
             fdist(dfforecasts["param1"].values, dfforecasts["param2"].values) * dfforecasts["sign"].values,
@@ -868,8 +859,8 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
             The incremental triangle fit using backwards recursion.
 
         kwargs: dict
-            Additional keyword arguments passed into
-            ``BootstrapChainLadder``'s ``run`` method.
+            Additional keyword arguments passed into ``BootstrapChainLadder``'s
+            ``__call__`` method.
         """
         super().__init__(summary=summary, tri=tri, ldfs=ldfs, cldfs=cldfs,
                          latest=latest, maturity=maturity, ultimates=ultimates,
@@ -883,20 +874,10 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         self.reserve_dist = reserve_dist
         self.scale_param = scale_param
         self.sims_data = sims_data
-        # self.ultimates = ultimates
-        # self.reserves = reserves
-        # self.maturity = maturity
-        # self.summary = summary
-        # self.trisqrd = trisqrd
-        # self.latest = latest
-        # self.cldfs = cldfs
-        # self.ldfs = ldfs
-        self.tail = 1.0
-        self.tri = tri
 
         if kwargs is not None:
-            for key_ in kwargs:
-                setattr(self, key_, kwargs[key_])
+            for kk in kwargs:
+                setattr(self, kk, kwargs[kk])
 
         # Properties.
         self._aggregate_distribution = None
@@ -904,9 +885,9 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         self._residuals_detail = None
         self._fit_assessment = None
 
-        pctlfields_ = [i for i in self.summary.columns if i.endswith("%")]
-        pctlfmts_ = {i:"{:.0f}".format for i in pctlfields_}
-        self._summspecs.update(pctlfmts_)
+        qtlsfields = [i for i in self.summary.columns if i.endswith("%")]
+        qtlsfmt = {i:"{:,.0f}".format for i in qtlsfields}
+        self._summspecs.update(qtlsfmt)
 
 
     @property
@@ -1406,15 +1387,3 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
 
         return(dfpctl.reset_index(drop=False).sort_index())
 
-
-
-    def __str__(self):
-        return(self.summary.to_string(formatters=self._summspecs))
-
-
-    # def __repr__(self):
-    #     # pctls_ = [i for i in self.summary.columns if i.endswith("%")]
-    #     # pctlfmts_ = {i:"{:.0f}".format for i in pctls_}
-    #     # formats_ = {"ultimate":"{:.0f}".format, "reserve":"{:.0f}".format,
-    #     #             "latest":"{:.0f}".format, "cldf":"{:.5f}".format,}
-    #     return(self.summary.to_string(formatters=self._summspecs))

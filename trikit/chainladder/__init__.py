@@ -59,39 +59,38 @@ class BaseChainLadder:
         -------
         trikit.chainladder.BaseChainLadderResult
         """
-        ldfs_ = self._ldfs(sel=sel, tail=tail)
-        cldfs_ = self._cldfs(ldfs=ldfs_)
-        ultimates_ = self._ultimates(cldfs=cldfs_)
-        reserves_ = self._reserves(ultimates=ultimates_)
-        maturity_ = self.tri.maturity.astype(np.str)
-        latest_ = self.tri.latest_by_origin
-        trisqrd_ = self._trisqrd(ldfs=ldfs_)
+        ldfs = self._ldfs(sel=sel, tail=tail)
+        cldfs = self._cldfs(ldfs=ldfs)
+        ultimates = self._ultimates(cldfs=cldfs)
+        reserves = self._reserves(ultimates=ultimates)
+        maturity = self.tri.maturity.astype(np.str)
+        latest = self.tri.latest_by_origin
+        trisqrd = self._trisqrd(ldfs=ldfs)
 
         # Compile chain ladder point estimate summary.
-        dfmatur_ = maturity_.to_frame().reset_index(drop=False).rename({"index":"origin"}, axis=1)
-        dfcldfs_ = cldfs_.to_frame().reset_index(drop=False).rename({"index":"maturity"}, axis=1)
-        dfcldfs_["maturity"] = dfcldfs_["maturity"].astype(np.str)
-        dfsumm = dfmatur_.merge(dfcldfs_, on=["maturity"], how="left").set_index("origin")
+        dfmatur = maturity.to_frame().reset_index(drop=False).rename({"index":"origin"}, axis=1)
+        dfcldfs = cldfs.to_frame().reset_index(drop=False).rename({"index":"maturity"}, axis=1)
+        dfcldfs["maturity"] = dfcldfs["maturity"].astype(np.str)
+        dfsumm = dfmatur.merge(dfcldfs, on=["maturity"], how="left").set_index("origin")
         dfsumm.index.name = None
-        dflatest_ = latest_.to_frame().rename({"latest_by_origin":"latest"}, axis=1)
-        dfultimates_, dfreserves_ = ultimates_.to_frame(), reserves_.to_frame()
+        dflatest = latest.to_frame().rename({"latest_by_origin":"latest"}, axis=1)
         dfsumm = functools.reduce(
             lambda df1, df2: df1.join(df2),
-            (dflatest_, dfultimates_, dfreserves_), dfsumm
+            (dflatest, ultimates.to_frame(), reserves.to_frame()), dfsumm
             )
 
         dfsumm.loc["total"] = dfsumm.sum()
         dfsumm.loc["total", "maturity"] = ""
         dfsumm.loc["total", "cldf"] = np.NaN
-        dfsumm = dfsumm.reset_index().rename({"index":"origin"}, axis=1)
-        kwds = {"sel":sel, "tail":tail}
+        kwds = {"sel":sel,}
 
-        # Initialize and return _ChainLadderResult instance.
-        clresult_ = BaseChainLadderResult(
-            summary=dfsumm, tri=self.tri, ldfs=ldfs_, cldfs=cldfs_,
-            latest=latest_, maturity=maturity_, ultimates=ultimates_,
-            reserves=reserves_, trisqrd=trisqrd_, **kwds)
-        return(clresult_)
+        # Initialize and return BaseChainLadderResult instance.
+        cl_result = BaseChainLadderResult(
+            summary=dfsumm, tri=self.tri, tail=tail, ldfs=ldfs, cldfs=cldfs,
+            latest=latest, maturity=maturity, ultimates=ultimates,
+            reserves=reserves, trisqrd=trisqrd, **kwds)
+
+        return(cl_result)
 
 
     def _ldfs(self, sel="all-weighted", tail=1.0):
@@ -233,7 +232,7 @@ class BaseChainLadderResult:
     Summary class consisting of output resulting from invocation of
     ``BaseChainLadder``'s ``__call__`` method.
     """
-    def __init__(self, summary, tri, ldfs, cldfs, latest, maturity,
+    def __init__(self, summary, tri, tail, ldfs, cldfs, latest, maturity,
                  ultimates, reserves, trisqrd, **kwargs):
         """
         Container object for ``BaseChainLadder`` output.
@@ -245,6 +244,9 @@ class BaseChainLadderResult:
 
         tri: trikit.triangle._CumTriangle
             A cumulative triangle instance.
+
+        tail: float
+            Tail factor. Defaults to 1.0.
 
         ldfs: pd.Series
             Loss development factors.
@@ -273,10 +275,13 @@ class BaseChainLadderResult:
         """
         self.ultimates = ultimates
         self.reserves = reserves
+        self.maturity = maturity
         self.summary = summary
         self.trisqrd = trisqrd
+        self.latest = latest
         self.cldfs = cldfs
         self.ldfs = ldfs
+        self.tail = tail
         self.tri = tri
 
         if kwargs is not None:
@@ -284,8 +289,8 @@ class BaseChainLadderResult:
                 setattr(self, key_, kwargs[key_])
 
         self._summspecs = {
-            "ultimate":"{:.0f}".format, "reserve":"{:.0f}".format,
-            "latest":"{:.0f}".format, "cldf":"{:.5f}".format,
+            "ultimate":"{:,.0f}".format, "reserve":"{:,.0f}".format,
+            "latest":"{:,.0f}".format, "cldf":"{:.5f}".format,
             }
 
 
