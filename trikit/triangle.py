@@ -12,7 +12,7 @@ import pandas as pd
 from scipy import stats
 from .chainladder import BaseChainLadder
 from .chainladder.bootstrap import BootstrapChainLadder
-
+from .chainladder.mack import MackChainLadder
 
 
 

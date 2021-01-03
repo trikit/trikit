@@ -178,6 +178,7 @@ class MackChainLadder(BaseChainLadder):
                 )
             mse_total[ii] = mse_ii + 2 * ult_ii * ults_sum * rh_sum
 
+
         dfsumm.loc["total", "std_error"] = np.sqrt(mse_total.dropna().sum())
         dfsumm.loc["total", "cv"] = dfsumm.loc["total", "std_error"] / dfsumm.loc["total", "reserve"]
 
@@ -240,8 +241,8 @@ class MackChainLadder(BaseChainLadder):
         mcl_result = MackChainLadderResult(
             summary=dfsumm, tri=self.tri, ldfs=ldfs, tail=tail, trisqrd=trisqrd,
             process_error=proc_error, parameter_error=param_error, devpvar=devpvar,
-            ldfvar=ldfvar, mse=mse, mse_total=mse_total, std_error=std_error,
-            cv=cv, mu=mu, sigma=sigma, **kwds
+            ldfvar=ldfvar, mse=mse, mse_total=mse_total, cv=cv, mu=mu, sigma=sigma,
+            **kwds
             )
 
         return(mcl_result)
@@ -521,7 +522,7 @@ class MackChainLadderResult(BaseChainLadderResult):
     MackChainLadder output.
     """
     def __init__(self, summary, tri, ldfs, tail, trisqrd, process_error, parameter_error,
-                 devpvar, ldfvar, mse, mse_total, std_error, cv, mu, sigma, **kwargs):
+                 devpvar, ldfvar, mse, mse_total, cv, mu, sigma, **kwargs):
         """
         Container class for ``MackChainLadder`` output.
 
@@ -564,10 +565,6 @@ class MackChainLadderResult(BaseChainLadderResult):
             aggregated to obtain an estimate for the mean squared error of the
             total reserve.
 
-        std_error: pd.Series
-            The standard error of chain ladder reserve estimates, defined
-            as $\sqrt{mse}$.
-
         devpvar: pd.Series
             The development period variance, usually represented as
             $\hat{\sigma}^{2}_{k}$ in the literature. For a triangle having
@@ -602,12 +599,12 @@ class MackChainLadderResult(BaseChainLadderResult):
         super().__init__(summary=summary, tri=tri, ldfs=ldfs, tail=tail,
                          trisqrd=trisqrd, **kwargs)
 
+        self.std_error = summary["std_error"]
         self.cv = summary["cv"]
 
         self.parameter_error = parameter_error
         self.process_error = process_error
         self.mse_total = mse_total
-        self.std_error = std_error
         self.summary = summary
         self.devpvar = devpvar
         self.trisqrd = trisqrd

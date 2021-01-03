@@ -859,6 +859,7 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         self.trisqrd = trisqrd
         self.ldfs = ldfs
         self.tail = tail
+        self.dof = dof
         self.tri = tri
 
         # Create DataFrame with reserve and specified quantile estimates.

@@ -25,197 +25,259 @@ import trikit
 
 
 
+# BaseChainLadder -------------------------------------------------------------
 
-class ChainLadderTestCase(unittest.TestCase):
+class BaseChainLadderTestCase(unittest.TestCase):
     def setUp(self):
         data = trikit.load(dataset="raa")
         tri = trikit.totri(data, type_="cum", data_shape="tabular", data_format="incr")
-        self.cl = trikit.chainladder.BaseChainLadder(cumtri=tri).__call__(sel="all-weighted", tail=1.)
+        cl = trikit.chainladder.BaseChainLadder(cumtri=tri)
+        r_cl = cl()
 
-        raa_cl_ref = pd.DataFrame({
-            "origin":[1981, 1982, 1983, 1984, 1985, 1986, 1987, 1988, 1989, 1990,],
-            "maturity":['10', '9', '8', '7', '6', '5', '4', '3', '2', '1',],
-            "cldf":[1., 1.00922, 1.02631, 1.06045, 1.10492, 1.2302 , 1.44139, 1.83185, 2.97405, 8.92023,],
-            "latest":[ 18834.,  16704.,  23466.,  27067.,  26180.,  15852.,  12314.,  13112.,   5395.,   2063.,],
-            "ultimate":[ 18834.,  16857.95392,  24083.37092,  28703.14216,  28926.73634,  19501.10318,  17749.30259,
-                         24019.19251,  16044.9841 ,  18402.44253,],
-            "reserve":[0.,   153.95392,   617.37092,  1636.14216,  2746.73634,  3649.10318,  5435.30259, 10907.19251,
-                       10649.9841 , 16339.44253,]
-            })
+        dactual_raa = {
+            "ldfs_sum"     :13.28018030198903,
+            "cldfs_sum"    :21.59861048771567,
+            "latest_sum"   :321974.0,
+            "ultimates_sum":213122.22826121017,
+            "reserves_sum" :52135.228261210155,
+            }
 
-        ref_ldfs = pd.Series(
-            [2.99936, 1.62352, 1.27089, 1.17167, 1.11338, 1.04193, 1.03326, 1.01694, 1.00922, 1.,],
-            dtype=np.float
-            )
-
-        ref_cldfs =  np.asarray(
-            [8.92023, 2.97405, 1.83185, 1.44139, 1.2302 , 1.10492, 1.06045, 1.02631, 1.00922, 1.],
-            dtype=np.float
-            )
-
-        self.raa_cl_ref = raa_cl_ref#[raa_cl_ref.index!="total"]
-        self.ref_ldfs = ref_ldfs
-        self.ref_cldfs = ref_cldfs
+        self.ultimates_sum = r_cl.ultimates.drop("total").dropna().sum()
+        self.reserves_sum = r_cl.reserves.drop("total").dropna().sum()
+        self.latest_sum = r_cl.latest.dropna().sum()
+        self.cldfs_sum = r_cl.cldfs.dropna().sum()
+        self.ldfs_sum = r_cl.ldfs.dropna().sum()
+        self.dactual_raa = dactual_raa
 
 
-
-    def test_sel_ldfs(self):
-        # Test computed vs. reference selected LDF pattern.
-        refldfs = pd.Series(data=self.ref_ldfs).to_frame().reset_index(drop=False).rename({"index":"dev", 0:"ldf0"}, axis=1)
-        refldfs["dev"] = refldfs["dev"].map(lambda v: v + 1)
-        clldfs = self.cl.ldfs.to_frame().reset_index(drop=False).rename({"index":"dev", "ldf":"ldf1"}, axis=1)
-        df = refldfs.merge(clldfs, on="dev", how="left")
-        df["diff"] = df["ldf1"] - df["ldf0"]
+    def test_ldfs(self):
+        # Test computed vs. reference LDF pattern.
         self.assertTrue(
-            np.abs(df["diff"].sum().astype(np.float))<.01,
+            np.abs(self.ldfs_sum - self.dactual_raa["ldfs_sum"]) < 1.,
             "Non-equality between computed vs. reference LDFs."
             )
 
-    def test_custom_ldfs(self):
-        pass
-
-
-    def test_sel_cldfs(self):
-        # Test computed vs. reference selected LDF pattern.
-        refcldfs = pd.Series(data=self.ref_cldfs).to_frame().reset_index(drop=False).rename({"index":"dev", 0:"cldf0"}, axis=1)
-        refcldfs["dev"] = refcldfs["dev"] + 1
-        clcldfs = self.cl.cldfs.to_frame().reset_index(drop=False).rename({"index":"dev", "cldf":"cldf1"}, axis=1)
-        df = refcldfs.merge(clcldfs, on="dev", how="left")
-        df["diff"] = df["cldf1"] - df["cldf0"]
+    def test_cldfs(self):
+        # Test computed vs. reference LDF pattern.
         self.assertTrue(
-            df["diff"].sum().astype(np.float)<.01,
+            np.abs(self.cldfs_sum - self.dactual_raa["cldfs_sum"]) < 1.,
             "Non-equality between computed vs. reference CLDFs."
             )
 
-    def test_ultimates(self):
-        # Verify that computed ultimates match raa_cl_ref.ultimate.
-        clults = self.cl.ultimates.reset_index(drop=False).rename(
-            {"index":"origin", "ultimate":"ultimate1"}, axis=1
-            )
-        refults = self.raa_cl_ref[["origin", "ultimate"]].rename(
-            {"ultimate":"ultimate0"}, axis=1
-            )
-        df = refults.merge(clults, on="origin", how="left")
-        df["diff"] = df["ultimate1"] - df["ultimate0"]
+    def test_latest(self):
+        # Test computed vs. reference ultimates.
         self.assertTrue(
-            df["diff"].sum().astype(np.float)<1.,
-            "Difference in computed vs. reference ultimates."
+            np.abs(self.latest_sum - self.dactual_raa["latest_sum"]) < 1.,
+            "Non-equality between computed vs. reference latest."
             )
 
-    def test_trisqrd(self):
-        # Verify that ultimates matches the last column of trisqrd.
-        refults = self.raa_cl_ref[["origin", "ultimate"]].rename(
-            {"ultimate":"ultimate0"}, axis=1
-            )
-        tsults = self.cl.trisqrd.loc[:,self.cl.trisqrd.columns[-1]].to_frame().reset_index(drop=False).rename(
-            {"index":"origin", "ultimate":"ultimate1"}, axis=1
-            )
-        df = refults.merge(tsults, on="origin", how="left")
-        df["diff"] = df["ultimate1"] - df["ultimate0"]
+    def test_ultimates(self):
+        # Test computed vs. reference ultimates.
         self.assertTrue(
-            df["diff"].sum().astype(np.float)<1.,
-            "Difference in cl.trisqrd vs. reference ultimates."
+            np.abs(self.ultimates_sum - self.dactual_raa["ultimates_sum"]) < 1.,
+            "Non-equality between computed vs. reference ultimates."
             )
 
     def test_reserves(self):
-        # Verify that computed reserves match raa_cl_ref.reserve.
-        refres = self.raa_cl_ref[["origin", "reserve"]].rename(
-            {"reserve":"reserve0"}, axis=1
-            )
-        clres = self.cl.reserves.reset_index(drop=False).rename(
-            {"index":"origin", "reserve":"reserve1"}, axis=1
-            )
-        df = refres.merge(clres, on="origin", how="left")
-        df["diff"] = df["reserve1"] - df["reserve0"]
+        # Test computed vs. reference ultimates.
         self.assertTrue(
-            np.abs(df["diff"].sum())<1,
-            "Difference in computed vs. reference reserves."
+            np.abs(self.reserves_sum - self.dactual_raa["reserves_sum"]) < 1.,
+            "Non-equality between computed vs. reference reserves."
             )
 
 
-
-# MackChainLadder.
-# Test developemnt/origin periods other than 1-10.
+# MackChainLadder -------------------------------------------------------------
 
 class MackChainLadderTestCase(unittest.TestCase):
     def setUp(self):
-        df = trikit.load(dataset="ta83")
-
         # Modify origin and development periods to test not sequentials.
+        df = trikit.load(dataset="ta83")
         df["dev"] = df["dev"] * 12
         df["origin"] = df["origin"] + 2000
         tri = trikit.totri(df, type_="cum", data_shape="tabular", data_format="incr")
-        mcl = trikit.chainladder.mack.MackBaseChainLadder(cumtri=tri)
-        res_norm = mcl(dist="norm")
-        res_lognorm = mcl(dist="lognorm")
+        mcl = trikit.chainladder.mack.MackChainLadder(cumtri=tri)
+        r_lognorm = mcl(alpha=1, dist="lognorm")
+        r_norm = mcl(alpha=1, dist="norm")
 
-        # Reference values for alpha=1 & tail=1.0.
-        ta83_cl_ref = pd.DataFrame({
-            "origin"  :[2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010],
-            "maturity":[str(ii) for ii in [120, 108,  96,  84,  72,  60,  48,  36,  24,  12]],
-            "ldf"     :[3.49062, 1.74733, 1.45741, 1.17385, 1.10382, 1.08627, 1.05387, 1.07656, 1.01772, 1.],
-            "cldf"    :[14.44662, 4.1387, 2.36858, 1.6252 , 1.3845, 1.25428, 1.15466, 1.09564, 1.01772, 1.],
-            "latest"  :[3901463., 5339085., 4909315., 4588268., 3873311., 3691712.,
-                        3483130., 2864498.,1363294., 344014.],
-            "ultimate":[3901463., 5433718.81455, 5378826.29006, 5297905.82083, 4858199.63905,
-                        5111171.45766, 5660770.62014, 6784799.01195, 5642266.26326, 4969838.13703],
-            "reserve":[0., 94633.81455, 469511.29006, 709637.82083, 984888.63905, 1419459.45766, 2177640.62014,
-                       3920301.01195, 4278972.26326, 4625824.13703]
-            })
         dactual_ta83 = {
-            "norm_mu_sum"        :0,
-            "norm_sigma_sum"     :0,
-            "norm_75_sum"        :0,
-            "norm_95_sum"        :0,
-            "lognorm_mu_sum"     :0,
-            "lognorm_sigma_sum"  :0,
-            "mse_sum"            :0,
-            "std_error_sum"      :0,
-            "cv_sum"             :0,
-            "mse_total_sum"      :0,
-            "process_error_sum"  :0,
-            "parameter_error_sum":0,
-            ""
+            "norm_mu_sum"        :18680869.054532073,
+            "norm_sigma_sum"     :4771773.155719111,
+            "norm_75_sum"        :21899381.138325423,
+            "norm_95_sum"        :26529737.436706323,
+            "lognorm_mu_sum"     :125.8539998696597,
+            "lognorm_sigma_sum"  :2.6740386407158327,
+            "lognorm_75_sum"     :21420867.75494642,
+            "lognorm_95_sum"     :27371140.20920447,
+            "mse_sum"            :4156154300629.1504,
+            "std_error_sum"      :4771773.155719111,
+            "cv_sum"             :2.80203003051732,
+            "mse_total_sum"      :5989366778717.765,
+            "process_error_sum"  :3527957849338.302,
+            "parameter_error_sum":628196451290.8485,
+            "ldfs_sum"           :14.207460332760107,
+            "ultimates_sum"      :53038959.05453208,
+            "reserves_sum"       :18680869.054532073,
+            "devpvar_sum"        :279118.8961841563,
+            "ldfvar_sum"         :0.05702584091389985,
+            }
+
+        self.norm_mu_sum = r_norm.mu.drop("total").dropna().sum()
+        self.norm_sigma_sum = r_norm.sigma.drop("total").dropna().sum()
+        self.norm_75_sum = r_norm.summary["75%"].drop("total").dropna().sum()
+        self.norm_95_sum = r_norm.summary["95%"].drop("total").dropna().sum()
+
+        self.lognorm_mu_sum = r_lognorm.mu.drop("total").dropna().sum()
+        self.lognorm_sigma_sum = r_lognorm.sigma.drop("total").dropna().sum()
+        self.lognorm_75_sum = r_lognorm.summary["75%"].drop("total").dropna().sum()
+        self.lognorm_95_sum = r_lognorm.summary["95%"].drop("total").dropna().sum()
+
+        self.mse_sum = r_lognorm.mse.dropna().sum()
+        self.std_error_sum = r_lognorm.std_error.drop("total").dropna().sum()
+        self.cv_sum = r_lognorm.cv.drop("total").dropna().sum()
+        self.mse_total_sum = r_lognorm.mse_total.dropna().sum()
+        self.process_error_sum = r_lognorm.process_error.dropna().sum()
+        self.parameter_error_sum = r_lognorm.parameter_error.dropna().sum()
+
+        self.ldfs_sum = r_lognorm.ldfs.dropna().sum()
+        self.ultimates_sum = r_lognorm.ultimates.drop("total").dropna().sum()
+        self.reserves_sum = r_lognorm.reserves.drop("total").dropna().sum()
+        self.devpvar_sum = r_lognorm.devpvar.dropna().sum()
+        self.ldfvar_sum = r_lognorm.ldfvar.dropna().sum()
+        self.dactual_ta83 = dactual_ta83
 
 
-
-
-
-        }
-
-
-
-        alpha, tail = 1, 1.0
-
-        ldfs = mcl._ldfs(alpha=alpha, tail=tail)
-        cldfs = mcl._cldfs(ldfs=ldfs)
-        maturity = mcl.tri.maturity.astype(np.str)
-        latest = mcl.tri.latest_by_origin
-        ultimates = mcl._ultimates(cldfs=cldfs)
-        reserves = mcl._reserves(ultimates=ultimates)
-        devpvar = mcl._devp_variance(ldfs=ldfs, alpha=alpha)
-        ldfvar = mcl._ldf_variance(devpvar=devpvar, alpha=alpha)
-        proc_error = pd.Series(
-            mcl._process_error(ldfs=ldfs, devpvar=devpvar).iloc[:,-1].replace(np.NaN, 0),
-            name="process_error", dtype=np.float
+    def test_ldfs(self):
+        # Test computed vs. reference LDF pattern.
+        self.assertTrue(
+            np.abs(self.ldfs_sum - self.dactual_ta83["ldfs_sum"]) < 1.,
+            "Non-equality between computed vs. reference LDFs."
             )
-        param_error = pd.Series(
-            mcl._parameter_error(ldfs=ldfs, ldfvar=ldfvar).iloc[:,-1].replace(np.NaN, 0),
-            name="parameter_error", dtype=np.float
+
+    def test_ultimates(self):
+        # Test computed vs. reference ultimates.
+        self.assertTrue(
+            np.abs(self.ultimates_sum - self.dactual_ta83["ultimates_sum"]) < 1.,
+            "Non-equality between computed vs. reference ultimates."
             )
-        mse = mcl._mean_squared_error(proc_error, param_error)
-        std_error = pd.Series(np.sqrt(mse), name="std_error")
-        cv = pd.Series(std_error / ibnr, name="cv")
 
+    def test_reserves(self):
+        # Test computed vs. reference ultimates.
+        self.assertTrue(
+            np.abs(self.reserves_sum - self.dactual_ta83["reserves_sum"]) < 1.,
+            "Non-equality between computed vs. reference reserves."
+            )
 
+    def test_devpvar(self):
+        # Test computed vs. reference devpvar.
+        self.assertTrue(
+            np.abs(self.devpvar_sum - self.dactual_ta83["devpvar_sum"]) < 1.,
+            "Non-equality between computed vs. reference devpvar."
+            )
 
+    def test_ldfvar(self):
+        # Test computed vs. reference ldfvar.
+        self.assertTrue(
+            np.abs(self.ldfvar_sum - self.dactual_ta83["ldfvar_sum"]) < 1.,
+            "Non-equality between computed vs. reference ldfvar."
+            )
 
+    def test_norm_mu(self):
+        # Test computed vs. reference normal mu estimate.
+        self.assertTrue(
+            np.abs(self.norm_mu_sum - self.dactual_ta83["norm_mu_sum"]) < 1.,
+            "Non-equality between computed vs. reference normal mu parameter."
+            )
 
+    def test_norm_sigma(self):
+        # Test computed vs. reference normal sigma estimate.
+        self.assertTrue(
+            np.abs(self.norm_sigma_sum - self.dactual_ta83["norm_sigma_sum"]) < 1.,
+            "Non-equality between computed vs. reference normal sigma parameter."
+            )
 
+    def test_norm_75(self):
+        # Test computed vs. reference normal 75th percentile of reserve distribution.
+        self.assertTrue(
+            np.abs(self.norm_75_sum - self.dactual_ta83["norm_75_sum"]) < 1.,
+            "Non-equality between computed vs. reference 75th percentile."
+            )
 
+    def test_norm_95(self):
+        # Test computed vs. reference normal 95th percentile of reserve distribution.
+        self.assertTrue(
+            np.abs(self.norm_95_sum - self.dactual_ta83["norm_95_sum"]) < 1.,
+            "Non-equality between computed vs. reference 95th percentile."
+            )
 
+    def test_lognorm_mu(self):
+        # Test computed vs. reference log-normal mu estimate.
+        self.assertTrue(
+            np.abs(self.lognorm_mu_sum - self.dactual_ta83["lognorm_mu_sum"]) < 1.,
+            "Non-equality between computed vs. reference log-normal mu parameter."
+            )
 
+    def test_lognorm_sigma(self):
+        # Test computed vs. reference log-normal sigma estimate.
+        self.assertTrue(
+            np.abs(self.lognorm_sigma_sum - self.dactual_ta83["lognorm_sigma_sum"]) < 1.,
+            "Non-equality between computed vs. reference log-normal sigma parameter."
+            )
 
+    def test_lognorm_75(self):
+        # Test computed vs. reference log-normal 75th percentile of reserve distribution.
+        self.assertTrue(
+            np.abs(self.lognorm_75_sum - self.dactual_ta83["lognorm_75_sum"]) < 1.,
+            "Non-equality between computed vs. reference 75th percentile."
+            )
+
+    def test_lognorm_95(self):
+        # Test computed vs. reference log-normal 95th percentile of reserve distribution.
+        self.assertTrue(
+            np.abs(self.lognorm_95_sum - self.dactual_ta83["lognorm_95_sum"]) < 1.,
+            "Non-equality between computed vs. reference 95th percentile."
+            )
+
+    def test_mse(self):
+        # Test computed vs. reference aggregate mse.
+        self.assertTrue(
+            np.abs(self.mse_sum - self.dactual_ta83["mse_sum"]) < 1.,
+            "Non-equality between computed vs. reference mse."
+            )
+
+    def test_std_error(self):
+        # Test computed vs. reference aggregate std_error.
+        self.assertTrue(
+            np.abs(self.std_error_sum - self.dactual_ta83["std_error_sum"]) < 1.,
+            "Non-equality between computed vs. reference std_error."
+            )
+
+    def test_cv(self):
+        # Test computed vs. reference aggregate coefficient of variation.
+        self.assertTrue(
+            np.abs(self.cv_sum - self.dactual_ta83["cv_sum"]) < 1.,
+            "Non-equality between computed vs. reference cv."
+            )
+
+    def test_mse_total(self):
+        # Test computed vs. reference aggregate mse_total.
+        self.assertTrue(
+            np.abs(self.mse_total_sum - self.dactual_ta83["mse_total_sum"]) < 1.,
+            "Non-equality between computed vs. reference mse_total."
+            )
+
+    def test_process_error(self):
+        # Test computed vs. reference aggregate process error.
+        self.assertTrue(
+            np.abs(self.process_error_sum - self.dactual_ta83["process_error_sum"]) < 1.,
+            "Non-equality between computed vs. reference process error."
+            )
+
+    def test_parameter_error(self):
+        # Test computed vs. reference aggregate parameter error.
+        self.assertTrue(
+            np.abs(self.parameter_error_sum - self.dactual_ta83["parameter_error_sum"]) < 1.,
+            "Non-equality between computed vs. reference parameter error."
+            )
 
 
 
@@ -223,12 +285,18 @@ class MackChainLadderTestCase(unittest.TestCase):
 
 class BootstrapChainLadderTestCase(unittest.TestCase):
     def setUp(self):
-        data = trikit.load(dataset="raa")
-        tri = trikit.totri(data, type_="cum", data_shape="tabular", data_format="incr")
+        df = trikit.load(dataset="raa")
+        tri = trikit.totri(df, type_="cum", data_shape="tabular", data_format="incr")
         bcl = trikit.chainladder.bootstrap.BootstrapChainLadder(tri)
-        self.ref_ldfs = bcl._ldfs(sel="all-weighted")
+        r_bcl = bcl()
 
-        self.dactual_raa = {
+
+        dactual_raa = {
+            "ldfs_sum"            :13.28018030198903,
+            "cldfs_sum"           :21.59861048771567,
+            "latest_sum"          :321974.0,
+            "ultimates_sum"       :213122.22826121017,
+            "reserves_sum"        :52135.228261210155,
             "dof"                 :56,
             "scale_param"         :632.3368030912758,
             "fitted_cum_sum"      :707622.0,
@@ -243,7 +311,13 @@ class BootstrapChainLadderTestCase(unittest.TestCase):
             "bs_reserves_sum"     :5227886.663640983,
             }
 
-        self.tri_fit_cum = bcl._tri_fit_cum(self.ref_ldfs)
+        self.ultimates_sum = r_bcl.ultimates.drop("total").dropna().sum()
+        self.reserves_sum = r_bcl.reserves.drop("total").dropna().sum()
+        self.latest_sum = r_bcl.latest.dropna().sum()
+        self.cldfs_sum = r_bcl.cldfs.dropna().sum()
+        self.ldfs_sum = r_bcl.ldfs.dropna().sum()
+        self.dof = r_bcl.dof
+        self.tri_fit_cum = bcl._tri_fit_cum(self.ldfs)
         self.tri_fit_incr = bcl._tri_fit_incr(self.tri_fit_cum)
         self.resid_us = bcl._resid_us(self.tri_fit_incr)
         self.scale_param = bcl._scale_param(self.resid_us)
@@ -260,8 +334,43 @@ class BootstrapChainLadderTestCase(unittest.TestCase):
             self.bs_forecasts, self.scale_param, procdist="gamma", random_state=516
             )
         self.bs_reserves = bcl._bs_reserves(self.bs_process_error)
+        self.dactual_raa = dactual_raa
 
-        self.bcl = bcl
+
+    def test_ldfs(self):
+        # Test computed vs. reference LDF pattern.
+        self.assertTrue(
+            np.abs(self.ldfs_sum - self.dactual_raa["ldfs_sum"]) < 1.,
+            "Non-equality between computed vs. reference LDFs."
+            )
+
+    def test_cldfs(self):
+        # Test computed vs. reference LDF pattern.
+        self.assertTrue(
+            np.abs(self.cldfs_sum - self.dactual_raa["cldfs_sum"]) < 1.,
+            "Non-equality between computed vs. reference CLDFs."
+            )
+
+    def test_latest(self):
+        # Test computed vs. reference ultimates.
+        self.assertTrue(
+            np.abs(self.latest_sum - self.dactual_raa["latest_sum"]) < 1.,
+            "Non-equality between computed vs. reference latest."
+            )
+
+    def test_ultimates(self):
+        # Test computed vs. reference ultimates.
+        self.assertTrue(
+            np.abs(self.ultimates_sum - self.dactual_raa["ultimates_sum"]) < 1.,
+            "Non-equality between computed vs. reference ultimates."
+            )
+
+    def test_reserves(self):
+        # Test computed vs. reference ultimates.
+        self.assertTrue(
+            np.abs(self.reserves_sum - self.dactual_raa["reserves_sum"]) < 1.,
+            "Non-equality between computed vs. reference reserves."
+            )
 
 
     def test_dof(self):
