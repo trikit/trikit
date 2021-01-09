@@ -4,7 +4,7 @@ _MackChainLadder implementation.
 import functools
 import numpy as np
 import pandas as pd
-from scipy.stats import norm
+from scipy.stats import norm, lognorm
 from . import BaseChainLadder, BaseChainLadderResult
 
 
@@ -111,7 +111,7 @@ class MackChainLadder(BaseChainLadder):
         -------
         MackChainLadderResult
         """
-        ldfs = self._ldfs(alpha=alpha)
+        ldfs = self._ldfs(alpha=alpha, tail=1.0)
         cldfs = self._cldfs(ldfs=ldfs)
         maturity = self.tri.maturity.astype(np.str)
         latest = self.tri.latest_by_origin
@@ -132,10 +132,7 @@ class MackChainLadder(BaseChainLadder):
             )
         std_error = pd.Series(np.sqrt(mse), name="std_error")
         cv = pd.Series(std_error / reserves, name="cv")
-        trisqrd_ldfs = ldfs.copy(deep=True)
-        increment = np.unique(ldfs.index[1:] - ldfs.index[:-1])[0]
-        trisqrd_ldfs.loc[ldfs.index.max() + increment] = tail
-        trisqrd = self._trisqrd(ldfs=trisqrd_ldfs)
+        trisqrd = self._trisqrd(ldfs=ldfs)
 
         dfmatur = maturity.to_frame().reset_index(drop=False).rename({"index":"origin"}, axis=1)
         dfcldfs = cldfs.to_frame().reset_index(drop=False).rename({"index":"maturity"}, axis=1)
@@ -179,42 +176,80 @@ class MackChainLadder(BaseChainLadder):
             mse_total[ii] = mse_ii + 2 * ult_ii * ults_sum * rh_sum
 
 
+        # Reset trisqrd columns and index back to original values.
+        trisqrd.columns, trisqrd.index = self.tri.columns, self.tri.index
         dfsumm.loc["total", "std_error"] = np.sqrt(mse_total.dropna().sum())
         dfsumm.loc["total", "cv"] = dfsumm.loc["total", "std_error"] / dfsumm.loc["total", "reserve"]
 
         if dist=="norm":
             std_params, mean_params = dfsumm["std_error"], dfsumm["reserve"]
-
-            def rv(mu, sigma, z):
-                """
-                Return evaluated Normal distribution with mean ``mu`` and
-                standard deviation ``sigma`` at ``z``.
-                """
-                return(mu + sigma * z)
+            rv_list = [norm(loc=ii, scale=jj) for ii,jj in zip(mean_params, std_params)]
 
         elif dist=="lognorm":
             with np.errstate(divide="ignore"):
                 std_params = np.sqrt(np.log(1 + (dfsumm["std_error"] / dfsumm["reserve"])**2)).replace(np.NaN, 0)
                 mean_params = np.clip(np.log(dfsumm["reserve"]), a_min=0, a_max=None) - .50 * std_params**2
-
-            def rv(mu, sigma, z):
-                """
-                Return evaluated Log-normal distribution with mean ``mu`` and
-                standard deviation ``sigma`` at ``z``.
-                """
-                return(np.exp(mu + sigma * z))
+                rv_list = [lognorm(scale=np.exp(ii), s=jj) for ii,jj in zip(mean_params, std_params)]
 
         else:
             raise ValueError(
                 "dist must be one of {'norm', 'lognorm'}, not `{}`.".format(dist)
                 )
 
-        sigma = pd.Series(std_params, name="sigma", dtype=np.float)
-        mu = pd.Series(mean_params, name="mu", dtype=np.float)
-        dfsumm = dfsumm.join(mu.to_frame()).join(sigma.to_frame())
+        rvs = pd.Series(rv_list, index=dfsumm.index)
+        qtls, qtlhdrs = self._qtls_formatter(q=q, two_sided=two_sided)
 
-        # Attach quantiles.
+        # Populate qtlhdrs columns with estimated quantile estimates.
+        with np.errstate(invalid="ignore"):
+            for ii, jj in zip(qtls, qtlhdrs):
+                for origin in rvs.index:
+                    dfsumm.loc[origin, jj] = rvs[origin].ppf(ii)
+
+        dfsumm.loc[self.tri.index.min(), ["cv"] + qtlhdrs] = np.NaN
+
+        # Instantiate and return MackChainLadderResult instance.
+        kwds = {
+            "alpha":alpha, "dist":dist, "q":q, "two_sided":two_sided,
+            }
+
+        mcl_result = MackChainLadderResult(
+            summary=dfsumm, tri=self.tri, ldfs=ldfs, tail=tail, trisqrd=trisqrd,
+            process_error=proc_error, parameter_error=param_error, devpvar=devpvar,
+            ldfvar=ldfvar, mse=mse, mse_total=mse_total, cv=cv, rvs=rvs, qtls=qtls,
+            qtlhdrs=qtlhdrs, **kwds
+            )
+
+        return(mcl_result)
+
+
+
+
+    @staticmethod
+    def _qtls_formatter(q, two_sided=False):
+        """
+        Return array_like of formatted quantiles for MackChainLadder
+        summary.
+
+        Parameters
+        ----------
+        q: array_like of float or float
+            Quantile or sequence of quantiles to compute, which must be
+            between 0 and 1 inclusive.
+
+        two_sided: bool
+            Whether the two_sided interval should be included in summary
+            output. For example, if ``two_sided==True`` and ``q=.95``, then
+            the 2.5th and 97.5th quantiles of the estimated reserve
+            distribution will be returned [(1 - .95) / 2, (1 + .95) / 2]. When
+            False, only the specified quantile(s) will be computed. Defaults
+            to False.
+
+        Returns
+        -------
+        tuple of list
+        """
         qtls = np.asarray([q] if isinstance(q, (float, int)) else q)
+
         if np.all(np.logical_and(qtls <= 1, qtls >= 0)):
             if two_sided:
                 qtls = np.sort(np.unique(np.append((1 - qtls) / 2., (1 + qtls) / 2.)))
@@ -224,28 +259,10 @@ class MackChainLadder(BaseChainLadder):
             raise ValueError("Values for quantiles must fall between [0, 1].")
 
         qtlhdrs = [
-            "{:.5f}".format(i).rstrip("0").rstrip(".") + "%" for i in 100 * qtls
+            "{:.5f}".format(ii).rstrip("0").rstrip(".") + "%" for ii in 100 * qtls
             ]
-        for ii, jj in zip(qtls, qtlhdrs):
-            dfsumm[jj] = dfsumm.apply(
-                lambda rec: rv(rec.mu, rec.sigma, norm().ppf(ii)), axis=1
-                )
-        dfsumm.loc[self.tri.index.min(), ["cv"] + qtlhdrs] = np.NaN
-        dfsumm = dfsumm.drop(["mu", "sigma"], axis=1)
 
-        # Instantiate and return MackChainLadderResult instance.
-        kwds = {
-            "alpha":alpha, "dist":dist, "q":q, "two_sided":two_sided,
-            }
-        
-        mcl_result = MackChainLadderResult(
-            summary=dfsumm, tri=self.tri, ldfs=ldfs, tail=tail, trisqrd=trisqrd,
-            process_error=proc_error, parameter_error=param_error, devpvar=devpvar,
-            ldfvar=ldfvar, mse=mse, mse_total=mse_total, cv=cv, mu=mu, sigma=sigma,
-            **kwds
-            )
-
-        return(mcl_result)
+        return(qtls, qtlhdrs)
 
 
 
@@ -522,7 +539,7 @@ class MackChainLadderResult(BaseChainLadderResult):
     MackChainLadder output.
     """
     def __init__(self, summary, tri, ldfs, tail, trisqrd, process_error, parameter_error,
-                 devpvar, ldfvar, mse, mse_total, cv, mu, sigma, **kwargs):
+                 devpvar, ldfvar, mse, mse_total, cv, rvs, qtls, qtlhdrs, **kwargs):
         """
         Container class for ``MackChainLadder`` output.
 
@@ -576,21 +593,20 @@ class MackChainLadderResult(BaseChainLadderResult):
             estimator of parameter risk. For a triangle having ``n``
             development periods, ``ldfvar`` will contain ``n-1`` elements.
 
-        sigma: pd.Series
-            Standard deviation of estimated reserve distribution for each
-            origin period and in total. If ``dist="norm"``, sigma is set to
-            ``std_error``. If ``dist="lognorm"``, sigma is set to
-            $\sqrt{\mathrm{Ln}(1 + (\mathrm{std_error} / \mathrm{reserves})^2)}$.
-
-        mu: pd.Series
-            Mean of estimated reserve distribution for each origin period and
-            in total. If ``dist="norm"``, mu is set to ``reserves``. If
-            ``dist="lognorm"``, mu is set to
-            $\mathrm{Ln}(\mathrm{reserves}) - 0.50 * \mathrm{sigma}^2$.
+        rvs: pd.Series
+            Series indexed by origin containing Scipy frozen random variable
+            with parameters mu and sigma having distribution specified by
+            ``dist``.
 
         cv: pd.Series.
             Coefficient of variation, the ratio of standard deviation and mean.
              Here, ``cv = std_error / reserves``.
+
+        qtls: list
+            Points at which estimated reserve distribution is estimated.
+
+        qtlhdrs: list
+            String formatted quantiles.
 
         kwargs: dict
             Additional parameters originally passed into ``MackChainLadder``'s
@@ -608,13 +624,14 @@ class MackChainLadderResult(BaseChainLadderResult):
         self.summary = summary
         self.devpvar = devpvar
         self.trisqrd = trisqrd
+        self.qtlhdrs = qtlhdrs
         self.ldfvar = ldfvar
-        self.sigma = sigma
         self.ldfs = ldfs
         self.tail = tail
+        self.qtls = qtls
         self.tri = tri
         self.mse = mse
-        self.mu = mu
+        self.rvs = rvs
 
         # Create DataFrame with reserve and specified quantile estimates.
         qtlsfields = [i for i in self.summary.columns if i.endswith("%")]
@@ -628,368 +645,144 @@ class MackChainLadderResult(BaseChainLadderResult):
         self.qtlhdrs.update({"std_error":"{:,.0f}".format, "cv":"{:.5f}".format})
         self._summspecs.update(self.qtlhdrs)
 
+        # Quantile suffix for plot method annotations.
+        self.dsuffix = {
+            "0":"th", "1":"st", "2":"nd", "3":"rd", "4":"th", "5":"th", "6":"th",
+            "7":"th", "8":"th", "9":"th",
+            }
 
 
-    # def _bs_data_transform(self,  q):
-    #     """
-    #     Starts with ``BaseChainLadderResult``'s ``_data_transform``, and
-    #     performs additional pre-processing in order to generate plot of
-    #     bootstrapped reserve ranges by origin period.
-    #
-    #     Returns
-    #     -------
-    #     pd.DataFrame
-    #     """
-    #     data = self._data_transform()
-    #     dfsims = self._get_quantile(q=q, two_sided=True)
-    #     data = pd.merge(data, dfsims, how="outer", on=["origin", "dev"])
-    #     pctl_hdrs = [i for i in dfsims.columns if i not in ("origin", "dev")]
-    #     for hdr_ in pctl_hdrs:
-    #         data[hdr_] = np.where(
-    #             data["rectype"].values=="actual", np.NaN, data[hdr_].values
-    #         )
-    #
-    #     # Determine the first forecast period by origin, and set q-fields to actuals.
-    #     data["_ff"] = np.where(
-    #         data["rectype"].values=="forecast", data["dev"].values, data["dev"].values.max() + 1)
-    #     data["_minf"] = data.groupby(["origin"])["_ff"].transform("min")
-    #     for hdr_ in pctl_hdrs:
-    #         data[hdr_] = np.where(
-    #             np.logical_and(data["rectype"].values=="forecast", data["_minf"].values==data["dev"].values),
-    #             data["value"].values, data[hdr_].values
-    #         )
-    #
-    #     data = data.drop(["_ff", "_minf"], axis=1)
-    #     dfv = data[["origin", "dev", "rectype", "value"]]
-    #     dfl = data[["origin", "dev", "rectype", pctl_hdrs[0]]]
-    #     dfu = data[["origin", "dev", "rectype", pctl_hdrs[-1]]]
-    #     dfl["rectype"] = pctl_hdrs[0]
-    #     dfl = dfl.rename({pctl_hdrs[0]:"value"}, axis=1)
-    #     dfu["rectype"] = pctl_hdrs[-1]
-    #     dfu = dfu.rename({pctl_hdrs[-1]:"value"}, axis=1)
-    #     return(pd.concat([dfv, dfl, dfu]).sort_index().reset_index(drop=True))
-    #
-    #
-    # def plot(self, q=.90, actuals_color="#334488", forecasts_color="#FFFFFF",
-    #          fill_color="#FCFCB1", fill_alpha=.75, axes_style="darkgrid",
-    #          context="notebook", col_wrap=4, hue_kws=None, **kwargs):
-    #     """
-    #     Generate exhibit representing the distribution of reserve estimates
-    #     resulting from bootstrap resampling, along with percentiles from the
-    #     distribution given by ``q``, the percentile(s) of interest.
-    #
-    #     Parameters
-    #     ----------
-    #     q: float in range of [0,1]
-    #         two_sided percentile interval to highlight, which must be between
-    #         0 and 1 inclusive. For example, when ``q=.90``, the 5th and
-    #         95th percentile of the ultimate/reserve distribution will be
-    #         highlighted in the exhibit $(\frac{1 - q}{2}, \frac(1 + q}{2})$.
-    #
-    #     actuals_color: str
-    #         A color name or hexidecimal code used to represent actual
-    #         observations. Defaults to "#00264C".
-    #
-    #     forecasts_color: str
-    #         A color name or hexidecimal code used to represent forecast
-    #         observations. Defaults to "#FFFFFF".
-    #
-    #     fill_color: str
-    #         A color name or hexidecimal code used to represent the fill color
-    #         between percentiles of the ultimate/reserve bootstrap
-    #         distribution as specified by ``q``. Defaults to "#FCFCB1".
-    #
-    #     fill_alpha: float
-    #         Control transparency of ``fill_color`` between upper and lower
-    #         percentile bounds of the ultimate/reserve distribution. Defaults
-    #         to .75.
-    #
-    #     axes_style: {"darkgrid", "whitegrid", "dark", "white", "ticks"}
-    #         Aesthetic style of seaborn plots. Default values is "darkgrid".
-    #
-    #     context: {"paper", "talk", "poster"}.
-    #         Set the plotting context parameters. According to the seaborn
-    #         documentation, This affects things like the size of the labels,
-    #         lines, and other elements of the plot, but not the overall style.
-    #         Default value is ``"notebook"``.
-    #
-    #     col_wrap: int
-    #         The maximum number of origin period axes to have on a single row
-    #         of the resulting FacetGrid. Defaults to 5.
-    #
-    #     hue_kws: dictionary of param:list of values mapping
-    #         Other keyword arguments to insert into the plotting call to let
-    #         other plot attributes vary across levels of the hue variable
-    #         (e.g. the markers in a scatterplot). Each list of values should
-    #         have length 4, with each index representing aesthetic
-    #         overrides for forecasts, actuals, lower percentile and upper
-    #         percentile renderings respectively. Defaults to ``None``.
-    #
-    #     kwargs: dict
-    #         Additional styling options for scatter points. This should include
-    #         additional options accepted by ``plt.plot``.
-    #     """
-    #     import matplotlib
-    #     import matplotlib.pyplot as plt
-    #     import seaborn as sns
-    #     sns.set_context(context)
-    #
-    #     data = self._bs_data_transform(q=q)
-    #
-    #     pctl_hdrs = sorted(
-    #         [i for i in data["rectype"].unique() if i not in ("actual", "forecast")]
-    #     )
-    #
-    #     with sns.axes_style(axes_style):
-    #         huekwargs = dict(
-    #             marker=["o", "o", None, None,], markersize=[6, 6, None, None,],
-    #             color=["#000000", "#000000", "#000000", "#000000",],
-    #             fillstyle=["full", "full", "none", "none",],
-    #             markerfacecolor=[forecasts_color, actuals_color, None, None,],
-    #             markeredgecolor=["#000000", "#000000", None, None,],
-    #             markeredgewidth=[.50, .50, None, None,],
-    #             linestyle=["-", "-", "-.", "--",], linewidth=[.475, .475, .625, .625,],
-    #         )
-    #
-    #         if hue_kws is not None:
-    #             # Determine whether the length of each element of hue_kws is 4.
-    #             if all(len(hue_kws[i])==4 for i in hue_kws):
-    #                 huekwargs.update(hue_kws)
-    #             else:
-    #                 warnings.warn("hue_kws overrides not correct length - Ignoring.")
-    #
-    #         titlestr = "bootstrap chainladder ultimate range projections"
-    #
-    #         grid = sns.FacetGrid(
-    #             data, col="origin", hue="rectype", hue_kws=huekwargs,
-    #             col_wrap=col_wrap, margin_titles=False, despine=True,
-    #             sharex=False, sharey=False,
-    #             hue_order=["forecast", "actual", pctl_hdrs[0], pctl_hdrs[-1]]
-    #         )
-    #
-    #         mean_ = grid.map(plt.plot, "dev", "value",)
-    #         grid.set_axis_labels("", "")
-    #         grid.set(xticks=data["dev"].unique().tolist())
-    #         grid.set_titles("", size=5)
-    #         # grid_.set_titles("{col_name}", size=9)
-    #         grid.set_xticklabels(data["dev"].unique().tolist(), size=8)
-    #
-    #         # Change ticklabel font size and place legend on each facet.
-    #         for ii, _ in enumerate(grid.axes):
-    #             ax_ = grid.axes[ii]
-    #             origin_ = str(self.tri.origins.get(ii))
-    #             legend_ = ax_.legend(
-    #                 loc="upper left", fontsize="x-small", frameon=True,
-    #                 fancybox=True, shadow=False, edgecolor="#909090",
-    #                 framealpha=1, markerfirst=True,)
-    #             legend_.get_frame().set_facecolor("#FFFFFF")
-    #
-    #             # Include thousandths separator on each facet's y-axis label.
-    #             ax_.set_yticklabels(
-    #                 ["{:,.0f}".format(i) for i in ax_.get_yticks()], size=8
-    #             )
-    #
-    #             ax_.annotate(
-    #                 origin_, xy=(.85, .925), xytext=(.85, .925), xycoords='axes fraction',
-    #                 textcoords='axes fraction', fontsize=9, rotation=0, color="#000000",
-    #             )
-    #
-    #             # Fill between upper and lower range bounds.
-    #             axc = ax_.get_children()
-    #             lines_ = [jj for jj in axc if isinstance(jj, matplotlib.lines.Line2D)]
-    #             xx = [jj._x for jj in lines_ if len(jj._x)>0]
-    #             yy = [jj._y for jj in lines_ if len(jj._y)>0]
-    #             x_, lb_, ub_ = xx[0], yy[-2], yy[-1]
-    #             ax_.fill_between(x_, lb_, ub_, color=fill_color, alpha=fill_alpha)
-    #
-    #             # Draw border around each facet.
-    #             for _, spine_ in ax_.spines.items():
-    #                 spine_.set(visible=True, color="#000000", linewidth=.50)
-    #
-    #     plt.show()
-    #
-    #
-    # def hist(self, color="#FFFFFF", axes_style="darkgrid", context="notebook",
-    #          col_wrap=4, **kwargs):
-    #     """
-    #     Generate visual representation of full predicitive distribtion
-    #     of ultimates/reserves by origin and in aggregate. Additional
-    #     options to style seaborn's distplot can be passed as keyword
-    #     arguments.
-    #
-    #     Parameters
-    #     ----------
-    #     color: str
-    #         Determines histogram color in each facet. Can also be specified as
-    #         a key-value pair in ``kwargs``.
-    #     axes_style: str
-    #         Aesthetic style of plots. Defaults to "darkgrid". Other options
-    #         include {whitegrid, dark, white, ticks}.
-    #
-    #     context: str
-    #         Set the plotting context parameters. According to the seaborn
-    #         documentation, This affects things like the size of the labels,
-    #         lines, and other elements of the plot, but not the overall style.
-    #         Defaults to ``"notebook"``. Additional options include
-    #         {paper, talk, poster}.
-    #
-    #     col_wrap: int
-    #         The maximum number of origin period axes to have on a single row
-    #         of the resulting FacetGrid. Defaults to 5.
-    #
-    #     kwargs: dict
-    #         Dictionary of optional matplotlib styling parameters.
-    #
-    #     """
-    #     import matplotlib
-    #     import matplotlib.pyplot as plt
-    #     import seaborn as sns
-    #     sns.set_context(context)
-    #
-    #     which_ = "ultimate"
-    #     data0 = self.sims_data[["sim", "origin", "dev", "rectype", "latest", "ultimate", "reserve",]]
-    #     data0 = data0[(data0["dev"]==data0["dev"].max()) & (data0["rectype"]=="forecast")].reset_index(drop=True)
-    #     tot_origin = data0["origin"].max() + 1
-    #     data0 = data0.drop(["dev", "rectype", "latest"], axis=1)
-    #
-    #     # Include additional origin representing aggregate distribution.
-    #     data1 = data0.groupby("sim", as_index=False)[["ultimate", "reserve"]].sum()
-    #     data1["origin"] = tot_origin
-    #     data = pd.concat([data0, data1])
-    #
-    #     # Get mean, min and max ultimate and reserve by origin.
-    #     med_data = data.groupby("origin", as_index=False)[["ultimate", "reserve"]].median().rename(
-    #         {"ultimate":"med_ult", "reserve":"med_res"}, axis=1).set_index("origin")
-    #     min_data = data.groupby("origin", as_index=False)[["ultimate", "reserve"]].min().rename(
-    #         {"ultimate":"min_ult", "reserve":"min_res"}, axis=1).set_index("origin")
-    #     max_data = data.groupby("origin", as_index=False)[["ultimate", "reserve"]].max().rename(
-    #         {"ultimate":"max_ult", "reserve":"max_res"}, axis=1).set_index("origin")
-    #     dfmetrics = functools.reduce(lambda df1, df2: df1.join(df2), (med_data, min_data, max_data))
-    #     dfmetrics = dfmetrics.reset_index(drop=False).applymap(lambda v: 0 if v<0 else v)
-    #
-    #
-    #     with sns.axes_style(axes_style):
-    #
-    #         pltkwargs = {
-    #             "color":color, "bins":20, "edgecolor":"#484848", "alpha":1.,
-    #             "linewidth":.45,
-    #         }
-    #
-    #         if kwargs is not None:
-    #             pltkwargs.update(kwargs)
-    #
-    #         grid = sns.FacetGrid(
-    #             data, col="origin", col_wrap=col_wrap, margin_titles=False,
-    #             despine=True, sharex=False, sharey=False,
-    #         )
-    #         hists_ = grid.map(
-    #             plt.hist, "ultimate", **pltkwargs
-    #         )
-    #
-    #         grid.set_axis_labels("", "")
-    #         grid.set_titles("", size=6)
-    #
-    #         # Change ticklabel font size and place legend on each facet.
-    #         uniq_origins = np.sort(data.origin.unique())
-    #         med_hdr = "med_ult" if which_.startswith("ult") else "med_res"
-    #         min_hdr = "min_ult" if which_.startswith("ult") else "min_res"
-    #         max_hdr = "max_ult" if which_.startswith("ult") else "max_res"
-    #
-    #         for ii, ax_ in enumerate(grid.axes.flatten()):
-    #
-    #             origin_ = uniq_origins[ii]
-    #             xmin = np.max([0, dfmetrics[dfmetrics.origin==origin_][min_hdr].item()])
-    #             xmax = dfmetrics[dfmetrics.origin==origin_][max_hdr].item() * 1.025
-    #             xmed = dfmetrics[dfmetrics.origin==origin_][med_hdr].item()
-    #             origin_str = "total {}".format(which_) if origin_==tot_origin else "{} {}".format(origin_, which_)
-    #             ax_.set_xlim([0, xmax])
-    #             ax_.axvline(xmed)
-    #             ax_.grid(True)
-    #
-    #             ymedloc = max(rect.get_height() for rect in ax_.patches) * .30
-    #
-    #             ax_.tick_params(
-    #                 axis="x", which="both", bottom=True, top=False, labelbottom=True
-    #             )
-    #             ax_.set_xticklabels(
-    #                 ["{:,.0f}".format(jj) for jj in ax_.get_xticks()], size=7
-    #             )
-    #             ax_.annotate(
-    #                 origin_str, xy=(.85, .925), xytext=(.65, .925), xycoords='axes fraction',
-    #                 textcoords='axes fraction', fontsize=8, rotation=0, color="#000000",
-    #             )
-    #             ax_.annotate(
-    #                 "median = {:,.0f}".format(xmed), (xmed, ymedloc), xytext=(7.5, 0),
-    #                 textcoords="offset points", ha="center", va="bottom", fontsize=6,
-    #                 rotation=90, color="#4b0082"
-    #             )
-    #
-    #             # Draw border around each facet.
-    #             for _, spine_ in ax_.spines.items():
-    #                 spine_.set(visible=True, color="#000000", linewidth=.50)
-    #
-    #     plt.show()
-    #
-    #
-    # def _get_quantile(self, q, two_sided=True, interpolation="linear"):
-    #     """
-    #     Return percentile of bootstrapped ultimate or reserve range
-    #     distribution as specified by ``q``.
-    #
-    #     Parameters
-    #     ----------
-    #     q: float in range of [0,1] (or sequence of floats)
-    #         Percentile to compute, which must be between 0 and 1 inclusive.
-    #
-    #     two_sided: bool
-    #         Whether the two_sided interval should be returned. For example, if
-    #         ``two_sided==True`` and ``q=.95``, then the 2.5th and 97.5th
-    #         quantiles of the predictive reserve distribution will be returned
-    #         [(1 - .95) / 2, (1 + .95) / 2]. When False, only the specified
-    #         quantile(s) will be computed.
-    #
-    #     interpolation: {'linear', 'lower', 'higher', 'midpoint', 'nearest'}
-    #         This optional parameter specifies the interpolation method to use when
-    #         the desired quantile lies between two data points i < j:
-    #
-    #             - linear: i + (j - i) * fraction, where fraction is the fractional
-    #             part of the index surrounded by i and j.
-    #             - lower: i.
-    #             - higher: j.
-    #             - nearest: i or j, whichever is nearest.
-    #             - midpoint: (i + j) / 2.
-    #
-    #     Returns
-    #     -------
-    #     pd.DataFrame
-    #     """
-    #     dfsims = self.sims_data[["origin", "dev", "ultimate"]]
-    #     pctl = np.asarray([q] if isinstance(q, (float, int)) else q)
-    #     if np.any(np.logical_and(pctl <= 1, pctl >= 0)):
-    #         if two_sided:
-    #             pctlarr = np.sort(np.unique(np.append((1 - pctl) / 2, (1 + pctl) / 2)))
-    #         else:
-    #             pctlarr = np.sort(np.unique(pctl))
-    #     else:
-    #         raise ValueError("Values for percentiles must fall between [0, 1].")
-    #
-    #     # Initialize DataFrame for percentile data.
-    #     pctlfmt = ["{:.5f}".format(i).rstrip("0").rstrip(".") + "%" for i in 100 * pctlarr]
-    #     dfpctl = dfsims.groupby(["origin", "dev"]).aggregate(
-    #         "quantile", q=.50, interpolation=interpolation)
-    #     dfpctl = dfpctl.rename({"ultimate":"50%"}, axis=1)
-    #     dfpctl.columns.name = None
-    #
-    #     for q_, pctlstr_ in zip(pctlarr, pctlfmt):
-    #         if q_!=.50:
-    #             df_ = dfsims.groupby(["origin", "dev"]).aggregate(
-    #                 "quantile", q=q_, interpolation=interpolation)
-    #             df_ = df_.rename({"ultimate":pctlstr_}, axis=1)
-    #             df_.columns.name = None
-    #             dfpctl = dfpctl.join(df_)
-    #
-    #     if .50 not in pctl:
-    #         dfpctl = dfpctl.drop("50%", axis=1)
-    #
-    #     return(dfpctl.reset_index(drop=False).sort_index())
+    def _qtls_formatter(self, q):
+        """
+        Return array_like of actual and formatted quantiles for MackChainLadder
+        summary.
 
+        Parameters
+        ----------
+        q: array_like of float or float
+            Quantile or sequence of quantiles to compute, which must be
+            between 0 and 1 inclusive.
+
+        Returns
+        -------
+        tuple of list
+        """
+        qtls = np.asarray([q] if isinstance(q, (float, int)) else q)
+
+        if np.all(np.logical_and(qtls <= 1, qtls >= 0)):
+            qtls = np.sort(np.unique(qtls))
+        else:
+            raise ValueError("Values for quantiles must fall between [0, 1].")
+
+        qtlhdrs = [
+            "{:.5f}".format(ii).rstrip("0").rstrip(".") for ii in 100 * qtls
+            ]
+        qtlhdrs = [
+            ii + "th" if "." in ii else ii + self.dsuffix[ii[-1]] for ii in qtlhdrs
+            ]
+        return(qtls, qtlhdrs)
+
+
+
+    def _data_transform(self):
+        """
+        Generate data by origin period and in total to plot estimated
+        reserve distributions.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        df = pd.concat([
+            pd.DataFrame({
+                "origin":ii, "x":np.linspace(self.rvs[ii].ppf(.001), self.rvs[ii].ppf(.999), 100),
+                "y":self.rvs[ii].pdf(np.linspace(self.rvs[ii].ppf(.001), self.rvs[ii].ppf(.999), 100))
+                })
+            for ii in self.rvs.index
+            ])
+
+        return(df.dropna(how="all", subset=["x", "y"]))
+
+
+    def plot(self, q=.95, dist_color="#000000", q_color="#E02C70",
+             axes_style="darkgrid", context="notebook", col_wrap=4):
+        """
+        Plot estimated reserve distribution by origin year and in total.
+        The mean of the reserve estimate will be highlighted, along with
+        and quantiles specified in ``q``.
+
+        Parameters
+        ----------
+        q: float in range of [0,1]
+            Two-sided percentile interval to highlight, which must be between
+            0 and 1 inclusive. For example, when ``q=.90``, the 5th and
+            95th percentile of the reserve distribution will is highlighted
+            in each facet $(\frac{1 - q}{2}, \frac(1 + q}{2})$.
+
+        dist_color: str
+            Color or hexidecimal color code of estimated reserve distribution.
+
+        q_color: str
+            Color or hexidecimal color code of estimated reserve mean
+            and quantiles.
+
+        axes_style: {"darkgrid", "whitegrid", "dark", "white", "ticks"}
+            Aesthetic style of seaborn plots. Default values is "darkgrid".
+
+        context: {"paper", "talk", "poster"}.
+            Set the plotting context parameters. According to the seaborn
+            documentation, This affects things like the size of the labels,
+            lines, and other elements of the plot, but not the overall style.
+            Default value is ``"notebook"``.
+
+        col_wrap: int
+            The maximum number of origin period axes to have on a single row
+            of the resulting FacetGrid. Defaults to 5.
+        """
+        import matplotlib
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        sns.set_context(context)
+
+        data = self._data_transform()
+
+        with sns.axes_style(axes_style):
+            qtls, qtlhdrs = self._qtls_formatter(q)
+            grid = sns.FacetGrid(
+                data, col="origin", col_wrap=col_wrap, margin_titles=False,
+                despine=True, sharex=False, sharey=False
+                )
+
+            grid.set_axis_labels("", "")
+            grid.map(plt.plot, "x", "y", color=dist_color, linewidth=1.25)
+
+            for origin, ax_ii in zip(self.rvs.index[1:], grid.axes):
+                # Determine reserve estimate at mean and specified quantiles.
+                rv_ii = self.rvs[origin]
+                with np.errstate(invalid="ignore"):
+                    qq_ii = [rv_ii.ppf(jj) for jj in qtls]
+                vline_pos, vline_str = [rv_ii.mean()] + qq_ii, ["mean"] + qtlhdrs
+
+                for ii,jj in zip(vline_pos, vline_str):
+                    # Draw vertical line and annotation.
+                    ax_ii.axvline(
+                        x=ii, linewidth=1., linestyle="--", color=q_color
+                        )
+                    ax_ii.annotate(
+                        "{} = {:,.0f}".format(jj, ii), xy=(ii, 0), xytext=(3.5, 0),
+                        textcoords="offset points", fontsize=8, rotation=90,
+                        color="#000000",
+                        )
+                    ax_ii.annotate(
+                        origin, xy=(.85, .925), xytext=(.85, .925), xycoords='axes fraction',
+                        textcoords='axes fraction', fontsize=10, rotation=0, color="#000000",
+                        )
+                    ax_ii.set_xticklabels([]); ax_ii.set_yticklabels([])
+                    ax_ii.set_title(""); ax_ii.set_xlabel(""); ax_ii.set_ylabel("")
+                    ax_ii.grid(True)
+
+                # Draw border around each facet.
+                for _, spine in ax_ii.spines.items():
+                    spine.set(visible=True, color="#000000", linewidth=.50)
+
+            plt.show()

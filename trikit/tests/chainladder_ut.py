@@ -121,15 +121,21 @@ class MackChainLadderTestCase(unittest.TestCase):
             "ldfvar_sum"         :0.05702584091389985,
             }
 
-        self.norm_mu_sum = r_norm.mu.drop("total").dropna().sum()
-        self.norm_sigma_sum = r_norm.sigma.drop("total").dropna().sum()
-        self.norm_75_sum = r_norm.summary["75%"].drop("total").dropna().sum()
-        self.norm_95_sum = r_norm.summary["95%"].drop("total").dropna().sum()
+        # self.norm_mu_sum = r_norm.mu.drop("total").dropna().sum()
+        # self.norm_sigma_sum = r_norm.sigma.drop("total").dropna().sum()
+        self.norm_75_sum = [
+            r_norm.rvs[ii].ppf(.75) for ii in r_norm.tri.index
+        ]
 
-        self.lognorm_mu_sum = r_lognorm.mu.drop("total").dropna().sum()
-        self.lognorm_sigma_sum = r_lognorm.sigma.drop("total").dropna().sum()
-        self.lognorm_75_sum = r_lognorm.summary["75%"].drop("total").dropna().sum()
-        self.lognorm_95_sum = r_lognorm.summary["95%"].drop("total").dropna().sum()
+
+
+            r_norm.summary["75%"].drop("total").dropna().sum()
+        # self.norm_95_sum = r_norm.summary["95%"].drop("total").dropna().sum()
+
+        # self.lognorm_mu_sum = r_lognorm.mu.drop("total").dropna().sum()
+        # self.lognorm_sigma_sum = r_lognorm.sigma.drop("total").dropna().sum()
+        # self.lognorm_75_sum = r_lognorm.summary["75%"].drop("total").dropna().sum()
+        # self.lognorm_95_sum = r_lognorm.summary["95%"].drop("total").dropna().sum()
 
         self.mse_sum = r_lognorm.mse.dropna().sum()
         self.std_error_sum = r_lognorm.std_error.drop("total").dropna().sum()
@@ -148,10 +154,15 @@ class MackChainLadderTestCase(unittest.TestCase):
 
     def test_ldfs(self):
         # Test computed vs. reference LDF pattern.
-        self.assertTrue(
-            np.abs(self.ldfs_sum - self.dactual_ta83["ldfs_sum"]) < 1.,
+        # self.assertTrue(
+        #     np.abs(self.ldfs_sum - self.dactual_ta83["ldfs_sum"]) < 1.,
+        #     "Non-equality between computed vs. reference LDFs."
+        #     )
+        self.assertEqual(
+            self.ldfs_sum, self.dactual_ta83["ldfs_sum"],
             "Non-equality between computed vs. reference LDFs."
             )
+
 
     def test_ultimates(self):
         # Test computed vs. reference ultimates.
@@ -181,20 +192,20 @@ class MackChainLadderTestCase(unittest.TestCase):
             "Non-equality between computed vs. reference ldfvar."
             )
 
-    def test_norm_mu(self):
-        # Test computed vs. reference normal mu estimate.
-        self.assertTrue(
-            np.abs(self.norm_mu_sum - self.dactual_ta83["norm_mu_sum"]) < 1.,
-            "Non-equality between computed vs. reference normal mu parameter."
-            )
-
-    def test_norm_sigma(self):
-        # Test computed vs. reference normal sigma estimate.
-        self.assertTrue(
-            np.abs(self.norm_sigma_sum - self.dactual_ta83["norm_sigma_sum"]) < 1.,
-            "Non-equality between computed vs. reference normal sigma parameter."
-            )
-
+    # def test_norm_mu(self):
+    #     # Test computed vs. reference normal mu estimate.
+    #     self.assertTrue(
+    #         np.abs(self.norm_mu_sum - self.dactual_ta83["norm_mu_sum"]) < 1.,
+    #         "Non-equality between computed vs. reference normal mu parameter."
+    #         )
+    #
+    # def test_norm_sigma(self):
+    #     # Test computed vs. reference normal sigma estimate.
+    #     self.assertTrue(
+    #         np.abs(self.norm_sigma_sum - self.dactual_ta83["norm_sigma_sum"]) < 1.,
+    #         "Non-equality between computed vs. reference normal sigma parameter."
+    #         )
+    #
     def test_norm_75(self):
         # Test computed vs. reference normal 75th percentile of reserve distribution.
         self.assertTrue(
@@ -209,20 +220,20 @@ class MackChainLadderTestCase(unittest.TestCase):
             "Non-equality between computed vs. reference 95th percentile."
             )
 
-    def test_lognorm_mu(self):
-        # Test computed vs. reference log-normal mu estimate.
-        self.assertTrue(
-            np.abs(self.lognorm_mu_sum - self.dactual_ta83["lognorm_mu_sum"]) < 1.,
-            "Non-equality between computed vs. reference log-normal mu parameter."
-            )
-
-    def test_lognorm_sigma(self):
-        # Test computed vs. reference log-normal sigma estimate.
-        self.assertTrue(
-            np.abs(self.lognorm_sigma_sum - self.dactual_ta83["lognorm_sigma_sum"]) < 1.,
-            "Non-equality between computed vs. reference log-normal sigma parameter."
-            )
-
+    # def test_lognorm_mu(self):
+    #     # Test computed vs. reference log-normal mu estimate.
+    #     self.assertTrue(
+    #         np.abs(self.lognorm_mu_sum - self.dactual_ta83["lognorm_mu_sum"]) < 1.,
+    #         "Non-equality between computed vs. reference log-normal mu parameter."
+    #         )
+    #
+    # def test_lognorm_sigma(self):
+    #     # Test computed vs. reference log-normal sigma estimate.
+    #     self.assertTrue(
+    #         np.abs(self.lognorm_sigma_sum - self.dactual_ta83["lognorm_sigma_sum"]) < 1.,
+    #         "Non-equality between computed vs. reference log-normal sigma parameter."
+    #         )
+    #
     def test_lognorm_75(self):
         # Test computed vs. reference log-normal 75th percentile of reserve distribution.
         self.assertTrue(
@@ -237,47 +248,47 @@ class MackChainLadderTestCase(unittest.TestCase):
             "Non-equality between computed vs. reference 95th percentile."
             )
 
-    def test_mse(self):
-        # Test computed vs. reference aggregate mse.
-        self.assertTrue(
-            np.abs(self.mse_sum - self.dactual_ta83["mse_sum"]) < 1.,
-            "Non-equality between computed vs. reference mse."
-            )
-
-    def test_std_error(self):
-        # Test computed vs. reference aggregate std_error.
-        self.assertTrue(
-            np.abs(self.std_error_sum - self.dactual_ta83["std_error_sum"]) < 1.,
-            "Non-equality between computed vs. reference std_error."
-            )
-
-    def test_cv(self):
-        # Test computed vs. reference aggregate coefficient of variation.
-        self.assertTrue(
-            np.abs(self.cv_sum - self.dactual_ta83["cv_sum"]) < 1.,
-            "Non-equality between computed vs. reference cv."
-            )
-
-    def test_mse_total(self):
-        # Test computed vs. reference aggregate mse_total.
-        self.assertTrue(
-            np.abs(self.mse_total_sum - self.dactual_ta83["mse_total_sum"]) < 1.,
-            "Non-equality between computed vs. reference mse_total."
-            )
-
-    def test_process_error(self):
-        # Test computed vs. reference aggregate process error.
-        self.assertTrue(
-            np.abs(self.process_error_sum - self.dactual_ta83["process_error_sum"]) < 1.,
-            "Non-equality between computed vs. reference process error."
-            )
-
-    def test_parameter_error(self):
-        # Test computed vs. reference aggregate parameter error.
-        self.assertTrue(
-            np.abs(self.parameter_error_sum - self.dactual_ta83["parameter_error_sum"]) < 1.,
-            "Non-equality between computed vs. reference parameter error."
-            )
+    # def test_mse(self):
+    #     # Test computed vs. reference aggregate mse.
+    #     self.assertTrue(
+    #         np.abs(self.mse_sum - self.dactual_ta83["mse_sum"]) < 1.,
+    #         "Non-equality between computed vs. reference mse."
+    #         )
+    #
+    # def test_std_error(self):
+    #     # Test computed vs. reference aggregate std_error.
+    #     self.assertTrue(
+    #         np.abs(self.std_error_sum - self.dactual_ta83["std_error_sum"]) < 1.,
+    #         "Non-equality between computed vs. reference std_error."
+    #         )
+    #
+    # def test_cv(self):
+    #     # Test computed vs. reference aggregate coefficient of variation.
+    #     self.assertTrue(
+    #         np.abs(self.cv_sum - self.dactual_ta83["cv_sum"]) < 1.,
+    #         "Non-equality between computed vs. reference cv."
+    #         )
+    #
+    # def test_mse_total(self):
+    #     # Test computed vs. reference aggregate mse_total.
+    #     self.assertTrue(
+    #         np.abs(self.mse_total_sum - self.dactual_ta83["mse_total_sum"]) < 1.,
+    #         "Non-equality between computed vs. reference mse_total."
+    #         )
+    #
+    # def test_process_error(self):
+    #     # Test computed vs. reference aggregate process error.
+    #     self.assertTrue(
+    #         np.abs(self.process_error_sum - self.dactual_ta83["process_error_sum"]) < 1.,
+    #         "Non-equality between computed vs. reference process error."
+    #         )
+    #
+    # def test_parameter_error(self):
+    #     # Test computed vs. reference aggregate parameter error.
+    #     self.assertTrue(
+    #         np.abs(self.parameter_error_sum - self.dactual_ta83["parameter_error_sum"]) < 1.,
+    #         "Non-equality between computed vs. reference parameter error."
+    #         )
 
 
 
@@ -317,7 +328,7 @@ class BootstrapChainLadderTestCase(unittest.TestCase):
         self.cldfs_sum = r_bcl.cldfs.dropna().sum()
         self.ldfs_sum = r_bcl.ldfs.dropna().sum()
         self.dof = r_bcl.dof
-        self.tri_fit_cum = bcl._tri_fit_cum(self.ldfs)
+        self.tri_fit_cum = bcl._tri_fit_cum(r_bcl.ldfs)
         self.tri_fit_incr = bcl._tri_fit_incr(self.tri_fit_cum)
         self.resid_us = bcl._resid_us(self.tri_fit_incr)
         self.scale_param = bcl._scale_param(self.resid_us)
@@ -376,7 +387,7 @@ class BootstrapChainLadderTestCase(unittest.TestCase):
     def test_dof(self):
         # Test triangle degrees of freedom.
         self.assertEqual(
-            self.bcl.dof, self.dactual_raa["dof"],
+            self.dof, self.dactual_raa["dof"],
             "Non-equality between computed vs. reference degrees of freedom."
             )
 

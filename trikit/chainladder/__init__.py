@@ -408,6 +408,7 @@ class BaseChainLadderResult:
         return(pd.concat([dfact, dfpred]).reset_index(drop=True))
 
 
+
     def plot(self, actuals_color="#334488", forecasts_color="#FFFFFF",
              axes_style="darkgrid", context="notebook", col_wrap=4,
              hue_kws=None, **kwargs):
@@ -462,7 +463,7 @@ class BaseChainLadderResult:
             In [3]: tri = trikit.totri(data=raa)
             In [4]: cl = tri.cl(sel="all-weighted", tail=1.005)
 
-        ``cl`` represents an instance of ``ChainLadderResult``, which
+        ``cl`` represents an instance of ``BaseChainLadderResult``, which
         exposes the ``plot`` method. First, we compile the dictionary of
         attributes to override:
 

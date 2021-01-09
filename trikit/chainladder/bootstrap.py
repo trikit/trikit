@@ -1074,17 +1074,17 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
             highlighted in the exhibit $(\frac{1 - q}{2}, \frac(1 + q}{2})$.
 
         actuals_color: str
-            A color name or hexidecimal code used to represent actual
-            observations. Defaults to "#00264C".
+            Color or hexidecimal color code used to represent actuals.
+            Defaults to "#00264C".
 
         forecasts_color: str
-            A color name or hexidecimal code used to represent forecast
-            observations. Defaults to "#FFFFFF".
+            Color or hexidecimal color code used to represent forecasts.
+            Defaults to "#FFFFFF".
 
         fill_color: str
-            A color name or hexidecimal code used to represent the fill color
-            between percentiles of the ultimate/reserve bootstrap
-            distribution as specified by ``q``. Defaults to "#FCFCB1".
+            Color or hexidecimal color code used to represent the fill color
+            between reserve distribution quantiles associated with ``q``.
+            Defaults to "#FCFCB1".
 
         fill_alpha: float
             Control transparency of ``fill_color`` between upper and lower
@@ -1144,8 +1144,6 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
                     huekwargs.update(hue_kws)
                 else:
                     warnings.warn("hue_kws overrides not correct length - Ignoring.")
-
-            titlestr = "bootstrap chainladder ultimate range projections"
 
             grid = sns.FacetGrid(
                 data, col="origin", hue="rectype", hue_kws=huekwargs,

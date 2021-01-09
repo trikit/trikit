@@ -33,7 +33,7 @@ class _BaseTriangle(pd.DataFrame):
             and ``value`` arguments.
 
         origin: str
-            The fieldname in ``data`` representing origin year.
+            The fieldname in ``data`` representing origin period.
 
         dev: str
             The fieldname in ``data`` representing development period.
@@ -41,20 +41,10 @@ class _BaseTriangle(pd.DataFrame):
         value: str
             The fieldname in ``data`` representing loss amounts.
         """
-        if not isinstance(data, pd.DataFrame):
-            raise TypeError("`data` must be an instance of pd.DataFrame.")
-
+        self._validate(data, origin=origin, dev=dev, value=value)
         origin_ = "origin" if origin is None else origin
-        if origin_ not in data.columns:
-            raise KeyError("`{}` not present in data.".format(origin_))
-
         dev_ = "dev" if dev is None else dev
-        if dev_ not in data.columns:
-            raise KeyError("`{}` not present in data.".format(dev_))
-
         value_ = "value" if value is None else value
-        if value_ not in data.columns:
-            raise KeyError("`{}` not present in data.".format(value_))
 
         data2 = data.copy(deep=True)
         data2 = data2[[origin_, dev_, value_]]
@@ -85,6 +75,42 @@ class _BaseTriangle(pd.DataFrame):
         self._rlvi = None
         self._clvi = None
         self._dof = None
+
+
+    @staticmethod
+    def _validate(data, origin=None, dev=None, value=None):
+        """
+        Ensure data has requisite columns.
+
+        Parameters
+        ----------
+        data: pd.DataFrame
+            Initial dataset to be coerced to triangle.
+
+        origin: str
+            The fieldname in ``data`` representing origin period.
+
+        dev: str
+            The fieldname in ``data`` representing development period.
+
+        value: str
+            The fieldname in ``data`` representing loss amounts.
+        """
+        if not isinstance(data, pd.DataFrame):
+            raise TypeError("`data` must be an instance of pd.DataFrame.")
+
+        origin_ = "origin" if origin is None else origin
+        if origin_ not in data.columns:
+            raise AttributeError("`{}` not present in data.".format(origin_))
+
+        dev_ = "dev" if dev is None else dev
+        if dev_ not in data.columns:
+            raise AttributeError("`{}` not present in data.".format(dev_))
+
+        value_ = "value" if value is None else value
+        if value_ not in data.columns:
+            raise AttributeError("`{}` not present in data.".format(value_))
+
 
 
     @property
