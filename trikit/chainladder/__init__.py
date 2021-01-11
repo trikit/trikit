@@ -3,6 +3,7 @@ This module contains the class definitions for ``BaseChainLadder``.-
 """
 import collections
 import functools
+import warnings
 import pandas as pd
 import numpy as np
 
@@ -173,15 +174,11 @@ class BaseChainLadder:
         -------
         pd.Series
         """
-        try:
-            ldfs = self.tri.a2a_avgs.loc[sel]
-            tindx = ldfs.index.max() + 1
-            ldfs = ldfs.append(pd.Series(data=[tail], index=[tindx]))
-
-        except KeyError:
-                print("Invalid age-to-age selection: `{}`".format(sel))
-        ldfs = pd.Series(data=ldfs, index=ldfs.index, dtype=np.float, name="ldf")
-        return(ldfs.sort_index())
+        # Determine index for tail factor.
+        ldfs = self.tri.a2a_avgs.loc[sel]
+        increment = np.unique(ldfs.index[1:] - ldfs.index[:-1])[0]
+        ldfs.loc[ldfs.index.max() + increment] = tail
+        return(pd.Series(ldfs, name="ldf").sort_index())
 
 
     def _cldfs(self, ldfs):
@@ -341,7 +338,6 @@ class BaseChainLadderResult:
         self.reserves = summary["reserve"]
         self.latest = summary["latest"]
         self.cldfs = summary["cldf"]
-
         self.summary = summary
         self.trisqrd = trisqrd
         self.ldfs = ldfs
@@ -359,6 +355,34 @@ class BaseChainLadderResult:
             }
 
 
+    @staticmethod
+    def _get_yticks(x):
+        """
+        Determine y axis tick labels for a given maximum loss amount x.
+        Return tuple of tick values and ticklabels.
+
+        Parameters
+        ----------
+        x: float
+            Maximum value for a given origin period.
+
+        Returns
+        -------
+        tuple of ndarrays
+        """
+        ref_divs = np.power(10, np.arange(10))
+        div_index = np.where((x / ref_divs) > 1)[0].max()
+        x_div = ref_divs[div_index]
+
+        # Find upper limit for y-axis given origin_max_val.
+        yuls_seq = x_div * np.arange(1, 11)
+        x_yuls = yuls_seq - x
+        yul = yuls_seq[np.where(x_yuls>0)[0].min()]
+        y_ticks = np.linspace(0, yul, num=5)
+        y_ticklabels = np.asarray(["{:,.0f}".format(ii) for ii in y_ticks])
+        return(y_ticks, y_ticklabels)
+
+
     def _data_transform(self):
         """
         Transform dataset for use in FacetGrid plot by origin exhibting chain
@@ -368,45 +392,64 @@ class BaseChainLadderResult:
         -------
         pd.DataFrame
         """
-        df0 = self.trisqrd.reset_index(drop=False).rename({"index":"origin" }, axis=1)
-        df0 = pd.melt(df0, id_vars=["origin"], var_name="dev", value_name="value")
-        df0 = df0[~np.isnan(df0["value"])].reset_index(drop=True)
+        trisqrd = self.trisqrd.reset_index(drop=False).rename({"index":"origin" }, axis=1)
+        df0 = pd.melt(trisqrd, id_vars=["origin"], var_name="dev", value_name="value")
+        dfult = df0[df0["dev"]=="ultimate"]
+        dev_increment = np.unique(self.ldfs.index[1:] - self.ldfs.index[:-1])[0]
+        dfult["dev"] =  self.ldfs.index.max() + dev_increment
+        dfult["rectype"] = "forecast"
+        df0 = df0[df0["dev"]!="ultimate"].reset_index(drop=True)
+
+        # Create tabular dataset based on tri.triind.
         df1 = self.tri.triind.reset_index(drop=False).rename({"index":"origin"}, axis=1)
         df1 = pd.melt(df1, id_vars=["origin"], var_name="dev", value_name="value")
         df1["value"] = df1["value"].map(lambda v: 1 if v==0 else 0)
-        df1 = df1[~np.isnan(df1["value"])].rename({"value":"actual_ind"}, axis=1)
-        df1 = df1.reset_index(drop=True)
-        if self.tail!=1:
-            df0["dev"] = df0["dev"].map(
-                lambda v: (self.tri.devp.max() + 1) if v=="ultimate" else v
-                )
-        else:
-            df0 = df0[df0["dev"]!="ultimate"]
+        df1 = df1[~np.isnan(df1["value"])].rename(
+            {"value":"actual_ind"}, axis=1).reset_index(drop=True)
 
         # Combine df0 and df1 into a single DataFrame, then perform cleanup
         # actions for cases in which df0 has more records than df1.
         df = pd.merge(df0, df1, on=["origin", "dev"], how="left", sort=False)
-        df["actual_ind"] = df["actual_ind"].map(lambda v: 0 if np.isnan(v) else v)
-        df["actual_ind"] = df["actual_ind"].astype(np.int_)
-        df = df.sort_values(["origin", "dev"]).reset_index(drop=True)
-        dfma = df[df["actual_ind"]==1].groupby(["origin"])["dev"].max().to_frame()
-        dfma = dfma.reset_index(drop=False).rename(
-            {"index":"origin", "dev":"max_actual"}, axis=1)
-        df = pd.merge(df, dfma, on="origin", how="outer", sort=False)
-        df = df.sort_values(["origin", "dev"]).reset_index(drop=True)
+
+        # Bind reference to maximum dev period for each origin.
+        dfma = df[df["actual_ind"]==1].groupby(
+            ["origin"])["dev"].max().to_frame().reset_index(drop=False).rename(
+            {"index":"origin", "dev":"max_actual"}, axis=1
+            )
+        df = pd.merge(df, dfma, on="origin", how="left", sort=False)
         df["incl_actual"] = df["actual_ind"].map(lambda v: 1 if v==1 else 0)
         df["incl_pred"] = df.apply(
             lambda rec: 1 if (rec.actual_ind==0 or rec.dev==rec.max_actual) else 0,
             axis=1
             )
 
-        # Vertically concatenate dfact and dfpred.
+        # Split data into actual and pred cohorts, then recombine. Note that
+        # the latest cumulative loss by origin will appear in both datasets.
         dfact = df[df["incl_actual"]==1][["origin", "dev", "value"]]
         dfact["rectype"] = "actual"
         dfpred = df[df["incl_pred"]==1][["origin", "dev", "value"]]
         dfpred["rectype"] = "forecast"
-        return(pd.concat([dfact, dfpred]).reset_index(drop=True))
 
+        # Create total DataFrame, representing losses across all origin periods
+        # by development period and at ultimate.
+        dftotal = pd.concat([
+            dfpred.groupby(["dev", "rectype"], as_index=False)["value"].sum(),
+            dfult.groupby(["dev", "rectype"], as_index=False)["value"].sum()
+            ])
+
+        # Combine dfact, dfpred, dfult and dftotal.
+        dftotal["origin"] = "total"
+        dfall = pd.concat([dfact, dfpred, dfult, dftotal]).reset_index(drop=True)
+        dfall["dev"] = dfall["dev"].astype(np.int)
+
+        # Add origin index column to coselfectly sort origin columns, which is
+        # of type object since adding "total".
+        origin_vals = sorted([int(ii) for ii in dfall["origin"].unique() if ii!="total"])
+        dindex = {jj:ii for ii,jj in enumerate(origin_vals)}
+        dindex.update({"total":max(dindex.values())+1})
+        dfall["origin_index"] = dfall["origin"].map(dindex)
+        column_order = ["origin_index", "origin", "dev", "value", "rectype",]
+        return(dfall[column_order].reset_index(drop=True))
 
 
     def plot(self, actuals_color="#334488", forecasts_color="#FFFFFF",
@@ -473,12 +516,24 @@ class BaseChainLadderResult:
         import matplotlib.pyplot as plt
         import seaborn as sns
         sns.set_context(context)
+        # actuals_color="#334488"
+        # forecasts_color="#FFFFFF"
+        # fill_color="#FCFCB1"
+        # fill_alpha=.75
+        # axes_style="darkgrid"
+        # context="notebook"
+        # col_wrap=4
+        # hue_kws=None
+        # two_sided=True
+        # interpolation="linear"
+        # data = rr._data_transform()
 
-        # Plot chain ladder projections by development period for each
-        # origin year. FacetGrid's ``hue`` argument should be set to
-        # "rectype".
+        # Plot chain ladder projections by development period for each origin year.
+        # FacetGrid's ``hue`` argument should be set to "rectype".
         data = self._data_transform()
+
         with sns.axes_style(axes_style):
+
             huekwargs = dict(
                 marker=["o", "o",], markersize=[6, 6,],
                 color=["#000000", "#000000",], fillstyle=["full", "full",],
@@ -496,51 +551,57 @@ class BaseChainLadderResult:
                     warnings.warn("hue_kws overrides not correct length - Ignoring.")
 
             grid = sns.FacetGrid(
-                data, col="origin", hue="rectype", hue_kws=huekwargs, col_wrap=col_wrap,
-                margin_titles=False, despine=True, sharex=True, sharey=True,
-                hue_order=["forecast", "actual",]
+                data, col="origin", hue="rectype", hue_kws=huekwargs,
+                col_wrap=col_wrap, margin_titles=False, despine=True, sharex=False,
+                sharey=False, hue_order=["forecast", "actual",]
                 )
 
-            grid.map(plt.plot, "dev", "value",)
-            grid.set_axis_labels("", "")
-            grid.set(xticks=data.dev.unique().tolist())
-            grid.set_titles("{col_name}", size=9)
-            grid.set_xticklabels(data.dev.unique().tolist(), size=8)
+            ult_vals = grid.map(plt.plot, "dev", "value",)
+            devp_xticks = np.sort(data.dev.unique())
+            devp_xticks_str = [
+                str(ii) if ii!=devp_xticks.max() else "ult" for ii in devp_xticks
+                ]
+            grid.set(xticks=devp_xticks);  grid.set_xticklabels(devp_xticks_str, size=7)
+            origin_order = data[["origin_index", "origin"]].drop_duplicates().sort_values(
+                "origin_index").origin.values
 
-            # Change ticklabel font size and place legend on each facet.
-            for ii, _ in enumerate(grid.axes):
-                ax_ = grid.axes[ii]
-                legend_ = ax_.legend(
-                    loc="lower right", fontsize="x-small", frameon=True,
-                    fancybox=True, shadow=False, edgecolor="#909090",
-                    framealpha=1, markerfirst=True,
-                    )
-                legend_.get_frame().set_facecolor("#FFFFFF")
-                ylabelss = [jj.get_text() for jj in list(ax_.get_yticklabels())]
-                ylabelsn = [float(jj.replace(u"\u2212", "-")) for jj in ylabelss]
-                ylabelsn = [jj for jj in ylabelsn if jj>=0]
-                ylabels = ["{:,.0f}".format(jj) for jj in ylabelsn]
-                if (len(ylabels)>0):
-                    ax_.set_yticklabels(ylabels, size=8)
-                ax_.tick_params(
-                    axis="x", which="both", bottom=True, top=False, labelbottom=True
-                    )
-                ax_.annotate(
-                    origin_, xy=(.85, .925), xytext=(.85, .925), xycoords='axes fraction',
-                    textcoords='axes fraction', fontsize=9, rotation=0, color="#000000",
-                    )
+            with warnings.catch_warnings():
 
-                # Draw border around each facet.
-                for _, spine in ax_.spines.items():
-                    spine.set_visible(True)
-                    spine.set_color("#000000")
-                    spine.set_linewidth(.50)
+                warnings.simplefilter("ignore")
+
+                for origin, ax_ii in zip(origin_order, grid.axes):
+
+                    legend = ax_ii.legend(
+                        loc="lower right", fontsize="x-small", frameon=True,
+                        fancybox=True, shadow=False, edgecolor="#909090",
+                        framealpha=1, markerfirst=True,
+                        )
+                    legend.get_frame().set_facecolor("#FFFFFF")
+
+                    # For given origin, determine optimal 5-point tick labels.
+                    origin_max_val = data[data.origin==origin].value.max()
+                    y_ticks, y_ticklabels = self._get_yticks(origin_max_val)
+                    ax_ii.set_yticks(y_ticks)
+                    ax_ii.set_yticklabels(y_ticklabels, size=7)
+                    # ax_ii.tick_params(
+                    #     axis="x", which="both", bottom=True, top=False, labelbottom=True
+                    #     )
+                    ax_ii.annotate(
+                        origin, xy=(.075, .90), xytext=(.075, .90), xycoords='axes fraction',
+                        textcoords='axes fraction', fontsize=9, rotation=0, color="#000000",
+                        )
+                    ax_ii.set_title(""); ax_ii.set_xlabel(""); ax_ii.set_ylabel("")
+
+                    # Draw border around each facet.
+                    for _, spine in ax_ii.spines.items():
+                        spine.set(visible=True, color="#000000", linewidth=.50)
 
         plt.show()
 
 
     def __str__(self):
         return(self.summary.to_string(formatters=self._summspecs))
+
 
     def __repr__(self):
         return(self.summary.to_string(formatters=self._summspecs))

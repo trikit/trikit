@@ -209,14 +209,13 @@ class MackChainLadder(BaseChainLadder):
 
         # Instantiate and return MackChainLadderResult instance.
         kwds = {
-            "alpha":alpha, "dist":dist, "q":q, "two_sided":two_sided,
+            "alpha":alpha, "tail":tail, "dist":dist, "q":q, "two_sided":two_sided,
             }
 
         mcl_result = MackChainLadderResult(
-            summary=dfsumm, tri=self.tri, ldfs=ldfs, tail=tail, trisqrd=trisqrd,
+            summary=dfsumm, tri=self.tri, ldfs=ldfs, trisqrd=trisqrd,
             process_error=proc_error, parameter_error=param_error, devpvar=devpvar,
-            ldfvar=ldfvar, mse=mse, mse_total=mse_total, cv=cv, rvs=rvs, qtls=qtls,
-            qtlhdrs=qtlhdrs, **kwds
+            ldfvar=ldfvar, mse=mse, mse_total=mse_total, cv=cv, rvs=rvs, **kwds
             )
 
         return(mcl_result)
@@ -538,7 +537,7 @@ class MackChainLadderResult(BaseChainLadderResult):
     """
     MackChainLadder output.
     """
-    def __init__(self, summary, tri, ldfs, tail, trisqrd, process_error, parameter_error,
+    def __init__(self, summary, tri, ldfs, trisqrd, process_error, parameter_error,
                  devpvar, ldfvar, mse, mse_total, cv, rvs, qtls, qtlhdrs, **kwargs):
         """
         Container class for ``MackChainLadder`` output.
@@ -633,17 +632,14 @@ class MackChainLadderResult(BaseChainLadderResult):
         self.mse = mse
         self.rvs = rvs
 
-        # Create DataFrame with reserve and specified quantile estimates.
-        qtlsfields = [i for i in self.summary.columns if i.endswith("%")]
-        self.dfqtls = self.summary[["reserve"] + qtlsfields]
-
         if kwargs is not None:
             for kk in kwargs:
                 setattr(self, kk, kwargs[kk])
 
-        self.qtlhdrs = {i:"{:,.0f}".format for i in qtlsfields}
-        self.qtlhdrs.update({"std_error":"{:,.0f}".format, "cv":"{:.5f}".format})
-        self._summspecs.update(self.qtlhdrs)
+        # Add formats for method-specific columns.
+        qtls_fmt = {i:"{:,.0f}".format for i in self.qtlhdrs}
+        qtls_fmt.update({"std_error":"{:,.0f}".format, "cv":"{:.5f}".format})
+        self._summspecs.update(self.qtls_fmt)
 
         # Quantile suffix for plot method annotations.
         self.dsuffix = {
@@ -683,7 +679,6 @@ class MackChainLadderResult(BaseChainLadderResult):
         return(qtls, qtlhdrs)
 
 
-
     def _data_transform(self):
         """
         Generate data by origin period and in total to plot estimated
@@ -702,6 +697,33 @@ class MackChainLadderResult(BaseChainLadderResult):
             ])
 
         return(df.dropna(how="all", subset=["x", "y"]))
+
+
+
+    def get_quantiles(self, q=[.05, .25, .50, .75, .95], origin=None):
+        """
+        Get quantile of estimated reserve distribution for an individual
+        origin period or in total. Returns a tuple of ndarrays: The first
+        representing user-provided quantiles, the second representing values
+        estimated by the reserve distribution.
+
+        Parameters
+        ----------
+        q: array_like of float or float
+            Quantile or sequence of quantiles to compute, which must be
+            between 0 and 1 inclusive. Default value is
+            ``[.05, .25, .50, .75, .95]``.
+
+        origin: int
+            Target origin period from which to return specified quantile(s).
+            If None, wuantiles from aggregate reserve distribution will
+            be returned.
+
+        Returns
+        -------
+        tuple of ndarrays
+        """
+        pass
 
 
     def plot(self, q=.95, dist_color="#000000", q_color="#E02C70",

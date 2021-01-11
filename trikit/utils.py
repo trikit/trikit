@@ -132,12 +132,18 @@ def _load(dataref):
                 ]
 
             if lob is not None:
+                if lob not in loss_data["loss_key"].unique():
+                    raise ValueError("`{}` is not a valid lob selection.".format(lob))
                 loss_data = loss_data[loss_data.loss_key==lob].reset_index(drop=True)
 
             if grcode is not None:
+                if grcode not in loss_data["grcode"].unique():
+                    raise ValueError("`{}` is not a valid grcode selection.".format(grcode))
                 loss_data = loss_data[loss_data.grcode==grcode].reset_index(drop=True)
 
             if grname is not None:
+                if grname not in loss_data["grname"].unique():
+                    raise ValueError("`{}` is not a valid grname selection.".format(grname))
                 loss_data = loss_data[loss_data.grname==grname].reset_index(drop=True)
 
             if train_only:
@@ -173,7 +179,7 @@ def _get_datasets(dataref:dict):
     return(func)
 
 
-def _get_lrdb_lobs(lrdb_path:str):
+def _get_lrdb_lobs(lrdb_path):
     """
     Return the unique "loss_key" entries present in the CAS Loss
     Reserving Database (lrdb).
@@ -188,7 +194,6 @@ def _get_lrdb_lobs(lrdb_path:str):
         Returns
         -------
         list
-            List containing unique "loss_key" entries.
         """
         return(lrdb.tolist())
     return(func)

@@ -2,7 +2,7 @@
 .. _quickstart:
 
 =============================================================================
-``trikit`` Quickstart Guide
+trikit Quickstart Guide
 =============================================================================
 
 :Author: James D. Triveri
@@ -51,7 +51,7 @@ always represent incremental losses. Sample datasets can be loaded as follows::
 	In [1]: import trikit
 	In [2]: raa = trikit.load("raa")
 	In [3]: raa.head()
-	Out[1]:
+	Out[3]:
 	   origin  dev  value
 	0    1981    1   5012
 	1    1981    2   3257
@@ -63,7 +63,7 @@ always represent incremental losses. Sample datasets can be loaded as follows::
 A list of available datasets can be obtained by calling ``get_datasets``::
 
 	In [4]: trikit.get_datasets()
-	Out[2]:
+	Out[4]:
 	['raa', 'ta83', 'lrdb', 'autoliab', 'glre', 'singinjury', 'singproperty']
 
 
@@ -97,11 +97,8 @@ Next we demonstrate how to create triangles using ``totri`` and various
 combinations of the arguments listed above.   
 
 
-Example 1: 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-*Create a cumulative loss triangle from tabular incremental data.*     
-
+**Example 1:** Create a cumulative loss triangle from tabular incremental data 
+-----------------------------------------------------------------------------
 
 Referring again to the RAA dataset, let's create a cumulative loss triangle. 
 We mentioned above that trikit sample datasets are Pandas DataFrames which 
@@ -114,18 +111,18 @@ only argument we need to pass into ``totri`` is the dataset::
 	In [3]: raa = load("raa")
 	In [4]: tri = totri(raa)
 	In [5]: tri
-	Out[1]:
-		  1     2     3     4     5     6     7     8     9     10
-	1981 5012  8269 10907 11805 13539 16181 18009 18608 18662 18834
-	1982  106  4285  5396 10666 13782 15599 15496 16169 16704   nan
-	1983 3410  8992 13873 16141 18735 22214 22863 23466   nan   nan
-	1984 5655 11555 15766 21266 23425 26083 27067   nan   nan   nan
-	1985 1092  9565 15836 22169 25955 26180   nan   nan   nan   nan
-	1986 1513  6445 11702 12935 15852   nan   nan   nan   nan   nan
-	1987  557  4020 10946 12314   nan   nan   nan   nan   nan   nan
-	1988 1351  6947 13112   nan   nan   nan   nan   nan   nan   nan
-	1989 3133  5395   nan   nan   nan   nan   nan   nan   nan   nan
-	1990 2063   nan   nan   nan   nan   nan   nan   nan   nan   nan
+	Out[5]:
+            1      2      3      4      5      6      7      8      9      10
+	1981 5,012  8,269 10,907 11,805 13,539 16,181 18,009 18,608 18,662 18,834
+	1982   106  4,285  5,396 10,666 13,782 15,599 15,496 16,169 16,704    nan
+	1983 3,410  8,992 13,873 16,141 18,735 22,214 22,863 23,466    nan    nan
+	1984 5,655 11,555 15,766 21,266 23,425 26,083 27,067    nan    nan    nan
+	1985 1,092  9,565 15,836 22,169 25,955 26,180    nan    nan    nan    nan
+	1986 1,513  6,445 11,702 12,935 15,852    nan    nan    nan    nan    nan
+	1987   557  4,020 10,946 12,314    nan    nan    nan    nan    nan    nan
+	1988 1,351  6,947 13,112    nan    nan    nan    nan    nan    nan    nan
+	1989 3,133  5,395    nan    nan    nan    nan    nan    nan    nan    nan
+	1990 2,063    nan    nan    nan    nan    nan    nan    nan    nan    nan
 
 
 
@@ -133,9 +130,9 @@ only argument we need to pass into ``totri`` is the dataset::
 from pandas.DataFrame::
 
 	In [6]: type(tri)
-	Out[2]: trikit.triangle.CumTriangle
+	Out[6]: trikit.triangle.CumTriangle
 	In [7]: isinstance(tri, pd.DataFrame)
-	Out[3]: True
+	Out[7]: True
 
 
 This means that all of the really useful functionality made available by 
@@ -143,7 +140,7 @@ DataFrame objects can be applied to triangle objects. For example, to access
 the first column of ``tri``::
 
 	In [8]: tri.loc[:,1]
-	Out[4]: 
+	Out[8]: 
 	1981   5012.00000
 	1982    106.00000
 	1983   3410.00000
@@ -162,7 +159,7 @@ Triangle objects offer a number of methods useful in Actuarial reserving
 applications. To extract the latest diagonal, call ``tri.latest``::
 
 	In [9]: tri.latest
-	Out[5]:
+	Out[9]:
 	origin  dev      latest
 	0    1981   10 18834.00000
 	1    1982    9 16704.00000
@@ -179,7 +176,7 @@ applications. To extract the latest diagonal, call ``tri.latest``::
 Calling ``tri.a2a`` produces a DataFrame of age-to-age factors::
 
 	In[10]: tri.a2a
-	Out[6]:
+	Out[10]:
 			 1       2       3       4       5       6       7       8       9
 	1981  1.64984 1.31902 1.08233 1.14689 1.19514 1.11297 1.03326 1.00290 1.00922
 	1982 40.42453 1.25928 1.97665 1.29214 1.13184 0.99340 1.04343 1.03309     nan
@@ -197,7 +194,7 @@ which contains arithmetic, geometric and weighted age-to-age averages for a
 number of different periods::
 
 	In[11]: tri.a2a_avgs
-	Out[7]:
+	Out[11]:
 					 1       2       3       4       5       6       7       8       9
 	simple-1      1.72199 1.88743 1.12498 1.22551 1.00867 1.03773 1.02637 1.03309 1.00922
 	simple-2      3.43205 2.30516 1.11517 1.19815 1.06107 1.03347 1.03490 1.01799 1.00922
@@ -232,27 +229,24 @@ We can obtain a reference to an incremental version of ``tri`` by calling
 ``to_incr``::
 
 	In[12]: tri.to_incr()
-	Out[8]:
-		  1    2    3    4    5    6    7   8   9   10
-	1981 5012 3257 2638  898 1734 2642 1828 599  54 172
-	1982  106 4179 1111 5270 3116 1817 -103 673 535 nan
-	1983 3410 5582 4881 2268 2594 3479  649 603 nan nan
-	1984 5655 5900 4211 5500 2159 2658  984 nan nan nan
-	1985 1092 8473 6271 6333 3786  225  nan nan nan nan
-	1986 1513 4932 5257 1233 2917  nan  nan nan nan nan
-	1987  557 3463 6926 1368  nan  nan  nan nan nan nan
-	1988 1351 5596 6165  nan  nan  nan  nan nan nan nan
-	1989 3133 2262  nan  nan  nan  nan  nan nan nan nan
-	1990 2063  nan  nan  nan  nan  nan  nan nan nan nan
+	Out[12]:
+			1     2     3     4     5     6     7   8   9   10
+	1981 5,012 3,257 2,638   898 1,734 2,642 1,828 599  54 172
+	1982   106 4,179 1,111 5,270 3,116 1,817  -103 673 535 nan
+	1983 3,410 5,582 4,881 2,268 2,594 3,479   649 603 nan nan
+	1984 5,655 5,900 4,211 5,500 2,159 2,658   984 nan nan nan
+	1985 1,092 8,473 6,271 6,333 3,786   225   nan nan nan nan
+	1986 1,513 4,932 5,257 1,233 2,917   nan   nan nan nan nan
+	1987   557 3,463 6,926 1,368   nan   nan   nan nan nan nan
+	1988 1,351 5,596 6,165   nan   nan   nan   nan nan nan nan
+	1989 3,133 2,262   nan   nan   nan   nan   nan nan nan nan
+	1990 2,063   nan   nan   nan   nan   nan   nan nan nan nan
 
 
 
-Example 2
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**Example 2:** Create an incremental loss triangle from tabular incremental data
+-----------------------------------------------------------------------------
 
-*Create an incremental loss triangle from tabular incremental data.*  
-
-|
 
 The call to ``totri`` is identical to Example #1, but we change ``type_`` from 
 "cum" to "incr"::
@@ -262,19 +256,20 @@ The call to ``totri`` is identical to Example #1, but we change ``type_`` from
 	In [3]: raa = load("raa")
 	In [4]: tri = totri(raa, type_="incr")
 	In [5]: type(tri)
-	Out[1]: trikit.triangle.IncrTriangle
+	Out[5]: trikit.triangle.IncrTriangle
 	In [6]: tri
-		  1    2    3    4    5    6    7   8   9   10
-	1981 5012 3257 2638  898 1734 2642 1828 599  54 172
-	1982  106 4179 1111 5270 3116 1817 -103 673 535 nan
-	1983 3410 5582 4881 2268 2594 3479  649 603 nan nan
-	1984 5655 5900 4211 5500 2159 2658  984 nan nan nan
-	1985 1092 8473 6271 6333 3786  225  nan nan nan nan
-	1986 1513 4932 5257 1233 2917  nan  nan nan nan nan
-	1987  557 3463 6926 1368  nan  nan  nan nan nan nan
-	1988 1351 5596 6165  nan  nan  nan  nan nan nan nan
-	1989 3133 2262  nan  nan  nan  nan  nan nan nan nan
-	1990 2063  nan  nan  nan  nan  nan  nan nan nan nan
+	Out[6]:
+		    1     2     3     4     5     6     7   8   9   10
+	1981 5,012 3,257 2,638   898 1,734 2,642 1,828 599  54 172
+	1982   106 4,179 1,111 5,270 3,116 1,817  -103 673 535 nan
+	1983 3,410 5,582 4,881 2,268 2,594 3,479   649 603 nan nan
+	1984 5,655 5,900 4,211 5,500 2,159 2,658   984 nan nan nan
+	1985 1,092 8,473 6,271 6,333 3,786   225   nan nan nan nan
+	1986 1,513 4,932 5,257 1,233 2,917   nan   nan nan nan nan
+	1987   557 3,463 6,926 1,368   nan   nan   nan nan nan nan
+	1988 1,351 5,596 6,165   nan   nan   nan   nan nan nan nan
+	1989 3,133 2,262   nan   nan   nan   nan   nan nan nan nan
+	1990 2,063   nan   nan   nan   nan   nan   nan nan nan nan
 
 
 ``tri`` now represents RAA losses in incremental format.           
@@ -283,26 +278,24 @@ It is possible to obtain a cumulative representation of an incremental triangle
 object by calling ``tri.to_cum``::
 
 	In [7]: tri.to_cum()
-	      1     2     3     4     5     6     7     8     9     10
-	1981 5012  8269 10907 11805 13539 16181 18009 18608 18662 18834
-	1982  106  4285  5396 10666 13782 15599 15496 16169 16704   nan
-	1983 3410  8992 13873 16141 18735 22214 22863 23466   nan   nan
-	1984 5655 11555 15766 21266 23425 26083 27067   nan   nan   nan
-	1985 1092  9565 15836 22169 25955 26180   nan   nan   nan   nan
-	1986 1513  6445 11702 12935 15852   nan   nan   nan   nan   nan
-	1987  557  4020 10946 12314   nan   nan   nan   nan   nan   nan
-	1988 1351  6947 13112   nan   nan   nan   nan   nan   nan   nan
-	1989 3133  5395   nan   nan   nan   nan   nan   nan   nan   nan
-	1990 2063   nan   nan   nan   nan   nan   nan   nan   nan   nan
+	Out[7]:
+			1      2      3      4      5      6      7      8      9      10
+	1981 5,012  8,269 10,907 11,805 13,539 16,181 18,009 18,608 18,662 18,834
+	1982   106  4,285  5,396 10,666 13,782 15,599 15,496 16,169 16,704    nan
+	1983 3,410  8,992 13,873 16,141 18,735 22,214 22,863 23,466    nan    nan
+	1984 5,655 11,555 15,766 21,266 23,425 26,083 27,067    nan    nan    nan
+	1985 1,092  9,565 15,836 22,169 25,955 26,180    nan    nan    nan    nan
+	1986 1,513  6,445 11,702 12,935 15,852    nan    nan    nan    nan    nan
+	1987   557  4,020 10,946 12,314    nan    nan    nan    nan    nan    nan
+	1988 1,351  6,947 13,112    nan    nan    nan    nan    nan    nan    nan
+	1989 3,133  5,395    nan    nan    nan    nan    nan    nan    nan    nan
+	1990 2,063    nan    nan    nan    nan    nan    nan    nan    nan    nan
 
 
 
-Example 3
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**Example 3:** Create a cumulative loss triangle from data formatted as a triangle
+-----------------------------------------------------------------------------
 
-*Create a cumulative loss triangle from data formatted as a triangle*.  
-
-|
 
 There may be situations in which data is already formatted as a triangle, 
 and we're interested in creating a triangle instance from this data. 
@@ -321,7 +314,7 @@ cumulative triangle instance::
 				}, index=list(range(1, 6))
 				)
 	In [4]: dftri
-	Out[1]:
+	Out[4]:
 		1          2         3         4        5
 	1  1010  767.00000 444.00000 239.00000 80.00000
 	2  1207 1100.00000 623.00000 556.00000      nan
@@ -331,7 +324,7 @@ cumulative triangle instance::
 
 	In [5]: tri = totri(dftri, data_shape="triangle")
 	In [6]: type(tri)
-	Out[2]: trikit.triangle.CumTriangle 
+	Out[6]: trikit.triangle.CumTriangle 
 
 
 trikit cumulative triangle instances expose a plot method, which generates a 
@@ -341,37 +334,53 @@ date by development period. The exhibit can be obtained as follows::
 	In [5]: tri.plot()
 
 
+
 Reserve Estimates
 *****************************************************************************
 
 In trikit, chain ladder reserve estimates are obtained by calling a cumulative
-triangle's ``cl`` method. Let's refer to the CAS Loss Reserving Dastabase 
-included with trikit, focusing ``grcode=1767`` (``grcode`` uniquely identifies 
-each company in the database. To obtain a full list of grcodes and their
-corresponding companies, use ``trikit.get_lrdb_groups()``)::
+triangle's ``cl`` method. Let's refer to the CAS Loss Reserving Dastabase (lrdb)
+included with trikit, focusing on ``grcode=1767`` and ``lob="comauto"`` (``grcode`` 
+uniquely identifies each company in the database. To obtain a full list of grcodes 
+and associated companies, use ``trikit.get_lrdb_groups()``; to obtain a list 
+of availavble lines of business (lobs), use ``trikit.get_lrdb_lobs()``)::
 
 	In [1]: from trikit import load, totri
-	In [2]: df = load("lrdb", grcode=1767)
+	In [2]: df = load("lrdb", lob="comauto", grcode=1767)
 	In [3]: tri = totri(df)
-	In [4]: result = tri.cl()
-	In [5]: result
-	   origin maturity     cldf   latest ultimate  reserve
-	0    1988       10  1.00000  1752096  1752096        0
-	1    1989        9  1.12451  1633619  1837022   203403
-	2    1990        8  1.28233  1610193  2064802   454609
-	3    1991        7  1.49111  1278228  1905977   627749
-	4    1992        6  1.77936  1101390  1959771   858381
-	5    1993        5  2.20146   980180  2157822  1177642
-	6    1994        4  2.87017   792392  2274299  1481907
-	7    1995        3  4.07052   560278  2280624  1720346
-	8    1996        2  6.68757   326584  2184053  1857469
-	9    1997        1 15.62506   143970  2249541  2105571
-	10  total               nan 10178930 20666007 10487077
+	In [4]: tri
+	 		  1       2       3       4       5         6         7         8         9         10
+	1988 110,231 263,079 431,216 611,278 797,428   985,570 1,174,922 1,366,229 1,558,096 1,752,096
+	1989 121,678 279,896 456,640 644,767 837,733 1,033,837 1,233,015 1,432,670 1,633,619       nan
+	1990 123,376 298,615 500,570 714,683 934,671 1,157,979 1,383,820 1,610,193       nan       nan
+	1991 117,457 280,058 463,396 662,003 865,401 1,071,271 1,278,228       nan       nan       nan
+	1992 124,611 291,399 481,170 682,203 889,029 1,101,390       nan       nan       nan       nan
+	1993 137,902 323,854 533,211 753,639 980,180       nan       nan       nan       nan       nan
+	1994 150,582 345,110 561,315 792,392     nan       nan       nan       nan       nan       nan
+	1995 150,511 345,241 560,278     nan     nan       nan       nan       nan       nan       nan
+	1996 142,301 326,584     nan     nan     nan       nan       nan       nan       nan       nan
+	1997 143,970     nan     nan     nan     nan       nan       nan       nan       nan       nan
+
+	In [5]: result = tri.cl()
+	In [6]: result
+	Out[6]:
+		  maturity     cldf emergence     latest   ultimate    reserve
+	1988        10  1.00000   1.00000  1,752,096  1,752,096          0
+	1989         9  1.12451   0.88928  1,633,619  1,837,022    203,403
+	1990         8  1.28233   0.77983  1,610,193  2,064,802    454,609
+	1991         7  1.49111   0.67064  1,278,228  1,905,977    627,749
+	1992         6  1.77936   0.56200  1,101,390  1,959,771    858,381
+	1993         5  2.20146   0.45425    980,180  2,157,822  1,177,642
+	1994         4  2.87017   0.34841    792,392  2,274,299  1,481,907
+	1995         3  4.07052   0.24567    560,278  2,280,624  1,720,346
+	1996         2  6.68757   0.14953    326,584  2,184,053  1,857,469
+	1997         1 15.62506   0.06400    143,970  2,249,541  2,105,571
+	total               nan       nan 10,178,930 20,666,007 10,487,077
 
 
-result is of type ``chainladder.BaseChainLadderResult``.         
+The result is of type ``chainladder.BaseChainLadderResult``.         
 
-When the ``range_method`` argument of ``cl`` is None, two keyword arguments
+When the ``range_method`` argument of ``cl`` is ``None``, two keyword arguments
 can be provided:
 
 * ``tail``: The tail factor, which defaults to 1.0.  
@@ -393,22 +402,62 @@ loss development factors by name, run::
 
 
 If instead of ``all-weighted``, a 5-year geometric loss development pattern is 
-preferred, along with a tail factor of 1.015, the call to ``cl`` becomes::
+preferred, along with a tail factor of 1.015, the call to ``cl`` would be modified 
+as follows::
 
 	In [1]: tri.cl(sel="geometric-5", tail=1.015)
 	Out[1]:
-	   origin maturity     cldf   latest ultimate  reserve
-	0    1988       10  1.01500  1752096  1778377    26281
-	1    1989        9  1.14138  1633619  1864578   230959
-	2    1990        8  1.30157  1610193  2095778   485585
-	3    1991        7  1.51344  1278228  1934517   656289
-	4    1992        6  1.80591  1101390  1989009   887619
-	5    1993        5  2.23416   980180  2189878  1209698
-	6    1994        4  2.91249   792392  2307832  1515440
-	7    1995        3  4.13521   560278  2316869  1756591
-	8    1996        2  6.78292   326584  2215194  1888610
-	9    1997        1 15.69149   143970  2259103  2115133
-	10  total               nan 10178930 20951135 10772205
+		  maturity     cldf emergence     latest   ultimate    reserve
+	1988        10  1.01500   0.98522  1,752,096  1,778,377     26,281
+	1989         9  1.14138   0.87613  1,633,619  1,864,578    230,959
+	1990         8  1.30157   0.76830  1,610,193  2,095,778    485,585
+	1991         7  1.51344   0.66075  1,278,228  1,934,517    656,289
+	1992         6  1.80591   0.55374  1,101,390  1,989,009    887,619
+	1993         5  2.23416   0.44760    980,180  2,189,878  1,209,698
+	1994         4  2.91249   0.34335    792,392  2,307,832  1,515,440
+	1995         3  4.13521   0.24183    560,278  2,316,869  1,756,591
+	1996         2  6.78292   0.14743    326,584  2,215,194  1,888,610
+	1997         1 15.69149   0.06373    143,970  2,259,103  2,115,133
+	total               nan       nan 10,178,930 20,951,135 10,772,205
+
+
+It is also possible to provide a set of loss development factors independent of 
+the target dataset. If ``sel`` is a Series or numpy ndarray, a check will first 
+be made to ensure the LDFs have the requiste number of elements. The provided LDFs 
+can optionally include a tail factor: If the tail factor is omitted, the value 
+associated with the ``tail`` parameter will be appended to the provided LDF array. 
+
+Next, reserves are estimated with the chain ladder along with an external set of LDFs 
+using the same loss reserve database subset (``grcode=1767`` and ``lob="commauto"``)::
+
+	In [1]: df = load("lrdb", lob="commauto", grcode=1767)
+	In [2]: tri = totri(df)
+	In [3]: ldfs = np.asarray([2.75, 1.55, 1.50, 1.25, 1.15, 1.075, 1.03, 1.02, 1.01])
+	In [4]: result = tri.cl(sel=ldfs)
+	In [5]: result
+		  maturity     cldf emergence     latest   ultimate   reserve
+	1988        10  1.00000   1.00000  1,752,096  1,752,096         0
+	1989         9  1.01000   0.99010  1,633,619  1,649,955    16,336
+	1990         8  1.03020   0.97069  1,610,193  1,658,821    48,628
+	1991         7  1.06111   0.94241  1,278,228  1,356,335    78,107
+	1992         6  1.14069   0.87666  1,101,390  1,256,343   154,953
+	1993         5  1.31179   0.76232    980,180  1,285,793   305,613
+	1994         4  1.63974   0.60985    792,392  1,299,317   506,925
+	1995         3  2.45961   0.40657    560,278  1,378,066   817,788
+	1996         2  3.81240   0.26230    326,584  1,245,068   918,484
+	1997         1 10.48409   0.09538    143,970  1,509,394 1,365,424
+	total               nan       nan 10,178,930 14,391,188 4,212,258
+
+
+If ``ldfs`` is not of the correct length (either length ``n-1`` or ``n`` for a triangle 
+having ``n`` development periods, ``ValueError`` will be raised::
+
+	In [6]: ldfs = np.asarray([2.75, 1.55, 1.50, 1.25, 1.15, 1.075, 1.03])
+	In [7]: result = tri.cl(sel=ldfs)
+	Traceback (most recent call last):
+  	File "trikit\trikit\chainladder\__init__.py", line 117, in __call__
+	ValueError: sel has 7 values, LDF overrides require at least 9.
+
 
 
 A faceted plot by origin comparing combining actuals and estimates can 
@@ -422,12 +471,90 @@ be obtained by calling the ``BaseChainLadderResult``'s plot method::
 Quantifying Reserve Variability
 *****************************************************************************
 
-
 The base chain ladder method provides an estimate by origin and in total of 
 future claim liabilities, but offers no indication of the variability around 
-those point estimates. We can obtain quantiles of the predictive distribution 
-of reserve estimates by setting ``range_method="bootstrap"``. When ``range_method``
-is set to "bootstrap", available optional parameters include:
+reserve point estimates. We can obtain quantiles of the predictive distribution 
+of reserve estimates by setting ``range_method="mack"`` or ``range_method="bootstrap"``. 
+  
+When ``range_method="mack"``, available optional parameters include:
+
+*  ``alpha``: Controls how loss development factors are computed. Can be 0, 1 or 2. 
+   When ``alpha=0``, LDFs are computed as the straight average of observed individual 
+   link ratios. When ``alpha=1``, the historical Chain Ladder age-to-age factors are
+   computed. When ``alpha=2``, a regression of $C_{k+1}$ on $C_{k}$ with 0 intercept
+   is performed. Default is 1. 
+
+*  ``dist``: Either "norm" or "lognorm". Represents the distribution function selected 
+   to approximate the true distribution of reserves by origin period and in aggregate.
+   Setting ``dist="norm"`` specifies a normal distribution. ``dist="lognorm``
+   assumes a log-normal distribution. Default is "lognorm".
+
+*  ``q``:  Quantile or sequence of quantiles to compute, which must be between 0 and 
+   1 inclusive. Default is [.75, .95].
+
+*  ``two_sided``: Whether the two_sided interval should be included in summary
+   output. For example, if ``two_sided==True`` and ``q=.95``, then the 2.5th and 97.5th 
+   quantiles of the estimated reserve distribution will be returned ((1 - .95) / 2, (1 + .95) / 2). 
+   When False, only the specified quantile(s) will be computed. Default value is False.  
+
+
+The suggested approach is to collect parameters into a dictionary, then include the 
+dictionary with the call to the triangle's ``cl`` method. We first demonstrate 
+quantifying reserve variability  with ``range_method="mack"`` with ``alpha=1`` using 
+the ta83 sample dataset::
+
+	In [1]: from trikit import load, totri
+	In [2]: df = load("ta83")
+	In [3]: tri = totri(data=df)
+	In [4]: mclargs = {"alpha":1, "dist":"lognorm", "two_sided":False,}
+	In [5]: mcl = tri.cl(range_method="mack", **mclargs)
+	In [6]: mcl
+	Out[6]:
+		  maturity     cldf emergence     latest   ultimate    reserve std_error      cv        75%        95%
+	1           10  1.00000   1.00000  3,901,463  3,901,463          0         0     nan        nan        nan
+	2            9  1.01772   0.98258  5,339,085  5,433,719     94,634    75,535 0.79818    118,760    234,717
+	3            8  1.09564   0.91271  4,909,315  5,378,826    469,511   121,700 0.25921    539,788    691,334
+	4            7  1.15466   0.86605  4,588,268  5,297,906    709,638   133,551 0.18820    790,911    947,870
+	5            6  1.25428   0.79727  3,873,311  4,858,200    984,889   261,412 0.26542  1,135,100  1,462,149
+	6            5  1.38450   0.72228  3,691,712  5,111,171  1,419,459   411,028 0.28957  1,651,045  2,174,408
+	7            4  1.62520   0.61531  3,483,130  5,660,771  2,177,641   558,356 0.25640  2,500,779  3,194,587
+	8            3  2.36858   0.42219  2,864,498  6,784,799  3,920,301   875,430 0.22331  4,439,877  5,499,652
+	9            2  4.13870   0.24162  1,363,294  5,642,266  4,278,972   971,385 0.22701  4,853,918  6,033,399
+	10           1 14.44662   0.06922    344,014  4,969,838  4,625,824 1,363,376 0.29473  5,390,689  7,133,025
+	total               nan       nan 34,358,090 53,038,959 18,680,869 2,447,318 0.13101 20,226,192 22,955,604
+
+The ``MackChainLadderResult``'s ``plot`` method returns a faceted plot of estimated
+reserve distributions by origin period and in total. The mean is highlighted, along with
+any quantiles passed to the ``plot`` method via ``q``. We can compare the estimated distributions 
+when ``dist="lognorm"`` vs. ``dist="norm"``, highlighting the mean and 95th percentile. 
+First we take a look at ``dist="lognorm"``::
+
+	In [7]: mcl.plot()
+
+Which produces the following:
+
+.. image:: ./images/mack_lognorm_facet.png
+    :align: center
+
+
+Next we produce the same exhibit, this time setting ``dist="norm"``::
+
+	In [8]: mclargs = {"alpha":1, "dist":"norm", "two_sided":False,}
+	In [9]: mcl = tri.cl(range_method="mack", **mclargs)
+	In[10]: mcl.plot()
+
+
+Which generates:
+
+.. image:: ./images/mack_norm_facet.png
+    :align: center
+
+
+
+
+
+
+When ``range_method="bootstrap"``, available optional parameters include:
 
 *  ``sims``: The number of bootstrap iterations to perform. Default value is 1000.   
 
@@ -466,9 +593,17 @@ is set to "bootstrap", available optional parameters include:
   np.random. Default value is None.     
 
 
-The suggested approach is to collect parameters into a dictionary, 
-then include the dictionary with the call to the triangle's ``cl`` method. 
-We next demonstrate how to apply the bootstrap chain ladder to the raa dataset.
+
+
+
+
+
+
+
+
+
+
+We now demonstrate how to apply the bootstrap chain ladder to the RAA dataset.
 The example that follows sets ``sims=2500``, ``two_sided=True`` and ``random_state=516``::
 
 	In [1]: from trikit import load, totri

@@ -302,12 +302,12 @@ class _BaseTriangle(pd.DataFrame):
 
 
     def __str__(self):
-        formats = {devp:"{:.0f}".format for devp in self.columns}
+        formats = {devp:"{:,.0f}".format for devp in self.columns}
         return(self.to_string(formatters=formats))
 
 
     def __repr__(self):
-        formats = {devp:"{:.0f}".format for devp in self.columns}
+        formats = {devp:"{:,.0f}".format for devp in self.columns}
         return(self.to_string(formatters=formats))
 
 
@@ -862,36 +862,87 @@ class CumTriangle(_BaseCumTriangle):
             the argument will be ignored and a warning will be generated.
             What follows are valid optional keyword parameters for different
             values of ``range_method``:
+
             * ``range_method=None`` (standard chain ladder):
+
                 - ``sel``: The ldf average to select from ``triangle.CumTriangle.a2a_avgs``.
                   Defaults to ``"all-weighted"``.
+
                 - ``tail``: Tail factor. Defaults to 1.0.
-            * ``range_method="bootstrap"`` (bootstrap chain ladder):
+
+            * ``range_method="mack"`` (MackChainLadder):
+
+                - alpha: {0, 1, 2}
+                    * ``0``: Straight average of observed individual link ratios.
+                    * ``1``: Historical Chain Ladder age-to-age factors.
+                    * ``2``: Regression of $C_{k+1}$ on $C_{k}$ with 0 intercept.
+
+                - tail: float
+                    Tail factor. Currently not implemented. Will be available in
+                    a future release.
+
+                - dist: {"norm", "lognorm"}
+                    The distribution function chosen to approximate the true
+                    distribution of reserves by origin period. In Mack[1], if the
+                    volume of outstanding claims is large enough, due to the central
+                    limit theorem, we can assume that the distribution function is
+                    Normal with expected value equal to the point estimate given by
+                    $R_{i}$ and standard deviation equal to the standard error of
+                    $R_{i}$, $s.e.(R_{i})$. It is also noted that if the true
+                    distribution of reserves is skewed, the Normal may not serve as a
+                    good approximation, and it may be preferrable to opt for
+                    the Log-normal distribution.
+
+                    If ``dist="norm"``, the Normal distribution will be used to
+                    estimate reserve quantiles.
+                    If ``dist="lognorm"``, the Log-normal distribution will be used
+                    to estimate reserve quantiles.
+
+                - q: array_like of float
+                    Quantile or sequence of quantiles to compute, which must be
+                    between 0 and 1 inclusive.
+
+                - two_sided: bool
+                    Whether the two_sided interval should be included in summary
+                    output. For example, if ``two_sided==True`` and ``q=.95``, then
+                    the 2.5th and 97.5th quantiles of the estimated reserve
+                    distribution will be returned [(1 - .95) / 2, (1 + .95) / 2]. When
+                    False, only the specified quantile(s) will be computed. Defaults
+                    to False.
+
+            * ``range_method="bootstrap"`` (BoostrapChainLadder):
+
                 - ``sims``: The number of bootstrap resamplings to perform.
                   Defaults to 1000.
+
                 - ``q``: Determines which percentiles of the reserve distribution
                   to compute. Defaults to [.75, .95].
+
                 - ``neg_handler``: Dictates how negative triangle values should
                   be handled. See documentation for ``_BoostrapChainLadder``
                   for more information. Defaults to 1.
+
                 - ``procdist``: The distribution used to incorporate process
                   variance. At present , the only option is "gamma", but
                   this wqill change in a future release.
+
                 - ``parametric``: If True, fit standardized residuals to a
                   normal distribution then sample from this parameterized
                   distribution. Otherwise, sample with replacement from the
                   collection of standardized residuals. Defaults to False.
+
                 - ``symmetric``: Whether the symmetric interval of given
                   ``q``('s) should be included in summary output.
+
                 - ``interpolation``: See ``numpy.quantile`` for more information.
                   Defaults to "linear".
+
                 - ``random_state``: Set random seed for reproducibility.
                   Defaults to None.
 
         Returns
         -------
-        chainladder.ChainLadderResult
-            One of {BaseChainLadderResult, BootstrapChainLadderResult}.
+        *ChainLadderResult
 
 
         Examples
