@@ -7,7 +7,5 @@
 Other Liability lines of business to CAS Loss Reserve Database. 
 
 * BaseChainLadder method can now accept arbitrary LDF patterns, and is not limited
-LDF patterns derived from the data.
+LDF patterns computed from the data directly (patterns available `tri.a2a_avgs`)
 
-ot just those generated 
-from the target dataset.

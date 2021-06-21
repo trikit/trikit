@@ -386,7 +386,7 @@ class BaseChainLadderResult:
     def _data_transform(self):
         """
         Transform dataset for use in FacetGrid plot by origin exhibting chain
-        ladder ultimate & reserve estimates.
+        ladder reserve estimates.
 
         Returns
         -------
@@ -394,13 +394,21 @@ class BaseChainLadderResult:
         """
         trisqrd = self.trisqrd.reset_index(drop=False).rename({"index":"origin" }, axis=1)
         df0 = pd.melt(trisqrd, id_vars=["origin"], var_name="dev", value_name="value")
+
+        # Combine df0 with latest cumulative loss by origin period.
+        df0 = df0.merge(
+            self.latest.reset_index(drop=False).rename({"index":"origin"}, axis=1),
+            on="origin", how="left"
+            )
+
         dfult = df0[df0["dev"]=="ultimate"]
         dev_increment = np.unique(self.ldfs.index[1:] - self.ldfs.index[:-1])[0]
         dfult["dev"] =  self.ldfs.index.max() + dev_increment
         dfult["rectype"] = "forecast"
         df0 = df0[df0["dev"]!="ultimate"].reset_index(drop=True)
 
-        # Create tabular dataset based on tri.triind.
+        # Create tabular dataset based on tri.triind. Rows wiith 0s represent
+        # actuals, rows with 1 represent forecasts.
         df1 = self.tri.triind.reset_index(drop=False).rename({"index":"origin"}, axis=1)
         df1 = pd.melt(df1, id_vars=["origin"], var_name="dev", value_name="value")
         df1["value"] = df1["value"].map(lambda v: 1 if v==0 else 0)
@@ -424,37 +432,47 @@ class BaseChainLadderResult:
             )
 
         # Split data into actual and pred cohorts, then recombine. Note that
-        # the latest cumulative loss by origin will appear in both datasets.
-        dfact = df[df["incl_actual"]==1][["origin", "dev", "value"]]
+        # the latest cumulative loss by origin intentionally appears in both
+        # datasets.
+        dfact = df[df["incl_actual"]==1][["origin", "dev", "value", "latest"]]
         dfact["rectype"] = "actual"
-        dfpred = df[df["incl_pred"]==1][["origin", "dev", "value"]]
+        dfpred = df[df["incl_pred"]==1][["origin", "dev", "value", "latest"]]
         dfpred["rectype"] = "forecast"
 
         # Create total DataFrame, representing losses across all origin periods
         # by development period and at ultimate.
         dftotal = pd.concat([
-            dfpred.groupby(["dev", "rectype"], as_index=False)["value"].sum(),
-            dfult.groupby(["dev", "rectype"], as_index=False)["value"].sum()
+            dfpred.groupby(["dev", "rectype"], as_index=False)[["value", "latest"]].sum(),
+            dfult.groupby(["dev", "rectype"], as_index=False)[["value", "latest"]].sum()
             ])
 
         # Combine dfact, dfpred, dfult and dftotal.
         dftotal["origin"] = "total"
-        dfall = pd.concat([dfact, dfpred, dfult, dftotal]).reset_index(drop=True)
-        dfall["dev"] = dfall["dev"].astype(np.int)
+        dfall = pd.concat([dfact, dfpred, dfult, dftotal]).reset_index(drop=True).rename(
+            {"value":"loss"}, axis=1
+            )
 
-        # Add origin index column to coselfectly sort origin columns, which is
-        # of type object since adding "total".
+
+        # Add origin index column sort origin columns, which is of type object
+        # # since adding "total".
+        dfall["dev"] = dfall["dev"].astype(np.int)
         origin_vals = sorted([int(ii) for ii in dfall["origin"].unique() if ii!="total"])
         dindex = {jj:ii for ii,jj in enumerate(origin_vals)}
         dindex.update({"total":max(dindex.values())+1})
         dfall["origin_index"] = dfall["origin"].map(dindex)
-        column_order = ["origin_index", "origin", "dev", "value", "rectype",]
+
+        # Add reserve column, defined as value - latest when rectype=="forecast",
+        # otherwise 0.
+        dfall["reserve"] = dfall.apply(
+            lambda rec: rec.loss - rec.latest if rec.rectype=="forecast" else 0,
+            axis=1
+            )
+        column_order = ["origin_index", "origin", "dev", "loss", "reserve", "rectype",]
         return(dfall[column_order].reset_index(drop=True))
 
 
-    def plot(self, actuals_color="#334488", forecasts_color="#FFFFFF",
-             axes_style="darkgrid", context="notebook", col_wrap=4,
-             hue_kws=None, **kwargs):
+    def plot(self, actuals_color="#334488", forecasts_color="#FFFFFF", axes_style="darkgrid",
+             context="notebook", col_wrap=4, hue_kws=None, exhibit_path=None, **kwargs):
         """
         Visualize actual losses along with projected chain ladder development.
 
@@ -491,6 +509,10 @@ class BaseChainLadderResult:
             overrides for forecasts and actuals respectively. Defaults to
             ``None``.
 
+        exhibit_path: str
+            Path to which exhibit should be written. If None, exhibit will be
+            rendered via ``plt.show()``.
+
         kwargs: dict
             Additional styling options for scatter points. This can override
             default values for ``plt.plot`` objects. For a demonstration,
@@ -516,20 +538,7 @@ class BaseChainLadderResult:
         import matplotlib.pyplot as plt
         import seaborn as sns
         sns.set_context(context)
-        # actuals_color="#334488"
-        # forecasts_color="#FFFFFF"
-        # fill_color="#FCFCB1"
-        # fill_alpha=.75
-        # axes_style="darkgrid"
-        # context="notebook"
-        # col_wrap=4
-        # hue_kws=None
-        # two_sided=True
-        # interpolation="linear"
-        # data = rr._data_transform()
 
-        # Plot chain ladder projections by development period for each origin year.
-        # FacetGrid's ``hue`` argument should be set to "rectype".
         data = self._data_transform()
 
         with sns.axes_style(axes_style):
@@ -556,7 +565,7 @@ class BaseChainLadderResult:
                 sharey=False, hue_order=["forecast", "actual",]
                 )
 
-            ult_vals = grid.map(plt.plot, "dev", "value",)
+            ult_vals = grid.map(plt.plot, "dev", "loss",)
             devp_xticks = np.sort(data.dev.unique())
             devp_xticks_str = [
                 str(ii) if ii!=devp_xticks.max() else "ult" for ii in devp_xticks
@@ -579,13 +588,10 @@ class BaseChainLadderResult:
                     legend.get_frame().set_facecolor("#FFFFFF")
 
                     # For given origin, determine optimal 5-point tick labels.
-                    origin_max_val = data[data.origin==origin].value.max()
+                    origin_max_val = data[data.origin==origin].loss.max()
                     y_ticks, y_ticklabels = self._get_yticks(origin_max_val)
                     ax_ii.set_yticks(y_ticks)
                     ax_ii.set_yticklabels(y_ticklabels, size=7)
-                    # ax_ii.tick_params(
-                    #     axis="x", which="both", bottom=True, top=False, labelbottom=True
-                    #     )
                     ax_ii.annotate(
                         origin, xy=(.075, .90), xytext=(.075, .90), xycoords='axes fraction',
                         textcoords='axes fraction', fontsize=9, rotation=0, color="#000000",
@@ -596,7 +602,10 @@ class BaseChainLadderResult:
                     for _, spine in ax_ii.spines.items():
                         spine.set(visible=True, color="#000000", linewidth=.50)
 
-        plt.show()
+            if exhibit_path is not None:
+                plt.savefig(exhibit_path)
+            else:
+                plt.show()
 
 
     def __str__(self):

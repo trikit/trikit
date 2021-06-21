@@ -33,7 +33,6 @@ class DatasetsTestCase(unittest.TestCase):
         self.dactual = {
             "raa"         :160987,
             "ta83"        :34358090,
-            "lrdb"        :0,
             "autoliab"    :2197134,
             "glre"        :56531053,
             "singinjury"  :11026482.299999999,

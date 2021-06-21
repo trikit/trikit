@@ -538,7 +538,7 @@ class MackChainLadderResult(BaseChainLadderResult):
     MackChainLadder output.
     """
     def __init__(self, summary, tri, ldfs, trisqrd, process_error, parameter_error,
-                 devpvar, ldfvar, mse, mse_total, cv, rvs, qtls, qtlhdrs, **kwargs):
+                 devpvar, ldfvar, mse, mse_total, cv, rvs, **kwargs):
         """
         Container class for ``MackChainLadder`` output.
 
@@ -601,33 +601,22 @@ class MackChainLadderResult(BaseChainLadderResult):
             Coefficient of variation, the ratio of standard deviation and mean.
              Here, ``cv = std_error / reserves``.
 
-        qtls: list
-            Points at which estimated reserve distribution is estimated.
-
-        qtlhdrs: list
-            String formatted quantiles.
-
         kwargs: dict
             Additional parameters originally passed into ``MackChainLadder``'s
             ``__call__`` method.
         """
-        super().__init__(summary=summary, tri=tri, ldfs=ldfs, tail=tail,
-                         trisqrd=trisqrd, **kwargs)
+        super().__init__(summary=summary, tri=tri, ldfs=ldfs, trisqrd=trisqrd, **kwargs)
 
         self.std_error = summary["std_error"]
         self.cv = summary["cv"]
-
         self.parameter_error = parameter_error
         self.process_error = process_error
         self.mse_total = mse_total
         self.summary = summary
         self.devpvar = devpvar
         self.trisqrd = trisqrd
-        self.qtlhdrs = qtlhdrs
         self.ldfvar = ldfvar
         self.ldfs = ldfs
-        self.tail = tail
-        self.qtls = qtls
         self.tri = tri
         self.mse = mse
         self.rvs = rvs
@@ -637,9 +626,9 @@ class MackChainLadderResult(BaseChainLadderResult):
                 setattr(self, kk, kwargs[kk])
 
         # Add formats for method-specific columns.
-        qtls_fmt = {i:"{:,.0f}".format for i in self.qtlhdrs}
-        qtls_fmt.update({"std_error":"{:,.0f}".format, "cv":"{:.5f}".format})
-        self._summspecs.update(self.qtls_fmt)
+        mack_summ_hdrs = {ii:"{:,.0f}".format for ii in self.summary.columns if ii.endswith("%")}
+        mack_summ_hdrs.update({"std_error":"{:,.0f}".format, "cv":"{:.5f}".format})
+        self._summspecs.update(mack_summ_hdrs)
 
         # Quantile suffix for plot method annotations.
         self.dsuffix = {
@@ -664,7 +653,6 @@ class MackChainLadderResult(BaseChainLadderResult):
         tuple of list
         """
         qtls = np.asarray([q] if isinstance(q, (float, int)) else q)
-
         if np.all(np.logical_and(qtls <= 1, qtls >= 0)):
             qtls = np.sort(np.unique(qtls))
         else:
@@ -726,8 +714,8 @@ class MackChainLadderResult(BaseChainLadderResult):
         pass
 
 
-    def plot(self, q=.95, dist_color="#000000", q_color="#E02C70",
-             axes_style="darkgrid", context="notebook", col_wrap=4):
+    def plot(self, q=.95, dist_color="#000000", q_color="#E02C70", axes_style="darkgrid",
+             context="notebook", col_wrap=4, exhibit_path=None):
         """
         Plot estimated reserve distribution by origin year and in total.
         The mean of the reserve estimate will be highlighted, along with
@@ -760,6 +748,11 @@ class MackChainLadderResult(BaseChainLadderResult):
         col_wrap: int
             The maximum number of origin period axes to have on a single row
             of the resulting FacetGrid. Defaults to 5.
+
+        exhibit_path: str
+            Path to which exhibit should be written. If None, exhibit will be
+            rendered via ``plt.show()``.
+
         """
         import matplotlib
         import matplotlib.pyplot as plt
@@ -807,4 +800,7 @@ class MackChainLadderResult(BaseChainLadderResult):
                 for _, spine in ax_ii.spines.items():
                     spine.set(visible=True, color="#000000", linewidth=.50)
 
-            plt.show()
+            if exhibit_path is not None:
+                plt.savefig(exhibit_path)
+            else:
+                plt.show()

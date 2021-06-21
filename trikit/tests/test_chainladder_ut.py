@@ -152,10 +152,6 @@ class MackChainLadderTestCase(unittest.TestCase):
 
     def test_ldfs(self):
         # Test computed vs. reference LDF pattern.
-        # self.assertTrue(
-        #     np.abs(self.ldfs_sum - self.dactual_ta83["ldfs_sum"]) < 1.,
-        #     "Non-equality between computed vs. reference LDFs."
-        #     )
         self.assertEqual(
             self.ldfs_sum, self.dactual_ta83["ldfs_sum"],
             "Non-equality between computed vs. reference LDFs."

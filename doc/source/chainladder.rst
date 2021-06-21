@@ -1,15 +1,32 @@
 
 .. _chainladder:
 
-================================================================================
 :mod: chainladder --- Reserve Estimators
 ================================================================================
 
 
-Chain Ladder Class Definitions
+Chain Ladder Classes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: trikit.chainladder.BaseChainLadder
+	:members:
+	:private-members:
+	:no-undoc-members:
+	
+
+.. autoclass:: trikit.chainladder.BaseChainLadderResult
+	:members:
+	:private-members:
+	:no-undoc-members:
+	
+	
+.. autoclass:: trikit.chainladder.mack.MackChainLadder
+	:members:
+	:private-members:
+	:no-undoc-members:
+	
+	
+.. autoclass:: trikit.chainladder.mack.MackChainLadderResult
 	:members:
 	:private-members:
 	:no-undoc-members:
@@ -20,8 +37,8 @@ Chain Ladder Class Definitions
 	:private-members:
 	:no-undoc-members:
 	
-
-
-
-
-
+	
+.. autoclass:: trikit.chainladder.bootstrap.BootstrapChainLadderResult
+	:members:
+	:private-members:
+	:no-undoc-members:

@@ -201,7 +201,6 @@ class BootstrapChainLadder(BaseChainLadder):
             )
 
         dfreserves = self._bs_reserves(dfprocerror=dfprocerror)
-
         qtls, qtlhdrs = self._qtls_formatter(q=q, two_sided=two_sided)
 
         # Compile Chain Ladder point estimate summary.
@@ -259,8 +258,8 @@ class BootstrapChainLadder(BaseChainLadder):
 
         Parameters
         ----------
-        q: array_like of float or float
-            Quantile or sequence of quantiles to compute, which must be
+        q: array_like of float
+            Sequence of quantiles to compute, which must be
             between 0 and 1 inclusive.
 
         two_sided: bool
@@ -276,7 +275,6 @@ class BootstrapChainLadder(BaseChainLadder):
         tuple of list
         """
         qtls = np.asarray([q] if isinstance(q, (float, int)) else q)
-
         if np.all(np.logical_and(qtls <= 1, qtls >= 0)):
             if two_sided:
                 qtls = np.sort(np.unique(np.append((1 - qtls) / 2., (1 + qtls) / 2.)))
@@ -284,11 +282,9 @@ class BootstrapChainLadder(BaseChainLadder):
                 qtls = np.sort(np.unique(qtls))
         else:
             raise ValueError("Values for quantiles must fall between [0, 1].")
-
         qtlhdrs = [
             "{:.5f}".format(ii).rstrip("0").rstrip(".") + "%" for ii in 100 * qtls
             ]
-
         return(qtls, qtlhdrs)
 
 
@@ -547,9 +543,7 @@ class BootstrapChainLadder(BaseChainLadder):
 
         fti = fitted_tri_incr.reset_index(drop=False).rename({"index":"origin"}, axis=1)
         dfm = pd.melt(fti, id_vars=["origin"], var_name="dev", value_name="value")
-        dfm = dfm[~np.isnan(dfm["value"])].astype(
-            {"origin":np.int, "dev":np.int, "value":np.float}
-            )
+        dfm = dfm[~np.isnan(dfm["value"])].astype({"origin":np.int, "dev":np.int, "value":np.float})
 
         # Make positive any first development period negative values.
         if np.any(dfm["value"]<=0):
@@ -588,14 +582,10 @@ class BootstrapChainLadder(BaseChainLadder):
 
         if parametric:
             # Sample random standard normal residuals.
-            dfr["resid"] = prng.normal(
-                loc=0, scale=sampling_dist.std(ddof=1), size=sample_size
-                )
+            dfr["resid"] = prng.normal(loc=0, scale=sampling_dist.std(ddof=1), size=sample_size)
         else:
-            # Randomly sample residual from sampling_dist.
-            dfr["resid"] = prng.choice(
-                sampling_dist, sample_size, replace=True
-                )
+            # Randomly sample residuals from sampling_dist.
+            dfr["resid"] = prng.choice(sampling_dist, sample_size, replace=True)
 
         # Calcuate resampled incremental and cumulative losses.
         dfr["resid"] = np.where(dfr["rectype"].values=="forecast", np.NaN, dfr["resid"].values)
@@ -625,12 +615,9 @@ class BootstrapChainLadder(BaseChainLadder):
         dfinit = dfsamples.merge(dflvi, how="left", on=["dev"])
         dfinit = dfinit[keepcols].sort_values(by=["sim", "dev", "origin"])
         df = dfinit[~np.isnan(dfinit["samp_cum"])].reset_index(drop=True)
-        df["_aggdev2"] = np.where(
-            df["origin"].values==df["last_origin"].values, 0, df["samp_cum"].values
-            )
+        df["_aggdev2"] = np.where(df["origin"].values==df["last_origin"].values, 0, df["samp_cum"].values)
         df2 = df.groupby(["sim", "dev"], as_index=False)[["samp_cum", "_aggdev2"]].sum().rename(
-            {"samp_cum":"_aggdev1"}, axis=1
-            )
+            {"samp_cum":"_aggdev1"}, axis=1)
         df2["_aggdev2"] = df2["_aggdev2"].shift(periods=1)
         df2["dev"] = df2["dev"].shift(periods=1)
         dfldfs = df2[df2["_aggdev2"]!=0].dropna(how="any")
@@ -758,7 +745,6 @@ class BootstrapChainLadder(BaseChainLadder):
         dfforecasts["final_cum"] = dfforecasts.groupby(["sim", "origin"])["final_incr"].cumsum()
         dfforecasts = dfforecasts.rename({"final_cum":"ultimate", "l_act_cum":"latest"}, axis=1)
         return(dfforecasts.sort_values(by=["sim", "origin", "dev"]).reset_index(drop=True))
-
 
 
     @staticmethod
@@ -916,7 +902,7 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
 
     def _qtls_formatter(self, q, two_sided=False):
         """
-        Return array_like of actual and formatted quantiles for MackChainLadder
+        Return array_like of actual and formatted quantiles for BootstrapChainLadder
         summary.
 
         Parameters
@@ -927,10 +913,9 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
 
         Returns
         -------
-        tuple of list
+        tuple of ndarray
         """
         qtls = np.asarray([q] if isinstance(q, (float, int)) else q)
-
         if np.all(np.logical_and(qtls <= 1, qtls >= 0)):
             if two_sided:
                 qtls = np.sort(np.unique(np.append((1 - qtls) / 2., (1 + qtls) / 2.)))
@@ -1081,7 +1066,9 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         return(self._residuals_detail)
 
 
-    def _bs_data_transform(self, q):
+
+
+    def _bs_data_transform(self, qtls, qtlhdrs):
         """
         Starts with ``BaseChainLadderResult``'s ``_data_transform``, and
         performs additional pre-processing in order to generate plot of
@@ -1091,78 +1078,100 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         -------
         pd.DataFrame
         """
-        data0 = bcl._data_transform()
-        dfsims = bcl._get_quantile(q=q, two_sided=True)
-        data0 = pd.merge(data0, dfsims, how="outer", on=["origin", "dev"])
+        data0 = self._data_transform()
+        data0 = data0[data0["origin"]!="total"]
+        data1 = self._get_quantiles_by_devp(qtls, qtlhdrs)
+        data1 = data1[data1["origin"]!="total"]
+        data  = data0.merge(data1, on=["origin", "dev"], how="left")
 
-        data1 = dfsims[dfsims.dev==dfsims.dev.max()].sum()
-
-        data1 = data0.groupby("sim", as_index=False)[["reserve"]].sum()
-        data1["origin"] ="total"
-        data = pd.concat([data0, data1])
-        
-        
-        qtlhdrs = [i for i in dfsims.columns if i not in ("origin", "dev")]
-        for hdr in qtlhdrs:
-            data[hdr] = np.where(
-                data["rectype"].values=="actual", np.NaN, data[hdr].values
+        # Remove qtlhdrs values where rectype=="actual".
+        for qtlhdr in qtlhdrs:
+            data[qtlhdr] = np.where(
+                data["rectype"].values=="actual", np.NaN, data[qtlhdr].values
                 )
 
         # Determine the first forecast period by origin, and set q-fields to actuals.
-        increment = np.unique(bcl.ldfs.index[1:] - bcl.ldfs.index[:-1])[0]
+        increment = np.unique(self.ldfs.index[1:] - self.ldfs.index[:-1])[0]
         data["_ff"] = np.where(
-            data["rectype"].values=="forecast", 
+            data["rectype"].values=="forecast",
             data["dev"].values, data["dev"].values.max() + increment
             )
         data["_minf"] = data.groupby(["origin"])["_ff"].transform("min")
         for hdr in qtlhdrs:
             data[hdr] = np.where(
                 np.logical_and(
-                    data["rectype"].values=="forecast", 
+                    data["rectype"].values=="forecast",
                     data["_minf"].values==data["dev"].values
-                    ), data["value"].values, data[hdr].values
+                    ), data["loss"].values, data[hdr].values
                 )
 
-        data = data.drop(["_ff", "_minf"], axis=1)
-        dfv = data[["origin", "dev", "rectype", "value"]]
+        data = data.drop(["_ff", "_minf"], axis=1).reset_index(drop=True)
+        dfv = data[["origin", "dev", "rectype", "loss"]]
         dfl = data[["origin", "dev", "rectype", qtlhdrs[0]]]
         dfu = data[["origin", "dev", "rectype", qtlhdrs[-1]]]
         dfl["rectype"] = qtlhdrs[0]
-        dfl = dfl.rename({qtlhdrs[0]:"value"}, axis=1)
+        dfl = dfl.rename({qtlhdrs[0]:"loss"}, axis=1)
         dfu["rectype"] = qtlhdrs[-1]
-        dfu = dfu.rename({qtlhdrs[-1]:"value"}, axis=1)
+        dfu = dfu.rename({qtlhdrs[-1]:"loss"}, axis=1)
         return(pd.concat([dfv, dfl, dfu]).sort_index().reset_index(drop=True))
 
 
-    def get_quantiles(self, q=[.05, .25, .50, .75, .95], origin=None):
+    def _get_quantiles_by_devp(self, qtls, qtlhdrs):
         """
         Get quantile of boostrapped reserve distribution for an individual
-        origin period or in total. Returns a tuple of ndarrays: The first
-        representing user-provided quantiles, the second representing values
-        estimated by the reserve distribution.
+        origin period and in total.
 
         Parameters
         ----------
-        q: array_like of float or float
-            Quantile or sequence of quantiles to compute, which must be
-            between 0 and 1 inclusive. Default value is
-            ``[.05, .25, .50, .75, .95]``.
-
-        origin: int
-            Target origin period from which to return specified quantile(s).
-            If None, wuantiles from aggregate reserve distribution will
-            be returned.
+        q: array_like
+            A length-2 sequence representing to upper and lower bounds of
+            the estimated reserve distribution.
 
         Returns
         -------
-        tuple of ndarrays
+       pd.DataFrame
         """
-        pass
+        # qtls, qtlhdrs = self._qtls_formatter(q=q, two_sided=False)
+        dfsims = self.sims_data[["origin", "dev", "ultimate",]]
+        dfults = dfsims[dfsims.dev==dfsims.dev.max()].reset_index(drop=True)
+        dev_increment = np.unique(self.ldfs.index[1:] - self.ldfs.index[:-1])[0]
+        dfults["dev"] = self.ldfs.index.max() + dev_increment
+        dfsims = pd.concat([dfsims, dfults])
+        dftotal_keys = dfsims[dfsims.origin==dfsims.origin.min()][["origin", "dev"]].drop_duplicates()
+        dftotal_keys["origin"] = "total"
+        dfqtls_keys = pd.concat(
+            [dfsims[["origin", "dev"]].drop_duplicates(), dftotal_keys]
+            ).reset_index(drop=True
+            )
+
+        # Get total reserve across all origin periods.
+        dftotal = dfsims.copy(deep=True)
+        dftotal["origin"] = "total"
+        dftotal = dftotal.groupby(["origin", "dev"], as_index=False)
+
+        dflist = []
+        for ii,jj in zip(qtls, qtlhdrs):
+            dfqtl = dfsims.groupby(["origin", "dev"], as_index=False).aggregate(
+                "quantile", q=ii, interpolation="linear").rename(
+                {"ultimate":jj}, axis=1
+                )
+            dftotal_qtl = dftotal.aggregate(
+                "quantile", q=ii, interpolation="linear").rename({"ultimate":jj},
+                axis=1
+                )
+            dflist.append(pd.concat([dfqtl, dftotal_qtl]))
+
+        # Combine DataFrames in dflist into single table.
+        dfqtls = functools.reduce(
+            lambda df1, df2: df1.merge(df2, on=["origin", "dev"], how="left"),
+            dflist, dfqtls_keys).reset_index(drop=True)
+        return(dfqtls)
 
 
     def plot(self, q=.90, actuals_color="#334488", forecasts_color="#FFFFFF",
              fill_color="#FCFCB1", fill_alpha=.75, axes_style="darkgrid",
-             context="notebook", col_wrap=4, hue_kws=None, **kwargs):
+             context="notebook", col_wrap=4, hue_kws=None, exhibit_path=None,
+             **kwargs):
         """
         Generate exhibit representing the distribution of reserve estimates
         resulting from bootstrap resampling, along with percentiles from the
@@ -1215,6 +1224,10 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
             overrides for forecasts, actuals, lower percentile and upper
             percentile renderings respectively. Defaults to ``None``.
 
+        exhibit_path: str
+            Path to which exhibit should be written. If None, exhibit will be
+            rendered via ``plt.show()``.
+
         kwargs: dict
             Additional styling options for scatter points. This should include
             additional options accepted by ``plt.plot``.
@@ -1224,120 +1237,91 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         import seaborn as sns
         sns.set_context(context)
 
+        qtls, qtlhdrs = self._qtls_formatter(q=q, two_sided=True)
+        data = self._bs_data_transform(qtls, qtlhdrs).dropna(how="any", subset=["loss"])
 
-        qtls, qtlhdrs = bcl._qtls_formatter(q=q, two_sided=True)
+        with sns.axes_style(axes_style):
+            huekwargs = dict(
+                marker=["o", "o", None, None,], markersize=[6, 6, None, None,],
+                color=["#000000", "#000000", "#000000", "#000000",],
+                fillstyle=["full", "full", "none", "none",],
+                markerfacecolor=[forecasts_color, actuals_color, None, None,],
+                markeredgecolor=["#000000", "#000000", None, None,],
+                markeredgewidth=[.50, .50, None, None,],
+                linestyle=["-", "-", "-.", "--",], linewidth=[.475, .475, .625, .625,],
+                )
 
-        data = bcl._bs_data_transform(q=q)
+            if hue_kws is not None:
+                # Determine whether the length of each element of hue_kws is 4.
+                if all(len(hue_kws[i])==4 for i in hue_kws):
+                    huekwargs.update(hue_kws)
+                else:
+                    warnings.warn("hue_kws overrides not correct length - Ignoring.")
 
-        # pctl_hdrs = sorted(
-        #     [i for i in data["rectype"].unique() if i not in ("actual", "forecast")]
-        #     )
+            grid = sns.FacetGrid(
+                data, col="origin", hue="rectype", hue_kws=huekwargs,
+                col_wrap=col_wrap, margin_titles=False, despine=True,
+                sharex=False, sharey=False,
+                hue_order=["forecast", "actual", qtlhdrs[0], qtlhdrs[-1]]
+                )
 
-        # with sns.axes_style(axes_style):
-        #     huekwargs = dict(
-        #         marker=["o", "o", None, None,], markersize=[6, 6, None, None,],
-        #         color=["#000000", "#000000", "#000000", "#000000",],
-        #         fillstyle=["full", "full", "none", "none",],
-        #         markerfacecolor=[forecasts_color, actuals_color, None, None,],
-        #         markeredgecolor=["#000000", "#000000", None, None,],
-        #         markeredgewidth=[.50, .50, None, None,],
-        #         linestyle=["-", "-", "-.", "--",], linewidth=[.475, .475, .625, .625,],
-        #         )
-        #
-        #     if hue_kws is not None:
-        #         # Determine whether the length of each element of hue_kws is 4.
-        #         if all(len(hue_kws[i])==4 for i in hue_kws):
-        #             huekwargs.update(hue_kws)
-        #         else:
-        #             warnings.warn("hue_kws overrides not correct length - Ignoring.")
-        #
-        #     grid = sns.FacetGrid(
-        #         data, col="origin", hue="rectype", hue_kws=huekwargs,
-        #         col_wrap=col_wrap, margin_titles=False, despine=True,
-        #         sharex=False, sharey=False,
-        #         hue_order=["forecast", "actual", pctl_hdrs[0], pctl_hdrs[-1]]
-        #         )
-        #
-        #     mean = grid.map(plt.plot, "dev", "value",)
-        #     grid.set_axis_labels("", "")
-        #
-        #     # grid.set_titles("", size=5)
-        #     # grid_.set_titles("{col_name}", size=9)
-        #     grid.set(xticks=data["dev"].unique())
-        #     grid.set_xticklabels(data["dev"].unique(), size=8)
-        #
-        #     # Change ticklabel font size and place legend on each facet.
-        #     for origin, ax_ii in zip(self.rvs.index[1:], grid.axes):
-        #     #for ii, _ in enumerate(grid.axes):
-        #         ax_ = grid.axes[ii]
-        #         origin_ = str(bcl.tri.origins.get(ii))
-        #         legend_ = ax_.legend(
-        #             loc="upper left", fontsize="x-small", frameon=True,
-        #             fancybox=True, shadow=False, edgecolor="#909090",
-        #             framealpha=1, markerfirst=True,)
-        #         legend_.get_frame().set_facecolor("#FFFFFF")
-        #
-        #         # Include thousandths separator on each facet's y-axis label.
-        #         ax_.set_yticklabels(
-        #             ["{:,.0f}".format(i) for i in ax_.get_yticks()], size=8
-        #             )
-        #
-        #         ax_.annotate(
-        #             origin_, xy=(.85, .925), xytext=(.85, .925), xycoords='axes fraction',
-        #             textcoords='axes fraction', fontsize=9, rotation=0, color="#000000",
-        #             )
-        #
-        #         # Fill between upper and lower range bounds.
-        #         axc = ax_.get_children()
-        #         lines_ = [jj for jj in axc if isinstance(jj, matplotlib.lines.Line2D)]
-        #         xx = [jj._x for jj in lines_ if len(jj._x)>0]
-        #         yy = [jj._y for jj in lines_ if len(jj._y)>0]
-        #         x_, lb_, ub_ = xx[0], yy[-2], yy[-1]
-        #         ax_.fill_between(x_, lb_, ub_, color=fill_color, alpha=fill_alpha)
-        #
-        #         # Draw border around each facet.
-        #         for _, spine_ in ax_.spines.items():
-        #             spine_.set(visible=True, color="#000000", linewidth=.50)
-        #
-        #
-        #     for origin, ax_ii in zip(self.rvs.index[1:], grid.axes):
-                # # Determine reserve estimate at mean and specified quantiles.
-                # rv_ii = self.rvs[origin]
-                # with np.errstate(invalid="ignore"):
-                #     qq_ii = [rv_ii.ppf(jj) for jj in qtls]
-                # vline_pos, vline_str = [rv_ii.mean()] + qq_ii, ["mean"] + qtlhdrs
-                #
-                # for ii,jj in zip(vline_pos, vline_str):
-                #     # Draw vertical line and annotation.
-                #     ax_ii.axvline(
-                #         x=ii, linewidth=1., linestyle="--", color=q_color
-                #     )
-                #     ax_ii.annotate(
-                #         "{} = {:,.0f}".format(jj, ii), xy=(ii, 0), xytext=(3.5, 0),
-                #         textcoords="offset points", fontsize=8, rotation=90,
-                #         color="#000000",
-                #     )
-                #     ax_ii.annotate(
-                #         origin, xy=(.85, .925), xytext=(.85, .925), xycoords='axes fraction',
-                #         textcoords='axes fraction', fontsize=10, rotation=0, color="#000000",
-                #     )
-                #     ax_ii.set_xticklabels([]); ax_ii.set_yticklabels([])
-                #     ax_ii.set_title(""); ax_ii.set_xlabel(""); ax_ii.set_ylabel("")
-                #     ax_ii.grid(True)
-                #
-                # # Draw border around each facet.
-                # for _, spine in ax_ii.spines.items():
-                #     spine.set(visible=True, color="#000000", linewidth=.50)
+            ult_vals = grid.map(plt.plot, "dev", "loss",)
+            devp_xticks = np.sort(data.dev.unique())
+            devp_xticks_str = [
+                str(ii) if ii!=devp_xticks.max() else "ult" for ii in devp_xticks
+                ]
+            grid.set(xticks=devp_xticks);  grid.set_xticklabels(devp_xticks_str, size=7)
 
+            with warnings.catch_warnings():
+
+                warnings.simplefilter("ignore")
+
+                # Change ticklabel font size and place legend on each facet.
+                for origin, ax_ii in zip(np.sort(data.origin.unique()), grid.axes):
+
+                    legend = ax_ii.legend(
+                        loc="lower right", fontsize="small", frameon=True,
+                        fancybox=True, shadow=False, edgecolor="#909090",
+                        framealpha=1, markerfirst=True,)
+                    legend.get_frame().set_facecolor("#FFFFFF")
+
+                    # For given origin, determine optimal 5-point tick labels.
+                    origin_max_val = data[data.origin==origin].loss.max()
+                    y_ticks, y_ticklabels = self._get_yticks(origin_max_val)
+                    ax_ii.set_yticks(y_ticks)
+                    ax_ii.set_yticklabels(y_ticklabels, size=7)
+
+
+
+                    ax_ii.annotate(
+                        origin, xy=(.075, .90), xytext=(.075, .90), xycoords='axes fraction',
+                        textcoords='axes fraction', fontsize=9, rotation=0, color="#000000",
+                        )
+                    ax_ii.set_title(""); ax_ii.set_xlabel(""); ax_ii.set_ylabel("")
+
+                    # Fill between upper and lower range bounds.
+                    axc = ax_ii.get_children()
+                    lines_ = [jj for jj in axc if isinstance(jj, matplotlib.lines.Line2D)]
+                    xx = [jj._x for jj in lines_ if len(jj._x)>0]
+                    yy = [jj._y for jj in lines_ if len(jj._y)>0]
+                    x_, lb_, ub_ = xx[0], yy[-2], yy[-1]
+                    ax_ii.fill_between(x_, lb_, ub_, color=fill_color, alpha=fill_alpha)
+
+                    # Draw border around each facet.
+                    for _, spine_ in ax_ii.spines.items():
+                        spine_.set(visible=True, color="#000000", linewidth=.50)
+
+            if exhibit_path is not None:
+                plt.savefig(exhibit_path)
+            else:
+                plt.show()
 
 
     def hist(self, color="#FFFFFF", axes_style="darkgrid", context="notebook",
-             col_wrap=4, **kwargs):
+             col_wrap=4, exhibit_path=None, **kwargs):
         """
-        Generate visual representation of full predicitive distribtion
-        of ultimates/reserves by origin and in aggregate. Additional
-        options to style seaborn's distplot can be passed as keyword
-        arguments.
+        Generate histogram of estimated reserve distribution by accident
+        year and in total.
 
         Parameters
         ----------
@@ -1359,6 +1343,10 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
             The maximum number of origin period axes to have on a single row
             of the resulting FacetGrid. Defaults to 5.
 
+        exhibit_path: str
+            Path to which exhibit should be written. If None, exhibit will be
+            rendered via ``plt.show()``.
+
         kwargs: dict
             Dictionary of optional matplotlib styling parameters.
 
@@ -1368,10 +1356,8 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         import seaborn as sns
         sns.set_context(context)
 
-
         data0 = self.sims_data[["sim", "origin", "dev", "rectype", "latest", "reserve",]]
         data0 = data0[(data0["dev"]==data0["dev"].max()) & (data0["rectype"]=="forecast")].reset_index(drop=True)
-        # tot_origin = data0["origin"].max() + 1
         data0 = data0.drop(["dev", "rectype", "latest"], axis=1)
 
         # Include additional origin representing aggregate distribution.
@@ -1387,7 +1373,7 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         max_data = data.groupby("origin", as_index=False)[["reserve"]].max().rename(
             {"reserve":"max_res"}, axis=1).set_index("origin")
         dfmetrics = functools.reduce(lambda df1, df2: df1.join(df2), (med_data, min_data, max_data))
-        dfmetrics = dfmetrics.reset_index(drop=False).applymap(lambda v: 0 if v<0 else v)
+        dfmetrics = dfmetrics.applymap(lambda v: 0 if v<0 else v).reset_index(drop=False)
 
         with sns.axes_style(axes_style):
 
@@ -1403,103 +1389,59 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
                 data, col="origin", col_wrap=col_wrap, margin_titles=False,
                 despine=True, sharex=False, sharey=False,
                 )
-            hists = grid.map(plt.hist, "reserve", **pltkwargs)
 
+            hists = grid.map(plt.hist, "reserve", **pltkwargs)
             grid.set_axis_labels("", "")
             grid.set_titles("", size=6)
 
             # Change ticklabel font size and place legend on each facet.
-            uniq_origins = np.sort(data.origin.unique())
-            med_hdr = "med_res"
-            min_hdr = "min_res"
-            max_hdr = "max_res"
+            origin_vals = sorted([int(ii) for ii in data["origin"].unique() if ii!="total"])
+            dindex = {jj:ii for ii,jj in enumerate(origin_vals)}
+            dindex.update({"total":max(dindex.values())+1})
+            data["origin_index"] = data["origin"].map(dindex)
+            origin_order = data[["origin_index", "origin"]].drop_duplicates().sort_values(
+                "origin_index"
+                ).origin.values
 
-            for ii, ax_ in enumerate(grid.axes.flatten()):
+            with warnings.catch_warnings():
 
-                origin_ = uniq_origins[ii]
-                xmin = np.max([0, dfmetrics[dfmetrics.origin==origin_][min_hdr].item()])
-                xmax = dfmetrics[dfmetrics.origin==origin_][max_hdr].item() * 1.025
-                xmed = dfmetrics[dfmetrics.origin==origin_][med_hdr].item()
-                origin_str = "total {}".format(which_) if origin_==tot_origin else "{} {}".format(origin_, which_)
-                ax_.set_xlim([0, xmax])
-                ax_.axvline(xmed)
-                ax_.grid(True)
+                warnings.simplefilter("ignore")
 
-                ymedloc = max(rect.get_height() for rect in ax_.patches) * .30
+                for origin, ax_ii in zip(origin_order, grid.axes):
 
-                ax_.tick_params(
-                    axis="x", which="both", bottom=True, top=False, labelbottom=True
-                    )
-                ax_.set_xticklabels(
-                    ["{:,.0f}".format(jj) for jj in ax_.get_xticks()], size=7
-                    )
-                ax_.annotate(
-                    origin_str, xy=(.85, .925), xytext=(.65, .925), xycoords='axes fraction',
-                    textcoords='axes fraction', fontsize=8, rotation=0, color="#000000",
-                    )
-                ax_.annotate(
-                    "median = {:,.0f}".format(xmed), (xmed, ymedloc), xytext=(7.5, 0),
-                    textcoords="offset points", ha="center", va="bottom", fontsize=6,
-                    rotation=90, color="#4b0082"
-                    )
+                    xmin = np.max([0, dfmetrics[dfmetrics.origin==origin]["min_res"].item()])
+                    xmax = dfmetrics[dfmetrics.origin==origin]["max_res"].item() * 1.025
+                    xmed = dfmetrics[dfmetrics.origin==origin]["med_res"].item()
+                    origin_str = "{} reserve".format(origin)
+                    ax_ii.set_xlim([0, xmax])
+                    ax_ii.axvline(xmed, color="#E02C70", linestyle="--", linewidth=1.5)
+                    ax_ii.grid(False)
 
-                # Draw border around each facet.
-                for _, spine_ in ax_.spines.items():
-                    spine_.set(visible=True, color="#000000", linewidth=.50)
+                    ymedloc = max(rect.get_height() for rect in ax_ii.patches) * .30
+                    ax_ii.set_yticks([]); ax_ii.set_yticklabels([])
+                    ax_ii.tick_params(
+                        axis="x", which="both", bottom=True, top=False, labelbottom=True
+                        )
+                    ax_ii.set_xticklabels(
+                        ["{:,.0f}".format(jj) for jj in ax_ii.get_xticks()], size=7
+                        )
+                    ax_ii.annotate(
+                        origin_str, xy=(.65, .925), xycoords='axes fraction',
+                        textcoords='axes fraction', fontsize=8, rotation=0, color="#000000",
+                        )
+                    ax_ii.annotate(
+                        "median = {:,.0f}".format(xmed), (xmed, ymedloc), xytext=(7.5, 0),
+                        textcoords="offset points", ha="center", va="bottom", fontsize=7,
+                        rotation=90, color="#000000"
+                        )
 
-        plt.show()
+                    # Draw border around each facet.
+                    for _, spine in ax_ii.spines.items():
+                        spine.set(visible=True, color="#000000", linewidth=.50)
 
+            if exhibit_path is not None:
+                plt.savefig(exhibit_path)
+            else:
+                plt.show()
 
-    def _get_quantile(self, q, two_sided=True, interpolation="linear"):
-        """
-        Return percentile of bootstrapped reserve range distribution as 
-        specified by ``q``.
-
-        Parameters
-        ----------
-        q: float in range of [0,1] (or sequence of floats)
-            Percentile to compute, which must be between 0 and 1 inclusive.
-
-        two_sided: bool
-            Whether the two_sided interval should be returned. For example, if
-            ``two_sided==True`` and ``q=.95``, then the 2.5th and 97.5th
-            quantiles of the predictive reserve distribution will be returned
-            [(1 - .95) / 2, (1 + .95) / 2]. When False, only the specified
-            quantile(s) will be computed.
-
-        interpolation: {'linear', 'lower', 'higher', 'midpoint', 'nearest'}
-            This optional parameter specifies the interpolation method to use when
-            the desired quantile lies between two data points i < j:
-
-                - linear: i + (j - i) * fraction, where fraction is the fractional
-                part of the index surrounded by i and j.
-                - lower: i.
-                - higher: j.
-                - nearest: i or j, whichever is nearest.
-                - midpoint: (i + j) / 2.
-
-        Returns
-        -------
-        pd.DataFrame
-        """
-        # Initialize DataFrame for percentile data.
-        dfsims = self.sims_data[["origin", "dev", "reserve"]]
-        qtls, qtlhdrs = self._qtls_formatter(q=q, two_sided=two_sided)
-        dfpctl = dfsims.groupby(["origin", "dev"], as_index=False).aggregate(
-            "quantile", q=.50, interpolation=interpolation
-            ).rename({"reserve":"50%"}, axis=1
-            )
-
-        for ii, jj in zip(qtls, qtlhdrs):
-            df = dfsims.groupby(["origin", "dev"], as_index=False).aggregate(
-                "quantile", q=ii, interpolation=interpolation
-                ).rename({"reserve":jj}, axis=1
-                )
-            dfpctl = dfpctl.merge(
-                df, on=["origin", "dev"], how="left"
-                )
-
-        dfpctl = dfpctl.drop("50%", axis=1)
-
-        return(dfpctl.reset_index(drop=True).sort_index())
 

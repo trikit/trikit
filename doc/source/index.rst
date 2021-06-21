@@ -1,7 +1,12 @@
 
-===============================================================================
-``trikit`` --- A Pythonic Approach to Actuarial Reserving
-===============================================================================
+trikit
+======
+
+:Release: |release|
+:Date: |today|
+
+
+A Pythonic approach to actuarial reserving
 
 
 .. toctree::
@@ -16,4 +21,21 @@
    CAS Loss Reserving Database <lrdb>  
    Frequently Asked Questions <questions>
    
+
+Tutorial
+--------
+
+.. toctree::
+   :maxdepth: 1
+   :titlesonly:
    
+   tutorial/correlated
+   tutorial/smoothing
+   
+   
+   
+   
+   
+   
+   
+
