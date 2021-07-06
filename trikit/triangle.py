@@ -805,17 +805,125 @@ class CumTriangle(_BaseCumTriangle):
         return(IncrTriangle(df, origin="origin", dev="dev", value="value"))
 
 
-    def plot(self, color="#334488", axes_style="darkgrid", context="notebook",
-             col_wrap=4, **kwargs):
+
+    def plot(view="combined", **kwargs):
         """
-        Visualize triangle development patterns.
+        Plot cumulative loss development over a single set of axes or
+        as faceted-by-origin exhibit.
 
         Parameters
         ----------
-        facets: bool
-            If True, loss development plots for each origin year are faceted,
-            otherwise development patterns are plotted together on a single set
-            of axes.
+        view: {"combined", "faceted"}
+            Whether to display cumulative loss development in a single or faceted view.
+            Default value is ``"combined"``.
+
+        kwargs: dict
+
+            Options for combined view:
+
+                cmap: str
+                    Selected matplotlib color map. For additional options, visit:
+                    https://matplotlib.org/tutorials/colors/colormaps.html.
+
+            Options for faceted view:
+
+                color: str
+                    Color to plot loss development in each facet. Default value is "#334488".
+
+                axes_style: str
+                    Aesthetic style of plots. Defaults to "darkgrid". Other options
+                    include: {whitegrid, dark, white, ticks}.
+
+                context: str
+                    Set the plotting context parameters. According to the seaborn
+                    documentation, This affects things like the size of the labels,
+                    lines, and other elements of the plot, but not the overall style.
+                    Defaults to ``"notebook"``. Additional options include
+                    {"paper", "talk", "poster"}.
+        """
+        if view.startswith("f"):
+
+
+
+
+
+    def _combined_view(**kwargs):
+        """
+        Visualize triangle loss development using a combined view.
+
+        Parameters
+        ----------
+        cmap: str
+            Selected matplotlib color map. For additional options, visit:
+            https://matplotlib.org/tutorials/colors/colormaps.html.
+
+        kwargs: dict
+            Additional plot styling options.
+        """
+        import matplotlib as mpl
+        import matplotlib.pyplot as plt
+        import matplotlib.cm as cm
+
+        pltkwargs = dict(
+            marker="s", markersize=5, alpha=1, linestyle="-", linewidth=1.5,
+            figsize=(9, 6), cmap="hsv",
+            )
+
+        if kwargs:
+            pltkwargs.update(kwargs)
+
+        data = self.to_tbl()
+        grps = data.groupby("origin", as_index=False)
+        data_list = [grps.get_group(ii) for ii in self.origins]
+        xticks = np.sort(data.dev.unique())
+
+        # Get unique hex color for each unique origin period.
+        fcolors = cm.get_cmap(pltkwargs["cmap"], len(self.origins))
+        colors_rgba = [fcolors(ii) for ii in np.linspace(0, 1, len(self.origins))]
+        colors_hex = [mpl.colors.to_hex(ii, keep_alpha=False) for ii in colors_rgba]
+
+        fig, ax = plt.subplots(1, 1, figsize=pltkwargs["figsize"], tight_layout=True)
+
+        ax.set_title("Loss Development by Origin", fontsize=9, loc="left")
+
+        for hex_color, dforg in zip(colors_hex, data_list):
+
+            ax.plot(
+                dforg.dev.values, dforg.value.values / 1000, color=hex_color,
+                linewidth=pltkwargs["linewidth"], linestyle=pltkwargs["linestyle"],
+                label=dforg.origin.values[0], marker=pltkwargs["marker"],
+                markersize=pltkwargs["markersize"]
+                )
+
+        # Reduce thickness of plot outline.
+        for axis in ["top","bottom","left","right"]:
+            ax.spines[axis].set_linewidth(0.5)
+
+        ax.get_yaxis().set_major_formatter(mpl.ticker.FuncFormatter(lambda v, p: format(int(v), ",")))
+        ax.set_xlabel("dev", fontsize=8)
+        ax.set_ylabel("(000's)", fontsize=8)
+        ax.set_ylim(bottom=0)
+        ax.set_xlim(left=0)
+        ax.set_xticks(xticks)
+        ax.tick_params(axis="x", which="major", direction="in", labelsize=8)
+        ax.tick_params(axis="y", which="major", direction="in", labelsize=8)
+        ax.xaxis.set_ticks_position("none")
+        ax.yaxis.set_ticks_position("none")
+        ax.grid(True)
+        ax.legend(loc="lower right", fancybox=True, framealpha=1, fontsize="x-small")
+
+        plt.show()
+
+
+    def _faceted_view(self, color="#334488", axes_style="darkgrid", context="notebook",
+                      col_wrap=4, **kwargs):
+        """
+        Visualize triangle loss development using a faceted view.
+
+        Parameters
+        ----------
+        color: str
+            Color to plot loss development in each facet. Default value is "#334488".
 
         axes_style: str
             Aesthetic style of plots. Defaults to "darkgrid". Other options
@@ -826,11 +934,7 @@ class CumTriangle(_BaseCumTriangle):
             documentation, This affects things like the size of the labels,
             lines, and other elements of the plot, but not the overall style.
             Defaults to ``"notebook"``. Additional options include
-            {paper, talk, poster}.
-
-        palette: str
-            Selected matplotlib color map. For additional options, visit:
-            https://matplotlib.org/tutorials/colors/colormaps.html.
+            {"paper", "talk", "poster"}.
 
         kwargs: dict
             Additional plot styling options.
@@ -853,8 +957,6 @@ class CumTriangle(_BaseCumTriangle):
             if kwargs:
                 pltkwargs.update(kwargs)
 
-            titlestr = "Loss Development by Origin"
-
             g = sns.FacetGrid(
                 data, col="origin", col_wrap=col_wrap, margin_titles=False,
                 despine=True, sharex=True, sharey=True,
@@ -862,8 +964,8 @@ class CumTriangle(_BaseCumTriangle):
 
             g.map(plt.plot, "dev", "value", **pltkwargs)
             g.set_axis_labels("", "")
-            g.set(xticks=data.dev.unique().tolist())
             g.set_titles("{col_name}", size=9)
+            g.set(xticks=data.dev.unique().tolist())
             g.set_xticklabels(data.dev.unique().tolist(), size=8)
 
             for ii, _ in enumerate(g.axes):
@@ -1189,7 +1291,6 @@ def totri(data, tri_type="cum", data_format="incr", data_shape="tabular",
                 if triind_val==0:
                     if np.isnan(tri.iat[origin_indx, devp_indx]):
                         tri.iat[origin_indx, devp_indx] = tri.iat[origin_indx, (devp_indx - 1)]
-
     return(tri)
 
 

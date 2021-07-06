@@ -97,7 +97,7 @@ class BaseChainLadder:
                     # Check if all but last development period are identical.
                     if not self.tri.devp[:-1].size==sel.index.size:
                         raise ValueError(
-                            "sel has {} values, LDF overrides require at least {}.".format(
+                            "sel has {} values, LDF overrides require {}.".format(
                                 sel.size, self.tri.devp.size - 1
                                 )
                             )

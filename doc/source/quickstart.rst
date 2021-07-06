@@ -6,7 +6,7 @@ trikit Quickstart Guide
 =============================================================================
 
 :Author: James D. Triveri
-:Release: 0.2.9
+:Release: 0.2.11
 
 .. highlight:: python
 
@@ -80,10 +80,13 @@ Triangles are created by calling the ``totri`` function. Available arguments
 are:
 
 -  ``data``: The dataset to transform into a triangle instance. 
--  ``type_``: {"cum", "incr"} Specifies the type of triangle to return. 
--  ``data_format``: {"cum", "incr"} Specifies how losses are represented in ``data``.        
--  ``data_shape``: {"tabular", "triangle"} Specifies whether ``data`` represents
-   tabular loss data or data already structured as a loss triangle. 
+-  ``tri_type``: {"cum", "incr"} Specifies the type of triangle to return. 
+-  ``data_format``: {"cum", "incr"} Specifies how losses are represented with the
+   input dataset ``data``.
+-  ``data_shape``: {"tabular", "triangle"} Specifies whether input dataset ``data``
+   represents tabular loss data with columns "origin", "dev" and "value",
+   or data already structured as a loss triangle with columns associated with
+   development periods.
 -  ``origin``: The column name in ``data`` corresponding to accident year. 
    Ignored if ``data_shape="triangle"``.      
 -  ``dev``: The column name in ``data`` corresponding to development period. 
@@ -98,13 +101,13 @@ combinations of the arguments listed above.
 
 
 **Example 1:** Create a cumulative loss triangle from tabular incremental data 
------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
 
 Referring again to the RAA dataset, let's create a cumulative loss triangle. 
 We mentioned above that trikit sample datasets are Pandas DataFrames which 
 reflect incremental losses, so ``data_format="incr"`` and ``data_shape="tabular"``, 
-both of which are defaults. Also, the default for ``type_`` is ``"cum"``, so the 
-only argument we need to pass into ``totri`` is the dataset::
+both of which are defaults. Also, the default for ``tri_type`` is ``"cum"``, so the 
+only argument required to pass into ``totri`` is the input dataset ``data``::
 
 	In [1]: import pandas as pd
 	In [2]: from trikit import load, totri
@@ -135,9 +138,8 @@ from pandas.DataFrame::
 	Out[7]: True
 
 
-This means that all of the really useful functionality made available by 
-DataFrame objects can be applied to triangle objects. For example, to access
-the first column of ``tri``::
+This means that all of the functionality exposed by DataFrame objects gets inherited
+by triangle objects. For example, to access the first column of ``tri``::
 
 	In [8]: tri.loc[:,1]
 	Out[8]: 
@@ -156,7 +158,7 @@ the first column of ``tri``::
 
 
 Triangle objects offer a number of methods useful in Actuarial reserving 
-applications. To extract the latest diagonal, call ``tri.latest``::
+contexts. To extract the latest diagonal, call ``tri.latest``::
 
 	In [9]: tri.latest
 	Out[9]:
@@ -245,16 +247,16 @@ We can obtain a reference to an incremental version of ``tri`` by calling
 
 
 **Example 2:** Create an incremental loss triangle from tabular incremental data
------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------
 
 
-The call to ``totri`` is identical to Example #1, but we change ``type_`` from 
+The call to ``totri`` is identical to Example #1, but we change ``tri_type`` from 
 "cum" to "incr"::
 
 	In [1]: import pandas as pd
 	In [2]: from trikit import load, totri
 	In [3]: raa = load("raa")
-	In [4]: tri = totri(raa, type_="incr")
+	In [4]: tri = totri(raa, tri_type="incr")
 	In [5]: type(tri)
 	Out[5]: trikit.triangle.IncrTriangle
 	In [6]: tri
@@ -294,7 +296,7 @@ object by calling ``tri.to_cum``::
 
 
 **Example 3:** Create a cumulative loss triangle from data formatted as a triangle
------------------------------------------------------------------------------
+------------------------------------------------------------------------------------
 
 
 There may be situations in which data is already formatted as a triangle, 
@@ -335,14 +337,16 @@ date by development period. The exhibit can be obtained as follows::
 
 
 
-Reserve Estimates
+
+
+
+Reserve Estimators
 *****************************************************************************
 
-In trikit, chain ladder reserve estimates are obtained by calling a cumulative
-triangle's ``cl`` method. Let's refer to the CAS Loss Reserving Dastabase (lrdb)
-included with trikit, focusing on ``grcode=1767`` and ``lob="comauto"`` (``grcode`` 
-uniquely identifies each company in the database. To obtain a full list of grcodes 
-and associated companies, use ``trikit.get_lrdb_groups()``; to obtain a list 
+trikit includes a number of reserve estimators. Let's refer to the CAS Loss Reserving
+Dastabase (lrdb) included with trikit, focusing on ``grcode=1767`` and ``lob="comauto"``
+(``grcode`` uniquely identifies each company in the database. To obtain a full list of
+grcodes and associated companies, use ``trikit.get_lrdb_groups()``; to obtain a list
 of availavble lines of business (lobs), use ``trikit.get_lrdb_lobs()``)::
 
 	In [1]: from trikit import load, totri
@@ -361,7 +365,10 @@ of availavble lines of business (lobs), use ``trikit.get_lrdb_lobs()``)::
 	1996 142,301 326,584     nan     nan     nan       nan       nan       nan       nan       nan
 	1997 143,970     nan     nan     nan     nan       nan       nan       nan       nan       nan
 
-	In [5]: result = tri.cl()
+To obtain base chain ladder reserve point estimates, call the cumulative triangle's
+``base_cl`` method::
+
+	In [5]: result = tri.base_cl()
 	In [6]: result
 	Out[6]:
 		  maturity     cldf emergence     latest   ultimate    reserve
@@ -380,16 +387,17 @@ of availavble lines of business (lobs), use ``trikit.get_lrdb_lobs()``)::
 
 The result is of type ``chainladder.BaseChainLadderResult``.         
 
-When the ``range_method`` argument of ``cl`` is ``None``, two keyword arguments
-can be provided:
+``base_cl`` accepts two optional arguments:
 
 * ``tail``: The tail factor, which defaults to 1.0.  
-* ``sel``: Loss development factors, which defaults to "all-weighted".  
+* ``sel``: Loss development factors, which defaults to "all-weighted". ``sel``
+can be either a string corresponding to a pre-computed pattern available in
+``tri.a2a_avgs.index``, or a custom set of loss development factors as a numpy
+array or Pandas Series.
 
-
-Recall from Example #2 we demonstrated how to access a number of candidate loss 
-development patterns by calling ``tri.a2a_avgs``. Available options for ``sel`` can 
-be any value present in ``tri.a2a_avgs``'s index. To obtain a list of available 
+Example #2 demonstrated how to access a number of candidate loss development patterns
+by calling ``tri.a2a_avgs``. Available pre-computed options for ``sel`` can be any
+value present in ``tri.a2a_avgs``'s index. To obtain a list of available pre-computed
 loss development factors by name, run::
 
 	In [1]: tri.a2a_avgs.index.tolist()
@@ -405,7 +413,7 @@ If instead of ``all-weighted``, a 5-year geometric loss development pattern is
 preferred, along with a tail factor of 1.015, the call to ``cl`` would be modified 
 as follows::
 
-	In [1]: tri.cl(sel="geometric-5", tail=1.015)
+	In [1]: tri.base_cl(sel="geometric-5", tail=1.015)
 	Out[1]:
 		  maturity     cldf emergence     latest   ultimate    reserve
 	1988        10  1.01500   0.98522  1,752,096  1,778,377     26,281
@@ -421,11 +429,11 @@ as follows::
 	total               nan       nan 10,178,930 20,951,135 10,772,205
 
 
-It is also possible to provide a set of loss development factors independent of 
-the target dataset. If ``sel`` is a Series or numpy ndarray, a check will first 
-be made to ensure the LDFs have the requiste number of elements. The provided LDFs 
-can optionally include a tail factor: If the tail factor is omitted, the value 
-associated with the ``tail`` parameter will be appended to the provided LDF array. 
+If ``sel`` is a Series or numpy ndarray, a check will first be made to ensure the LDFs
+have the requiste number of elements. The provided LDFs should not include a tail factor.
+If a tail factor is included with the loss development factor array, it will be ignored.
+The value associated with the ``tail`` parameter will be appended to the provided LDF
+array.
 
 Next, reserves are estimated with the chain ladder along with an external set of LDFs 
 using the same loss reserve database subset (``grcode=1767`` and ``lob="commauto"``)::
@@ -433,8 +441,8 @@ using the same loss reserve database subset (``grcode=1767`` and ``lob="commauto
 	In [1]: df = load("lrdb", lob="commauto", grcode=1767)
 	In [2]: tri = totri(df)
 	In [3]: ldfs = np.asarray([2.75, 1.55, 1.50, 1.25, 1.15, 1.075, 1.03, 1.02, 1.01])
-	In [4]: result = tri.cl(sel=ldfs)
-	In [5]: result
+	In [4]: cl = tri.base_cl(sel=ldfs)
+	In [5]: cl
 		  maturity     cldf emergence     latest   ultimate   reserve
 	1988        10  1.00000   1.00000  1,752,096  1,752,096         0
 	1989         9  1.01000   0.99010  1,633,619  1,649,955    16,336
@@ -456,12 +464,11 @@ having ``n`` development periods, ``ValueError`` will be raised::
 	In [7]: result = tri.cl(sel=ldfs)
 	Traceback (most recent call last):
   	File "trikit\trikit\chainladder\__init__.py", line 117, in __call__
-	ValueError: sel has 7 values, LDF overrides require at least 9.
+	ValueError: sel has 7 values, LDF overrides require 9.
 
 
-
-A faceted plot by origin comparing combining actuals and estimates can 
-be obtained by calling the ``BaseChainLadderResult``'s plot method::
+A faceted plot by origin combining actuals and forcasts can be obtained by calling
+``BaseChainLadderResult``'s plot method::
 
 	In [1]: result = tri.cl(sel="geometric-5", tail=1.015)
 	In [2]: result.plot()
@@ -473,20 +480,27 @@ Quantifying Reserve Variability
 
 The base chain ladder method provides an estimate by origin and in total of 
 future claim liabilities, but offers no indication of the variability around 
-reserve point estimates. We can obtain quantiles of the predictive distribution 
-of reserve estimates by setting ``range_method="mack"`` or ``range_method="bootstrap"``. 
-  
-When ``range_method="mack"``, available optional parameters include:
+those point estimates. We can obtain quantiles of the predictive distribution
+of reserve estimates through various trikit estimators.
+
+
+Mack Chain Ladder
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The Mack Chain Ladder is a distribution free model which estimates the first
+two moments of the standard chain ladder forecasts. Within trikit, the Mack Chain
+Ladder is encapsulated within a cumulative triangle's ``mack_cl`` method.
+``mack_cl`` accepts a number of optional arguments:
 
 *  ``alpha``: Controls how loss development factors are computed. Can be 0, 1 or 2. 
-   When ``alpha=0``, LDFs are computed as the straight average of observed individual 
-   link ratios. When ``alpha=1``, the historical Chain Ladder age-to-age factors are
-   computed. When ``alpha=2``, a regression of $C_{k+1}$ on $C_{k}$ with 0 intercept
-   is performed. Default is 1. 
+   When ``alpha=0``, LDFs are computed as the straight average of observed individual link ratios.
+   When ``alpha=1``, the historical Chain Ladder age-to-age factors are computed.
+   When ``alpha=2``, a regression of $C_{k+1}$ on $C_{k}$ with 0 intercept is performed.
+   Default is 1.
 
-*  ``dist``: Either "norm" or "lognorm". Represents the distribution function selected 
-   to approximate the true distribution of reserves by origin period and in aggregate.
-   Setting ``dist="norm"`` specifies a normal distribution. ``dist="lognorm``
+*  ``dist``: Either "norm" or "lognorm". Represents the selected distribution to
+   approximate the true distribution of reserves by origin period and in aggregate.
+   Setting ``dist="norm"`` specifies a normal distribution. ``dist="lognorm"``
    assumes a log-normal distribution. Default is "lognorm".
 
 *  ``q``:  Quantile or sequence of quantiles to compute, which must be between 0 and 
@@ -498,16 +512,12 @@ When ``range_method="mack"``, available optional parameters include:
    When False, only the specified quantile(s) will be computed. Default value is False.  
 
 
-The suggested approach is to collect parameters into a dictionary, then include the 
-dictionary with the call to the triangle's ``cl`` method. We first demonstrate 
-quantifying reserve variability  with ``range_method="mack"`` with ``alpha=1`` using 
-the ta83 sample dataset::
+Using the ``ta83`` sample dataset, calling ``mack_cl`` with default arguments yields::
 
 	In [1]: from trikit import load, totri
 	In [2]: df = load("ta83")
 	In [3]: tri = totri(data=df)
-	In [4]: mclargs = {"alpha":1, "dist":"lognorm", "two_sided":False,}
-	In [5]: mcl = tri.cl(range_method="mack", **mclargs)
+	In [4]: mcl = tri.mack_cl()
 	In [6]: mcl
 	Out[6]:
 		  maturity     cldf emergence     latest   ultimate    reserve std_error      cv        75%        95%
@@ -551,24 +561,19 @@ Which generates:
 
 
 
+Bootstrap Chain Ladder
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-
-
-When ``range_method="bootstrap"``, available optional parameters include:
+The purpose of the Bootstrap Chain Ladder is to estimate the predicition error of
+the total reserve estimate and to approximate the predictive distribution.
+Within trikit, the Bootstrap Chain Ladder is encapsulated within a cumulative
+triangle's ``boot_cl`` method. ``boot_cl`` accepts a number of optional arguments:
 
 *  ``sims``: The number of bootstrap iterations to perform. Default value is 1000.   
 
 *  ``q``: Quantile or sequence of quantiles to compute, which must be between 0 
    and 1 inclusive. Default value is [.75, .95].   
-   
-*  ``neg_handler``: Determines how negative incremental triangle values should be 
-   handled. If set to "first", cells with value less than 0 will be set to 1. If 
-   set to "all", the minimum value in all triangle cells is identified ('MIN_CELL'). 
-   If MIN_CELL is less than or equal to 0, ``MIN_CELL + X = +1.0`` is solved for ``X``. 
-   ``X`` is then added to every other cell in the triangle, resulting in all 
-   incremental triangle cells having a value strictly greater than 0. Default
-   value is first.   
-   
+
 *  ``procdist``: The distribution used to incorporate process variance. Currently,
    this can only be set to "gamma". This may change in a future release.  
    
@@ -581,7 +586,7 @@ When ``range_method="bootstrap"``, available optional parameters include:
 *  ``parametric``:  If True, fit standardized residuals to a normal distribution via
    maximum likelihood, and sample from this parameterized distribution. Otherwise, 
    sample with replacement from the collection of standardized fitted triangle 
-   residuals. Default value to False.    
+   residuals. Default value is False.
    
 *  ``interpolation``: One of {'linear', 'lower', 'higher', 'midpoint', 'nearest'}.
    Default value is "linear". Refer to [``numpy.quantile``](https://numpy.org/devdocs/reference/generated/numpy.quantile.html) 
@@ -593,27 +598,17 @@ When ``range_method="bootstrap"``, available optional parameters include:
   np.random. Default value is None.     
 
 
-
-
-
-
-
-
-
-
-
-
-We now demonstrate how to apply the bootstrap chain ladder to the RAA dataset.
-The example that follows sets ``sims=2500``, ``two_sided=True`` and ``random_state=516``::
+We next demonstrate how to apply the Bootstrap Chain Ladder to the RAA dataset.
+The example sets ``sims=2500``, ``two_sided=True`` and ``random_state=516``
+(for reproducability)::
 
 	In [1]: from trikit import load, totri
 	In [2]: df = load("raa")
 	In [3]: tri = totri(data=df)
-	In [4]: bclargs = {"sims":2500, "two_sided":True, "random_state":516}
-	In [5]: bcl = tri.cl(range_method="bootstrap", **bclargs)
-	In [6]: bcl
+	In [4]: bcl = tri.boot_cl(sims=2500, two_sided=True, random_state=516)
+	In [5]: bcl
 	Out[1]:
-	origin maturity    cldf latest ultimate  cl_reserve  bcl_reserve  2.5% 12.5% 87.5%  97.5%
+	   origin maturity    cldf latest ultimate  cl_reserve  bcl_reserve  2.5% 12.5% 87.5%  97.5%
 	0    1981       10 1.00000  18834    18834     0.00000      0.00000     0     0     0      0
 	1    1982        9 1.00922  16704    16858   153.95392      4.94385  -691   -71   543   1610
 	2    1983        8 1.02631  23466    24083   617.37092    404.09648 -1028  -100  1727   3115
@@ -631,19 +626,16 @@ Here ``cl_reserve`` represents standard chain ladder reserve point estimates.
 ``bcl_reserve`` represents the 50th percentile of the predicitive distribution 
 of reserve estimates by origin and in total, and ``2.5%``, ``12.5%``, ``87.5%`` and ``97.5%``
 represent various percentiles of the predictive distribution of reserve estimates. 
-The lower percentiles,  ``2.5%`` and ``12.5%`` are included because ``two_sided=True``. 
-If ``two_sided=False``, they would not be included, and the included percentiles 
-would be ``75%`` and ``95%``.
+The lower percentiles,  ``2.5%`` and ``12.5%`` are included since ``two_sided=True``.
 
 
 The ``BoostrapChainLadderResult`` object includes two exhibits: The first 
-is similar to ``BaseChainLadderResult``'s ``plot``, but includes the specified
-upper and lower bounds of the specified percentile of the predictive distribution. 
-To obtain the faceted plot showing the 5th and 95th percentiles, run::
+is similar to ``BaseChainLadderResult``'s ``plot``, but includes the upper and lower
+bounds of the specified percentile of the predictive distribution. To obtain the faceted
+plot showing the 5th and 95th percentiles, run::
 
-	In [1]: bclargs = {"sims":2500, "two_sided":True, "random_state":516}
-	In [2]: bcl = tri.cl(range_method="bootstrap", **bclargs)
-	In [3]: bcl.plot(q=.90)
+	In [2]: bcl = tri.boot_cl(sims=2500, two_sided=True, random_state=516)
+	In [2]: bcl.plot(q=.90)
 
 
 
@@ -659,11 +651,9 @@ Refer to the docstring for more information.
 
 
 
-Looking Ahead
-*****************************************************************************
-In future releases, trikit will include additional methods to quantify reserve 
-variability, including the Mack method and various Markov Chain Monte Carlo 
-approaches.            
+
+Contact
+-------------------------------------------------------------------------------
 
 Please contact james.triveri@gmail.com with suggestions or feature requests.
 

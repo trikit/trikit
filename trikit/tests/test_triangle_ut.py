@@ -18,7 +18,7 @@ import trikit
 class IncrTriangleTestCase(unittest.TestCase):
     def setUp(self):
         data = trikit.load(dataset="raa")
-        self.tri = trikit.totri(data=data, type_="incremental")
+        self.tri = trikit.totri(data=data, tri_type="incremental")
         self.latest_ref = pd.DataFrame({
             "origin":list(range(1981, 1991, 1)), "maturity":list(range(10, 0, -1)),
             "dev":list(range(10, 0, -1)),
@@ -133,7 +133,7 @@ class CumTriangleTestCase(unittest.TestCase):
     def setUp(self):
 
         raa  = trikit.load(dataset="raa")
-        self.tri = trikit.totri(raa, type_="cumulative")
+        self.tri = trikit.totri(raa, tri_type="cumulative")
 
         self.latest_ref = pd.DataFrame({
             "origin":list(range(1981, 1991, 1)), "maturity":list(range(10, 0, -1)),
@@ -163,7 +163,7 @@ class CumTriangleTestCase(unittest.TestCase):
             5 :[np.NaN, 107, 125, 101, np.NaN, np.NaN, np.NaN, np.NaN,],
             6 :[77    , 67, 90, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN,],
             7 :[np.NaN, 51, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN,],
-            8 :[np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN,],
+            8 :[1     , np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN,],
             }, index=range(1, 9)
             )
 
@@ -257,7 +257,7 @@ class ToTriTestCase(unittest.TestCase):
 
     def test_cumtab_2_incrtri(self):
         # Convert cumulative tabular data to incr triangle.
-        tri = trikit.totri(self.cumtab, type_="incr", data_format="cum", data_shape="tabular")
+        tri = trikit.totri(self.cumtab, tri_type="incr", data_format="cum", data_shape="tabular")
         self.assertTrue(
             isinstance(tri, trikit.triangle.IncrTriangle),
             "Error converting cum tabular data to incr tri."
@@ -265,7 +265,7 @@ class ToTriTestCase(unittest.TestCase):
 
     def test_cumtab_2_cumtri(self):
         # Convert cumulative tabular data to cum triangle.
-        tri = trikit.totri(self.cumtab, type_="cum", data_format="cum", data_shape="tabular")
+        tri = trikit.totri(self.cumtab, tri_type="cum", data_format="cum", data_shape="tabular")
         self.assertTrue(
             isinstance(tri, trikit.triangle.CumTriangle),
             "Error converting cum tabular data to cum tri."
@@ -273,7 +273,7 @@ class ToTriTestCase(unittest.TestCase):
 
     def test_incrtab_2_incrtri(self):
         # Convert incremental tabular data to incr triangle.
-        tri = trikit.totri(self.incrtab, type_="incr", data_format="incr", data_shape="tabular")
+        tri = trikit.totri(self.incrtab, tri_type="incr", data_format="incr", data_shape="tabular")
         self.assertTrue(
             isinstance(tri, trikit.triangle.IncrTriangle),
             "Error converting incr tabular data to incr tri."
@@ -281,7 +281,7 @@ class ToTriTestCase(unittest.TestCase):
 
     def test_incrtab_2_cumtri(self):
         # Convert incremental tabular data to cum triangle.
-        tri = trikit.totri(self.incrtab, type_="cum", data_format="incr", data_shape="tabular")
+        tri = trikit.totri(self.incrtab, tri_type="cum", data_format="incr", data_shape="tabular")
         self.assertTrue(
             isinstance(tri, trikit.triangle.CumTriangle),
             "Error converting incr tabular data to cum tri."
@@ -289,7 +289,7 @@ class ToTriTestCase(unittest.TestCase):
 
     def test_incrtri_2_incrtri(self):
         # Convert incremental DataFrame tri to incr triangle.
-        tri = trikit.totri(self.incrtri, type_="incr", data_format="incr", data_shape="triangle")
+        tri = trikit.totri(self.incrtri, tri_type="incr", data_format="incr", data_shape="triangle")
         self.assertTrue(
             isinstance(tri, trikit.triangle.IncrTriangle),
             "Error converting incr tri data to incr tri."
@@ -297,7 +297,7 @@ class ToTriTestCase(unittest.TestCase):
 
     def test_incrtri_2_cumtri(self):
         # Convert incremental DataFrame tri to cum triangle.
-        tri = trikit.totri(self.incrtri, type_="cum", data_format="incr", data_shape="triangle")
+        tri = trikit.totri(self.incrtri, tri_type="cum", data_format="incr", data_shape="triangle")
         self.assertTrue(
             isinstance(tri, trikit.triangle.CumTriangle),
             "Error converting incr tri data to cum tri."
@@ -305,7 +305,7 @@ class ToTriTestCase(unittest.TestCase):
 
     def test_cumtri_2_incrtri(self):
         # Convert cumulative DataFrame tri to incr triangle.
-        tri = trikit.totri(self.cumtri, type_="incr", data_format="cum", data_shape="triangle")
+        tri = trikit.totri(self.cumtri, tri_type="incr", data_format="cum", data_shape="triangle")
         self.assertTrue(
             isinstance(tri, trikit.triangle.IncrTriangle),
             "Error converting cum tri data to incr tri."
@@ -313,7 +313,7 @@ class ToTriTestCase(unittest.TestCase):
 
     def test_cumtri_2_cumtri(self):
         # Convert cumulative DataFrame tri to cum triangle.
-        tri = trikit.totri(self.cumtri, type_="cum", data_format="cum", data_shape="triangle")
+        tri = trikit.totri(self.cumtri, tri_type="cum", data_format="cum", data_shape="triangle")
         self.assertTrue(
             isinstance(tri, trikit.triangle.CumTriangle),
             "Error converting cumtri data to cumtri."
@@ -325,7 +325,7 @@ class ToTriTestCase(unittest.TestCase):
             {"origin":"ay", "dev":"devp", "value":"loss_amt"}, axis=1
             )
         tri = trikit.totri(
-            dfrnm, type_="cum", data_format="incr", data_shape="tabular",
+            dfrnm, tri_type="cum", data_format="incr", data_shape="tabular",
             origin="ay", dev="devp", value="loss_amt"
             )
         self.assertTrue(
