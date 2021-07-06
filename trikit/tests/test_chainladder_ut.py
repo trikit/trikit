@@ -30,9 +30,10 @@ import trikit
 class BaseChainLadderTestCase(unittest.TestCase):
     def setUp(self):
         data = trikit.load(dataset="raa")
-        tri = trikit.totri(data, type_="cum", data_shape="tabular", data_format="incr")
-        cl = trikit.chainladder.BaseChainLadder(cumtri=tri)
-        r_cl = cl()
+        tri = trikit.totri(data, tri_type="cum", data_shape="tabular", data_format="incr")
+        # cl = trikit.estimators.chainladder.BaseChainLadder(cumtri=tri)
+        # r_cl = cl()
+        r_cl = tri.base_cl()
 
         dactual_raa = {
             "ldfs_sum"     :13.28018030198903,
@@ -95,7 +96,7 @@ class MackChainLadderTestCase(unittest.TestCase):
         df = trikit.load(dataset="ta83")
         df["dev"] = df["dev"] * 12
         df["origin"] = df["origin"] + 2000
-        tri = trikit.totri(df, type_="cum", data_shape="tabular", data_format="incr")
+        tri = trikit.totri(df, tri_type="cum", data_shape="tabular", data_format="incr")
         mcl = trikit.chainladder.mack.MackChainLadder(cumtri=tri)
         r_lognorm = mcl(alpha=1, dist="lognorm")
         r_norm = mcl(alpha=1, dist="norm")
@@ -262,7 +263,7 @@ class MackChainLadderTestCase(unittest.TestCase):
 class BootstrapChainLadderTestCase(unittest.TestCase):
     def setUp(self):
         df = trikit.load(dataset="raa")
-        tri = trikit.totri(df, type_="cum", data_shape="tabular", data_format="incr")
+        tri = trikit.totri(df, tri_type="cum", data_shape="tabular", data_format="incr")
         bcl = trikit.chainladder.bootstrap.BootstrapChainLadder(tri)
         r_bcl = bcl()
 

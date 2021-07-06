@@ -73,15 +73,13 @@ class BaseChainLadder:
 
         Parameters
         ----------
-        sel: str, pd.Series or array_like
-            Either the ldf average description to select from
-            ``self.tri.a2a_avgs``, or a pd.Series or array_like of LDFs to use
-            in preference to LDFs computed from the triangle directly. For a
-            triangle with n development periods, if ``sel`` is array_like and
-            ``len(sel)==n``, the last entry is assumed to be the tail factor.
-            If ``len(sel)==n-1``, then the ``tail`` parameter will be appended
-            to the provided collection of loss development factors. Defaults
-            to "all-weighted".
+       sel: str, pd.Series or array_like
+            If ``sel`` is a string, the specified loss development patterns will be
+            the associated entry from ``self.tri.a2a_avgs``.
+            If ``sel`` is array_like, values will be used in place of loss development
+            factors computed from the traingle directly. For a triangle with n development
+            periods, ``sel`` should be array_like with length n - 1.
+            Defaults to "all-weighted".
 
         tail: float
             Tail factor. Defaults to 1.0.

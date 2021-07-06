@@ -10,9 +10,10 @@ import itertools
 import numpy as np
 import pandas as pd
 from scipy import stats
-from .chainladder import BaseChainLadder
-from .chainladder.bootstrap import BootstrapChainLadder
-from .chainladder.mack import MackChainLadder
+from .estimators.chainladder import BaseChainLadder
+from .estimators.chainladder.bootstrap import BootstrapChainLadder
+from .estimators.chainladder.mack import MackChainLadder
+from .estimators.glm import GLM
 
 
 
@@ -279,13 +280,13 @@ class _BaseTriangle(pd.DataFrame):
         return(self._maturity.sort_index())
 
 
-    def to_tbl(self, drop_nas=True):
+    def to_tbl(self, dropna=True):
         """
         Transform triangle instance into a tabular representation.
 
         Parameters
         ----------
-        drop_nas: bool
+        dropna: bool
             Should records with NA values be dropped? Default value is True.
 
         Returns
@@ -294,7 +295,7 @@ class _BaseTriangle(pd.DataFrame):
         """
         tri = self.reset_index(drop=False).rename({"index":"origin"}, axis=1)
         df = pd.melt(tri, id_vars=[self.origin], var_name=self.dev, value_name=self.value)
-        if drop_nas:
+        if dropna:
             df = df[~np.isnan(df[self.value])]
         df = df.astype({self.origin:np.int_, self.dev:np.int_, self.value:np.float_})
         df = df[[self.origin, self.dev, self.value]].sort_values(by=[self.origin, self.dev])
@@ -338,7 +339,7 @@ class _BaseIncrTriangle(_BaseTriangle):
             The fieldname in ``data`` representing loss amounts.
         """
         # Replace NaN values with 1.0 in value column.
-        data.loc[np.where(np.isnan(data.value.values))[0], "value"] = 1.
+        # data.loc[np.where(np.isnan(data.value.values))[0], "value"] = 1.
         super().__init__(data, origin=origin, dev=dev, value=value)
 
 
@@ -841,219 +842,301 @@ class CumTriangle(_BaseCumTriangle):
         plt.show()
 
 
-
-    def cl(self, range_method=None, **kwargs):
+    def base_cl(self, sel="all-weighted", tail=1.0):
         """
-        Produce chain ladder estimates based on cumulative triangle instance.
+        Produce chain ladder reserve estimates based on cumulative triangle instance.
 
         Parameters
         ----------
-        range_method: {"bootstrap"}
-            Specifies the method to use to quantify ultimate/reserve
-            variability. When ``range_method=None``, reduces to the standard
-            chain ladder technique providing reserve point estimates by
-            origin. Defaults to None.
+       sel: str, pd.Series or array_like
+            If ``sel`` is a string, the specified loss development patterns will be
+            the associated entry from ``self.tri.a2a_avgs``.
+            If ``sel`` is array_like, values will be used in place of loss development
+            factors computed from the traingle directly. For a triangle with n development
+            periods, ``sel`` should be array_like with length n - 1.
+            Defaults to "all-weighted".
 
-        kwargs: dict
-            For each value of ``range_method``, there are a number of optional
-            parameters that can be used to override the default behavior of
-            the reserve estimator. If a keyword argument is provided that
-            is not valid within the context of the given chain ladder variant,
-            the argument will be ignored and a warning will be generated.
-            What follows are valid optional keyword parameters for different
-            values of ``range_method``:
+        tail: float
+            Chain ladder tail factor. Defaults to 1.0.
 
-            * ``range_method=None`` (standard chain ladder):
-
-                - ``sel``: The ldf average to select from ``triangle.CumTriangle.a2a_avgs``.
-                  Defaults to ``"all-weighted"``.
-
-                - ``tail``: Tail factor. Defaults to 1.0.
-
-            * ``range_method="mack"`` (MackChainLadder):
-
-                - alpha: {0, 1, 2}
-                    * ``0``: Straight average of observed individual link ratios.
-                    * ``1``: Historical Chain Ladder age-to-age factors.
-                    * ``2``: Regression of $C_{k+1}$ on $C_{k}$ with 0 intercept.
-
-                - tail: float
-                    Tail factor. Currently not implemented. Will be available in
-                    a future release.
-
-                - dist: {"norm", "lognorm"}
-                    The distribution function chosen to approximate the true
-                    distribution of reserves by origin period. In Mack[1], if the
-                    volume of outstanding claims is large enough, due to the central
-                    limit theorem, we can assume that the distribution function is
-                    Normal with expected value equal to the point estimate given by
-                    $R_{i}$ and standard deviation equal to the standard error of
-                    $R_{i}$, $s.e.(R_{i})$. It is also noted that if the true
-                    distribution of reserves is skewed, the Normal may not serve as a
-                    good approximation, and it may be preferrable to opt for
-                    the Log-normal distribution.
-
-                    If ``dist="norm"``, the Normal distribution will be used to
-                    estimate reserve quantiles.
-                    If ``dist="lognorm"``, the Log-normal distribution will be used
-                    to estimate reserve quantiles.
-
-                - q: array_like of float
-                    Quantile or sequence of quantiles to compute, which must be
-                    between 0 and 1 inclusive.
-
-                - two_sided: bool
-                    Whether the two_sided interval should be included in summary
-                    output. For example, if ``two_sided==True`` and ``q=.95``, then
-                    the 2.5th and 97.5th quantiles of the estimated reserve
-                    distribution will be returned [(1 - .95) / 2, (1 + .95) / 2]. When
-                    False, only the specified quantile(s) will be computed. Defaults
-                    to False.
-
-            * ``range_method="bootstrap"`` (BoostrapChainLadder):
-
-                - ``sims``: The number of bootstrap resamplings to perform.
-                  Defaults to 1000.
-
-                - ``q``: Determines which percentiles of the reserve distribution
-                  to compute. Defaults to [.75, .95].
-
-                - ``neg_handler``: Dictates how negative triangle values should
-                  be handled. See documentation for ``_BoostrapChainLadder``
-                  for more information. Defaults to 1.
-
-                - ``procdist``: The distribution used to incorporate process
-                  variance. At present , the only option is "gamma", but
-                  this wqill change in a future release.
-
-                - ``parametric``: If True, fit standardized residuals to a
-                  normal distribution then sample from this parameterized
-                  distribution. Otherwise, sample with replacement from the
-                  collection of standardized residuals. Defaults to False.
-
-                - ``symmetric``: Whether the symmetric interval of given
-                  ``q``('s) should be included in summary output.
-
-                - ``interpolation``: See ``numpy.quantile`` for more information.
-                  Defaults to "linear".
-
-                - ``random_state``: Set random seed for reproducibility.
-                  Defaults to None.
-
-        Returns
-        -------
-        *ChainLadderResult
+        custom_ldfs: array_like
+            An alternative set of loss development factors derived outside
+            of available patterns in ``triangle.CumTriangle.a2a_avgs``.
+            If ``custom_ldfs`` is specified, ``sel`` is ignored. ``custom_ldfs``
+            should be array_like with length (tri.devp.size - 1). Defaults to None.
 
 
         Examples
         --------
-        In the following examples we refer to the raa sample dataset. We read
-        in the dataset and create a cumulative triangle instance, identified as
-        ``tri``::
+        Generate chain ladder reserve point estimates using the raa dataset.
+        ``tri`` is first created using the raa dataset::
 
             In [1]: import trikit
             In [2]: raa = trikit.load("raa")
             In [3]: tri = trikit.totri(raa)
+            In [4]: cl = tri.base_cl()
 
 
-        1. Perform standard chain ladder, accepting defaults for ``sel`` and ``tail``::
+        Perform standard chain ladder, updating values for ``sel`` and ``tail``::
 
-            In [1]: cl0 = tri.cl()
-
-
-        2. Perform standard chain ladder, updating values for ``sel`` and ``tail``::
-
-            In [1]: kwds = dict(sel="medial-5", tail=1.015)
-            In [2]: cl1 = tri.cl(**kwds)
+            In [5]: cl = tri.base_cl(sel="medial-5", tail=1.015)
 
 
-        3. Perform boostrap chain ladder, overriding ``sims``, ``q`` and ``symmetric``::
+        Provide custom collection of loss development factors::
 
-            In [1]: kwds = dict(sims=2500, q=[.90, .99], symmetric=True)
-            In [2]: bcl = tri.cl(range_method="bootstrap", **kwds)
+            In [6]: ldfs = [5., 2.5, 1.25, 1.15, 1.10, 1.05, 1.025, 1.01, 1.005,]
+            In [7]: cl = tri.base_cl(sel=ldfs, tail=1.001)
         """
-        kwds = {} if kwargs is None else kwargs
-
-        if range_method is None:
-            result = BaseChainLadder(self).__call__(**kwds)
-
-        elif range_method.lower().strip().startswith("boot"):
-            result = BootstrapChainLadder(self).__call__(**kwds)
-
-        elif range_method.lower().strip().startswith("mack"):
-            result = MackChainLadder(self).__call__(**kwds)
-
-        elif range_method.lower().startswith("mcmc"):
-            raise NotImplementedError("range_method='mcmc' not yet implemented.")
-
-        else:
-            raise ValueError("Invalid range_method specification: {}".format(range_method))
-
-        return(result)
+        kwds = dict(sel=sel, tail=tail)
+        return(BaseChainLadder(self).__call__(**kwds))
 
 
+    def boot_cl(self, sims=1000, q=[.75, .95], procdist="gamma", parametric=False,
+                two_sided=False, interpolation="linear", random_state=None):
+        """
+        Estimate reserves and the distribution of reserve outcomes by origin and in
+        total via bootstrap resampling. The estimated distribution of losses assumes
+        development is completen by the final development period in order to avoid the
+        complication of modeling a tail factor.
+
+        Parameters
+        ----------
+        sims: int
+            The number of bootstrap simulations to perform. Defaults to 1000.
+
+        q: array_like of float or float
+            Quantile or sequence of quantiles to compute, which must be
+            between 0 and 1 inclusive.
+
+        procdist: str
+            The distribution used to incorporate process variance. Currently,
+            this can only be set to "gamma".
+
+        two_sided: bool
+            Whether to include the two_sided interval in summary output. For example,
+            if ``two_sided==True`` and ``q=.95``, the 2.5th and 97.5th quantiles of the
+            bootstrapped reserve  distribution will be returned [(1 - .95) / 2, (1 + .95) / 2].
+            When False, only the specified quantile(s) will be computed. Defaults
+            to False.
+
+        parametric: bool
+            If True, fit standardized residuals to a normal distribution via maximum likelihood,
+            and sample from the resulting distribution. Otherwise, values are sampled with
+            replacement from the collection of standardized residuals. Defaults to False.
+
+        interpolation: {'linear', 'lower', 'higher', 'midpoint', 'nearest'}
+            This optional parameter specifies the interpolation method to use
+            when the desired quantile lies between two data points i < j:
+
+                - linear: i + (j - i) * fraction, where fraction is the fractional
+                part of the index surrounded by i and j.
+                - lower: i.
+                - higher: j.
+                - nearest: i or j, whichever is nearest.
+                - midpoint: (i + j) / 2.
+
+        random_state: np.random.RandomState
+            If int, random_state is the seed used by the random number
+            generator; If RandomState instance, random_state is the random
+            number generator; If None, the random number generator is the
+            RandomState instance used by np.random.
+
+        Returns
+        -------
+        BootstrapChainLadderResult
 
 
+        Examples
+        --------
+        Generate boostrap chain ladder reserve estimates. ``tri`` is first created
+        using the raa dataset::
+
+            In [1]: import trikit
+            In [2]: raa = trikit.load("raa")
+            In [3]: tri = trikit.totri(raa)
+            In [4]: cl = tri.boot_cl()
+        """
+        kwds =  dict(
+            sims=sims, q=q, procdist=procdist, parametric=parametric, two_sided=two_sided,
+            interpolation=interpolation, random_state=random_state
+            )
+        return(BootstrapChainLadder(self).__call__(**kwds))
+
+
+
+    def mack_cl(self, alpha=1, tail=1.0, dist="lognorm", q=[.75, .95], two_sided=False):
+        """
+        Return a summary of ultimate and reserve estimates resulting from
+        the application of the development technique over self.tri. Summary
+        DataFrame is comprised of origin year, maturity of origin year, loss
+        amount at latest evaluation, cumulative loss development factors,
+        projected ultimates and the reserve estimate, by origin year and in
+        aggregate.
+
+        ### TODO ###
+        Allow for tail factor other than 1.0.
+
+        Parameters
+        ----------
+        alpha: {0, 1, 2}
+            * ``0``: Straight average of observed individual link ratios.
+            * ``1``: Historical Chain Ladder age-to-age factors.
+            * ``2``: Regression of $C_{k+1}$ on $C_{k}$ with 0 intercept.
+
+        tail: float
+            Tail factor. Currently not implemented. Will be available in
+            a future release.
+
+        dist: {"norm", "lognorm"}
+            The distribution function chosen to approximate the true
+            distribution of reserves by origin period. In Mack[1], if the
+            volume of outstanding claims is large enough, due to the central
+            limit theorem, we can assume that the distribution function is
+            Normal with expected value equal to the point estimate given by
+            $R_{i}$ and standard deviation equal to the standard error of
+            $R_{i}$, $s.e.(R_{i})$. It is also noted that if the true
+            distribution of reserves is skewed, the Normal may not serve as a
+            good approximation, and it may be preferrable to opt for
+            the Log-normal distribution.
+
+            * If ``dist="norm"``, the Normal distribution will be used to
+            estimate reserve quantiles.
+            * If ``dist="lognorm"``, the Log-normal distribution will be used
+            to estimate reserve quantiles.
+
+        q: array_like of float
+            Quantile or sequence of quantiles to compute, which must be
+            between 0 and 1 inclusive.
+
+        two_sided: bool
+            Whether the two_sided interval should be included in summary
+            output. For example, if ``two_sided==True`` and ``q=.95``, then
+            the 2.5th and 97.5th quantiles of the estimated reserve
+            distribution will be returned [(1 - .95) / 2, (1 + .95) / 2]. When
+            False, only the specified quantile(s) will be computed. Defaults
+            to False.
+
+        Returns
+        -------
+        MackChainLadderResult
+        """
+        kwds = dict(alpha=alpha, tail=tail, dist=dist, q=q, two_sided=two_sided)
+        return(MackChainLadder(self).__call__(**kwds))
+
+
+    def mcmc_cl(self):
+        """
+        Markov Chain Monte Carlo reserve estimator.
+        """
+        raise NotImplementedError("mcmc_cl not yet implemented.")
+
+
+
+
+# def totri(data, tri_type="cum", data_format="incr", data_shape="tabular",
+#           origin="origin", dev="dev", value="value"):
+#     """
+#     Create a triangle object based on ``data``. ``tri_type`` can be one of
+#     "incr" or "cum", determining whether the resulting triangle represents
+#     incremental or cumulative losses/counts.
+#     If ``data_shape="triangle"``, ``data`` is assumed to be structured as a
+#     runoff triangle, indexed by origin with columns representing development
+#     periods. If ``data_shape="tabular"``, data is assumed to be tabular with at
+#     minimum columns ``origin``, ``dev`` and ``value``, which represent origin
+#     year, development period and metric of interest respectively.
+#     ``data_format`` specifies whether the metric of interest are cumulative
+#     or incremental in nature. Default value is "incr".
+#
+#     Parameters
+#     ----------
+#     data: pd.DataFrame
+#         The dataset to be coerced into a triangle instance. ``data`` can be
+#         tabular loss data, or a dataset (pandas DataFrame) formatted as a
+#         triangle, but not typed as such. In the latter case,
+#         ``data_shape`` should be set to "triangle".
+#
+#     tri_type: {"cum", "incr"}
+#         Either "cum" or "incr". Specifies how the measure of interest (losses,
+#         counts, alae, etc.) should be represented in the returned triangle
+#         instance.
+#
+#     data_format: {"cum", "incr"}
+#         Specifies the representation of the metric of interest in ``data``.
+#         Default value is "incr".
+#
+#     data_shape:{"tabular", "triangle"}
+#         Indicates whether ``data`` is formatted as a triangle instead of
+#         tabular loss data. In some workflows, triangles may have already
+#         been created, and are available in external files. In such cases, the
+#         triangle formatted data is read into a DataFrame, then coerced
+#         into the desired triangle representation directly. Default value is
+#         False.
+#
+#     origin: str
+#         The field in ``data`` representing origin year. When ``data_shape="triangle"``,
+#         ``origin`` is ignored. Default value is "origin".
+#
+#     dev: str
+#         The field in ``data`` representing development period. When
+#         ``data_shape="triangle"``,  ``dev`` is ignored. Default value is
+#         "dev".
+#
+#     value: str
+#         The field in ``data`` representing the metric of interest (losses, counts, etc.).
+#         When ``data_shape="triangle"``, ``value`` is ignored. Default value is "value".
+#
+#     Returns
+#     -------
+#     {trikit.triangle.IncrTriangle, trikit.triangle.CumTriangle}
+#     """
+#     if data_shape=="triangle":
+#
+#         if data_format.lower().strip().startswith("i"):
+#             # data is in incremental triangle format (but not typed as such).
+#             inctri = data.reset_index(drop=False).rename({"index":"origin"}, axis=1)
+#             df = pd.melt(inctri, id_vars=["origin"], var_name="dev", value_name="value")
+#
+#         elif data_format.lower().strip().startswith("c"):
+#             # data is in cumulative triangle format (but not typed as such).
+#             incrtri = data.diff(axis=1)
+#             incrtri.iloc[:,0] = data.iloc[:, 0]
+#             incrtri = incrtri.reset_index(drop=False).rename({"index":"origin"}, axis=1)
+#             df = pd.melt(incrtri, id_vars=["origin"], var_name="dev", value_name="value")
+#             df = df[~np.isnan(df["value"])].astype({"origin":np.int, "dev":np.int, "value":np.float})
+#
+#         else:
+#             raise NameError("Invalid data_format argument: `{}`.".format(tri_type))
+#
+#         df = df[~np.isnan(df["value"])].astype({"origin":np.int, "dev":np.int, "value":np.float})
+#         df = df.sort_values(by=["origin", "dev"]).reset_index(drop=True)
+#
+#     elif data_shape=="tabular":
+#
+#         if data_format.lower().strip().startswith("c"):
+#             df = data.rename({value:"cum"}, axis=1)
+#             df["incr"] = df.groupby([origin])["cum"].diff(periods=1)
+#             df["incr"] = np.where(np.isnan(df["incr"]), df["cum"], df["incr"])
+#             df = df.drop("cum", axis=1).rename({"incr":value}, axis=1)
+#         else:
+#             df = data
+#     else:
+#         raise NameError("Invalid data_shape argument: `{}`.".format(data_shape))
+#
+#     df = df.reset_index(drop=True)
+#
+#     # Transform df to triangle instance.
+#     if tri_type.lower().startswith("i"):
+#         tri = IncrTriangle(data=df, origin=origin, dev=dev, value=value)
+#
+#     elif tri_type.lower().startswith("c"):
+#         tri = CumTriangle(data=df, origin=origin, dev=dev, value=value)
+#
+#     return(tri)
 
 
 def totri(data, type_="cum", data_format="incr", data_shape="tabular",
           origin="origin", dev="dev", value="value"):
-    """
-    Create a triangle object based on ``data``. ``type_`` can be one of
-    "incr" or "cum", determining whether the resulting triangle represents
-    incremental or cumulative losses/counts.
-    If ``data_shape="triangle"``, ``data`` is assumed to be structured as a
-    runoff triangle, indexed by origin with columns representing development
-    periods. If ``data_shape="tabular"``, data is assumed to be tabular with at
-    minimum columns ``origin``, ``dev`` and ``value``, which represent origin
-    year, development period and metric of interest respectively.
-    ``data_format`` specifies whether the metric of interest are cumulative
-    or incremental in nature. Default value is "incr".
 
-    Parameters
-    ----------
-    data: pd.DataFrame
-        The dataset to be coerced into a triangle instance. ``data`` can be
-        tabular loss data, or a dataset (pandas DataFrame) formatted as a
-        triangle, but not typed as such. In the latter case,
-        ``data_shape`` should be set to "triangle".
-
-    type_: {"cum", "incr"}
-        Either "cum" or "incr". Specifies how the metric of interest (losses,
-        counts, alae, etc.) are to be represented in the returned triangle
-        instance.
-        ``type_`` can also be specified as "i" for "incremental" or "c" for
-        "cumulative". Default value is "cum".
-
-    data_format: {"cum", "incr"}
-        Specifies the representation of the metric of interest in ``data``.
-        Default value is "incr".
-
-    data_shape:{"tabular", "triangle"}
-        Indicates whether ``data`` is formatted as a triangle instead of
-        tabular loss data. In some workflows, triangles may have already
-        been created, and are available in auxillary files. In such cases, the
-        triangle formatted data is read into a DataFrame, then coerced
-        into the desired triangle representation directly. Default value is
-        False.
-
-    origin: str
-        The field in ``data`` representing origin year. When ``data_shape="triangle"``,
-        ``origin`` is ignored. Default value is "origin".
-
-    dev: str
-        The field in ``data`` representing development period. When
-        ``data_shape="triangle"``,  ``dev`` is ignored. Default value is
-        "dev".
-
-    value: str
-        The field in ``data`` representing the metric of interest (losses, counts, etc.).
-        When ``data_shape="triangle"``, ``value`` is ignored. Default value is "value".
-
-    Returns
-    -------
-    {trikit.triangle.IncrTriangle, trikit.triangle.CumTriangle}
-    """
     if data_shape=="triangle":
 
         if data_format.lower().strip().startswith("i"):
@@ -1099,3 +1182,4 @@ def totri(data, type_="cum", data_format="incr", data_shape="tabular",
         tri = CumTriangle(data=df, origin=origin, dev=dev, value=value)
 
     return(tri)
+
