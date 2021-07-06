@@ -78,6 +78,8 @@ class _BaseTriangle(pd.DataFrame):
         self._dof = None
 
 
+
+
     @staticmethod
     def _validate(data, origin=None, dev=None, value=None):
         """
@@ -113,7 +115,6 @@ class _BaseTriangle(pd.DataFrame):
             raise AttributeError("`{}` not present in data.".format(value_))
 
 
-
     @property
     def nbr_cells(self):
         """
@@ -138,7 +139,12 @@ class _BaseTriangle(pd.DataFrame):
         pd.DataFrame
         """
         if self._triind is None:
-            self._triind = self.applymap(lambda x: 1 if np.isnan(x) else 0)
+            self._triind = pd.DataFrame(columns=self.columns, index=self.index)
+            self._triind.iloc[:,:] = 0
+            for devp in self.clvi.index:
+                last_actual_origin = self.clvi[self.clvi.index==devp].origin.values[0]
+                last_actual_offset = self.clvi[self.clvi.origin==last_actual_origin].row_offset.values[0]
+                self._triind.iloc[(last_actual_offset + 1):,self.columns.get_loc(devp)] = 1
         return(self._triind)
 
 
@@ -193,7 +199,7 @@ class _BaseTriangle(pd.DataFrame):
         pd.DataFrame
         """
         if self._latest is None:
-            lindx = self.apply(lambda dev_: dev_.last_valid_index(), axis=1)
+            lindx = self.apply(lambda devp: devp.last_valid_index(), axis=1)
             self._latest = pd.DataFrame(
                 {"latest":self.lookup(lindx.index, lindx.values),
                  "origin":lindx.index, "dev":lindx.values})
@@ -278,6 +284,46 @@ class _BaseTriangle(pd.DataFrame):
                 matlist.append(itermatur)
             self._maturity = pd.Series(data=matlist, index=self.index, name="maturity")
         return(self._maturity.sort_index())
+
+
+
+    def diagonal(self, offset=0):
+        """
+        Return triangle values at given offset. When ``offset=0``, returns
+        latest diagonal.
+
+        Parameters
+        ----------
+        offset: int
+            Negative integer value (or 0) representing the diagonal to return.
+            To return the second diagonal, set ``offset=-1``. If abs(offset)
+            exceeds (number of development periods - 1), ``ValueError`` is raised.
+            Default value is 0 (represents latest diagonal).
+
+        Returns
+        -------
+        pd.Series
+        """
+        if np.abs(offset)>(self.devp.size - 1):
+            raise ValueError("abs(offset) cannot exceed the number of development periods.")
+        df = self.latest.copy()
+        df["latest"] = np.NaN
+        df = df.reset_index(drop=False).rename(
+            {"index":"origin_indx"}, axis=1)[["origin_indx"]]
+        df["dev_indx"] = df["origin_indx"].values[::-1]
+        df["dev_indx"] = df["dev_indx"] + offset
+        df = df[df.dev_indx>=0].reset_index(drop=True)
+        df = df.assign(
+            origin=df["origin_indx"].map(lambda v: self.origins[v]),
+            dev=df["dev_indx"].map(lambda v: self.devp[v]),
+            value=df.apply(lambda rec: self.iat[rec.origin_indx, rec.dev_indx], axis=1)
+            )
+        return(df[["origin", "dev", "value"]])
+
+
+
+
+
 
 
     def to_tbl(self, dropna=True):
@@ -403,8 +449,8 @@ class _BaseCumTriangle(_BaseTriangle):
             The dataset to be transformed into a triangle instance.
             ``data`` must be tabular loss data with at minimum columns
             representing the origin/acident year, development
-            period and value of interest, given by ``origin``, ``dev``
-            and ``value`` respectively.
+            period and incremental value of interest, given by ``origin``,
+            ``dev`` and ``value`` respectively.
 
         origin: str
             The fieldname in ``data`` representing the origin year.
@@ -413,11 +459,11 @@ class _BaseCumTriangle(_BaseTriangle):
             The fieldname in ``data`` representing the development period.
 
         value: str
-            The fieldname in ``data`` representing loss amounts.
+            The fieldname in ``data`` representing incremental loss amounts.
         """
         # Replace NaN values with 1.0 in value column.
         data2 = data.copy(deep=True)
-        data2[value] = data2[value].map(lambda v: 1 if np.isnan(v) else v)
+        # data2[value] = data2[value].map(lambda v: 1 if np.isnan(v) else v)
         data["cumval"] = data.groupby([origin], as_index=False)[value].cumsum()
         data = data.drop(value, axis=1)
         data = data.rename(columns={"cumval":value})
@@ -1033,110 +1079,62 @@ class CumTriangle(_BaseCumTriangle):
 
 
 
-# def totri(data, tri_type="cum", data_format="incr", data_shape="tabular",
-#           origin="origin", dev="dev", value="value"):
-#     """
-#     Create a triangle object based on ``data``. ``tri_type`` can be one of
-#     "incr" or "cum", determining whether the resulting triangle represents
-#     incremental or cumulative losses/counts.
-#     If ``data_shape="triangle"``, ``data`` is assumed to be structured as a
-#     runoff triangle, indexed by origin with columns representing development
-#     periods. If ``data_shape="tabular"``, data is assumed to be tabular with at
-#     minimum columns ``origin``, ``dev`` and ``value``, which represent origin
-#     year, development period and metric of interest respectively.
-#     ``data_format`` specifies whether the metric of interest are cumulative
-#     or incremental in nature. Default value is "incr".
-#
-#     Parameters
-#     ----------
-#     data: pd.DataFrame
-#         The dataset to be coerced into a triangle instance. ``data`` can be
-#         tabular loss data, or a dataset (pandas DataFrame) formatted as a
-#         triangle, but not typed as such. In the latter case,
-#         ``data_shape`` should be set to "triangle".
-#
-#     tri_type: {"cum", "incr"}
-#         Either "cum" or "incr". Specifies how the measure of interest (losses,
-#         counts, alae, etc.) should be represented in the returned triangle
-#         instance.
-#
-#     data_format: {"cum", "incr"}
-#         Specifies the representation of the metric of interest in ``data``.
-#         Default value is "incr".
-#
-#     data_shape:{"tabular", "triangle"}
-#         Indicates whether ``data`` is formatted as a triangle instead of
-#         tabular loss data. In some workflows, triangles may have already
-#         been created, and are available in external files. In such cases, the
-#         triangle formatted data is read into a DataFrame, then coerced
-#         into the desired triangle representation directly. Default value is
-#         False.
-#
-#     origin: str
-#         The field in ``data`` representing origin year. When ``data_shape="triangle"``,
-#         ``origin`` is ignored. Default value is "origin".
-#
-#     dev: str
-#         The field in ``data`` representing development period. When
-#         ``data_shape="triangle"``,  ``dev`` is ignored. Default value is
-#         "dev".
-#
-#     value: str
-#         The field in ``data`` representing the metric of interest (losses, counts, etc.).
-#         When ``data_shape="triangle"``, ``value`` is ignored. Default value is "value".
-#
-#     Returns
-#     -------
-#     {trikit.triangle.IncrTriangle, trikit.triangle.CumTriangle}
-#     """
-#     if data_shape=="triangle":
-#
-#         if data_format.lower().strip().startswith("i"):
-#             # data is in incremental triangle format (but not typed as such).
-#             inctri = data.reset_index(drop=False).rename({"index":"origin"}, axis=1)
-#             df = pd.melt(inctri, id_vars=["origin"], var_name="dev", value_name="value")
-#
-#         elif data_format.lower().strip().startswith("c"):
-#             # data is in cumulative triangle format (but not typed as such).
-#             incrtri = data.diff(axis=1)
-#             incrtri.iloc[:,0] = data.iloc[:, 0]
-#             incrtri = incrtri.reset_index(drop=False).rename({"index":"origin"}, axis=1)
-#             df = pd.melt(incrtri, id_vars=["origin"], var_name="dev", value_name="value")
-#             df = df[~np.isnan(df["value"])].astype({"origin":np.int, "dev":np.int, "value":np.float})
-#
-#         else:
-#             raise NameError("Invalid data_format argument: `{}`.".format(tri_type))
-#
-#         df = df[~np.isnan(df["value"])].astype({"origin":np.int, "dev":np.int, "value":np.float})
-#         df = df.sort_values(by=["origin", "dev"]).reset_index(drop=True)
-#
-#     elif data_shape=="tabular":
-#
-#         if data_format.lower().strip().startswith("c"):
-#             df = data.rename({value:"cum"}, axis=1)
-#             df["incr"] = df.groupby([origin])["cum"].diff(periods=1)
-#             df["incr"] = np.where(np.isnan(df["incr"]), df["cum"], df["incr"])
-#             df = df.drop("cum", axis=1).rename({"incr":value}, axis=1)
-#         else:
-#             df = data
-#     else:
-#         raise NameError("Invalid data_shape argument: `{}`.".format(data_shape))
-#
-#     df = df.reset_index(drop=True)
-#
-#     # Transform df to triangle instance.
-#     if tri_type.lower().startswith("i"):
-#         tri = IncrTriangle(data=df, origin=origin, dev=dev, value=value)
-#
-#     elif tri_type.lower().startswith("c"):
-#         tri = CumTriangle(data=df, origin=origin, dev=dev, value=value)
-#
-#     return(tri)
-
-
-def totri(data, type_="cum", data_format="incr", data_shape="tabular",
+def totri(data, tri_type="cum", data_format="incr", data_shape="tabular",
           origin="origin", dev="dev", value="value"):
+    """
+    Create a triangle object based on ``data``. ``tri_type`` can be one of
+    "incr" or "cum", determining whether the resulting triangle represents
+    incremental or cumulative losses/counts.
+    If ``data_shape="triangle"``, ``data`` is assumed to be structured as a
+    runoff triangle, indexed by origin with columns representing development
+    periods. If ``data_shape="tabular"``, data is assumed to be tabular with at
+    minimum columns ``origin``, ``dev`` and ``value``, which represent origin
+    year, development period and metric of interest respectively.
+    ``data_format`` specifies whether the metric of interest are cumulative
+    or incremental in nature. Default value is "incr".
 
+    Parameters
+    ----------
+    data: pd.DataFrame
+        The dataset to be coerced into a triangle instance. ``data`` can be
+        tabular loss data, or a dataset (pandas DataFrame) formatted as a
+        triangle, but not typed as such. In the latter case,
+        ``data_shape`` should be set to "triangle".
+
+    tri_type: {"cum", "incr"}
+        Either "cum" or "incr". Specifies how the measure of interest (losses,
+        counts, alae, etc.) should be represented in the returned triangle
+        instance.
+
+    data_format: {"cum", "incr"}
+        Specifies the representation of the metric of interest in ``data``.
+        Default value is "incr".
+
+    data_shape:{"tabular", "triangle"}
+        Indicates whether ``data`` is formatted as a triangle instead of
+        tabular loss data. In some workflows, triangles may have already
+        been created, and are available in external files. In such cases, the
+        triangle formatted data is read into a DataFrame, then coerced
+        into the desired triangle representation directly. Default value is
+        False.
+
+    origin: str
+        The field in ``data`` representing origin year. When ``data_shape="triangle"``,
+        ``origin`` is ignored. Default value is "origin".
+
+    dev: str
+        The field in ``data`` representing development period. When
+        ``data_shape="triangle"``,  ``dev`` is ignored. Default value is
+        "dev".
+
+    value: str
+        The field in ``data`` representing the metric of interest (losses, counts, etc.).
+        When ``data_shape="triangle"``, ``value`` is ignored. Default value is "value".
+
+    Returns
+    -------
+    {trikit.triangle.IncrTriangle, trikit.triangle.CumTriangle}
+    """
     if data_shape=="triangle":
 
         if data_format.lower().strip().startswith("i"):
@@ -1153,7 +1151,7 @@ def totri(data, type_="cum", data_format="incr", data_shape="tabular",
             df = df[~np.isnan(df["value"])].astype({"origin":np.int, "dev":np.int, "value":np.float})
 
         else:
-            raise NameError("Invalid data_format argument: `{}`.".format(type_))
+            raise NameError("Invalid data_format argument: `{}`.".format(tri_type))
 
         df = df[~np.isnan(df["value"])].astype({"origin":np.int, "dev":np.int, "value":np.float})
         df = df.sort_values(by=["origin", "dev"]).reset_index(drop=True)
@@ -1165,21 +1163,33 @@ def totri(data, type_="cum", data_format="incr", data_shape="tabular",
             df["incr"] = df.groupby([origin])["cum"].diff(periods=1)
             df["incr"] = np.where(np.isnan(df["incr"]), df["cum"], df["incr"])
             df = df.drop("cum", axis=1).rename({"incr":value}, axis=1)
-
         else:
             df = data
-
     else:
         raise NameError("Invalid data_shape argument: `{}`.".format(data_shape))
 
     df = df.reset_index(drop=True)
 
     # Transform df to triangle instance.
-    if type_.lower().startswith("i"):
+    if tri_type.lower().startswith("i"):
         tri = IncrTriangle(data=df, origin=origin, dev=dev, value=value)
 
-    elif type_.lower().startswith("c"):
+    elif tri_type.lower().startswith("c"):
         tri = CumTriangle(data=df, origin=origin, dev=dev, value=value)
 
+        # Replace missing actuals.
+        for origin_ in tri.index:
+            origin_indx = tri.index.get_loc(origin_)
+            origin_init_val = tri.iat[origin_indx, 0]
+            if np.isnan(origin_init_val):
+                tri.iat[origin_indx, 0] = 1.
+
+            for devp_indx, devp_ in enumerate(tri.columns[1:], start=1):
+                triind_val = tri.triind.iat[origin_indx, devp_indx]
+                if triind_val==0:
+                    if np.isnan(tri.iat[origin_indx, devp_indx]):
+                        tri.iat[origin_indx, devp_indx] = tri.iat[origin_indx, (devp_indx - 1)]
+
     return(tri)
+
 

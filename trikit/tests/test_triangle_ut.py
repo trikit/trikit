@@ -29,6 +29,10 @@ class IncrTriangleTestCase(unittest.TestCase):
             }, index=list(range(0, 10, 1))
             )
 
+        self.offset_1 = np.asarray([54., 673., 649., 2658., 3786., 1233., 6926., 5596., 3133.])
+        self.offset_2 = np.asarray([599., -103., 3479., 2159., 6333., 5257., 3463., 1351.])
+        self.offset_7 = np.asarray([2638., 4179., 3410.])
+
 
     def test_nbr_cells(self):
         self.assertEqual(
@@ -106,6 +110,17 @@ class IncrTriangleTestCase(unittest.TestCase):
     def test_to_cum(self):
         self.assertTrue(isinstance(self.tri.to_cum(), trikit.triangle.CumTriangle))
 
+    def test_diagonal(self):
+        tri_offset_1 = self.tri.diagonal(offset=-1).value.values
+        tri_offset_2 = self.tri.diagonal(offset=-2).value.values
+        tri_offset_7 = self.tri.diagonal(offset=-7).value.values
+        test_1 = np.allclose(tri_offset_1, self.offset_1)
+        test_2 = np.allclose(tri_offset_2, self.offset_2)
+        test_7 = np.allclose(tri_offset_7, self.offset_7)
+        self.assertTrue(test_1 and test_2 and test_7)
+
+
+
 
 
 
@@ -139,6 +154,19 @@ class CumTriangleTestCase(unittest.TestCase):
             9:[1.00922,np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN],
             }, index=list(range(1981, 1990))
             )
+
+        self.tri_sparse = pd.DataFrame({
+            1 :[np.NaN, 300, 370, 288, 412, 800, 746, 422,],
+            2 :[np.NaN, 499, 501, 315, 222, np.NaN, 630, np.NaN],
+            3 :[np.NaN, 277, 418, np.NaN, 255, 525, np.NaN, np.NaN,],
+            4 :[148   , 168, np.NaN, 195, 223, np.NaN, np.NaN, np.NaN,],
+            5 :[np.NaN, 107, 125, 101, np.NaN, np.NaN, np.NaN, np.NaN,],
+            6 :[77    , 67, 90, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN,],
+            7 :[np.NaN, 51, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN,],
+            8 :[np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN,],
+            }, index=range(1, 9)
+            )
+
 
     def test_a2adim(self):
         self.assertEqual(
