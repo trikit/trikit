@@ -470,7 +470,6 @@ class _BaseCumTriangle(_BaseTriangle):
         super().__init__(data=data, origin=origin, dev=dev, value=value)
 
         # Properties.
-        self._a2a_avgs = None
         self._a2aind = None
         self._a2a = None
 
@@ -641,6 +640,7 @@ class _BaseCumTriangle(_BaseTriangle):
         self._a2aind.at[indx, column] = value
 
 
+    @staticmethod
     def _medial(vals, weights=None):
         """
         Compute the medial average of elements in ``vals``. Medial average
@@ -658,20 +658,49 @@ class _BaseCumTriangle(_BaseTriangle):
         -------
         float
         """
-        vals = list(vals)
-        if len(vals)==0:
-            avg_ = None
-        elif len(vals)==1:
-            avg_ = vals[0]
-        elif len(vals)==2:
-            avg_ = sum(vals) / len(vals)
+        # vals = list(vals)
+        # if len(vals)==0:
+        #     avg_ = None
+        # elif len(vals)==1:
+        #     avg_ = vals[0]
+        # elif len(vals)==2:
+        #     avg_ = sum(vals) / len(vals)
+        # else:
+        #     keep_ = sorted(vals)[1:-1]
+        #     avg_ = sum(keep_) / len(keep_)
+        # return(avg_)
+
+        if weights is None:
+            w = np.ones(len(vals))
         else:
-            keep_ = sorted(vals)[1:-1]
-            avg_ = sum(keep_) / len(keep_)
-        return(avg_)
+            w = weights
+            if len(w)!=len(vals):
+                raise ValueError("`vals` and `weights` must have same size")
+
+        # Return first element of arr_all if all array elements are the same.
+        arr_all = np.sort(np.asarray(vals))
+        if np.all(arr_all==arr_all[0]):
+            avg = arr_all[0]
+
+        elif arr_all.shape[0]==1:
+            avg = arr_all[0]
+
+        elif arr_all.shape[0]==2:
+            avg = (w * arr_all).sum() / w.sum()
+
+        else:
+            medial_indicies = np.where(np.logical_and(arr_all!=arr_all.min(), arr_all!=arr_all.max()))
+            arr = arr_all[medial_indicies]
+            w = w[medial_indicies]
+
+            if arr.shape[0]==0:
+                avg = np.NaN
+            else:
+                avg = (w * arr).sum() / w.sum()
+
+        return(avg)
 
 
-    @property
     def a2a_avgs(self):
         """
         Compute age-to-age factors based on ``self.a2a`` table of adjacent
@@ -682,89 +711,87 @@ class _BaseCumTriangle(_BaseTriangle):
         -------
         pd.DataFrame
         """
-        if self._a2a_avgs is None:
+        _nbr_periods = list(range(1, self.a2a.shape[0])) + [0]
+        indxstrs = list()
 
-            _nbr_periods = list(range(1, self.a2a.shape[0])) + [0]
-            indxstrs = list()
+        # Create lookup table for average functions.
+        avgfuncs = {
+            'simple'   :self._simple,
+            'geometric':self._geometric,
+            'medial'   :self._medial,
+            'weighted' :None
+            }
 
-            # Create lookup table for average functions.
-            avgfuncs = {
-                'simple'   :self._simple,
-                'geometric':self._geometric,
-                'medial'   :self._medial,
-                'weighted' :None
-                }
+        # Remove `0` entry, and add as last element of list.
+        ldf_avg_lst = list(itertools.product(avgfuncs.keys(), _nbr_periods))
 
-            # Remove `0` entry, and add as last element of list.
-            ldf_avg_lst = list(itertools.product(avgfuncs.keys(), _nbr_periods))
+        indxstrs = [
+            "all-" + str(ii[0]) if ii[1]==0 else "{}-{}".format(ii[0], ii[1])
+                for ii in ldf_avg_lst
+            ]
 
-            indxstrs = [
-                "all-" + str(i[0]) if i[1]==0 else "{}-{}".format(i[0], i[1])
-                    for i in ldf_avg_lst
-                ]
+        indx = sorted(ldf_avg_lst, key=lambda v: v[1])
+        _a2a_avgs = pd.DataFrame(index=indxstrs, columns=self.a2a.columns)
+        a2a_adj = self.a2a * self.a2aind
 
-            indx = sorted(ldf_avg_lst, key=lambda x: x[1])
-            self._a2a_avgs = pd.DataFrame(index=indxstrs, columns=self.a2a.columns)
+        for a in enumerate(ldf_avg_lst):
+            duration, avgtype, indxpos = a[1][1], a[1][0], a[0]
+            indxstr, iterfunc = indxstrs[indxpos], avgfuncs[avgtype]
 
-            for a in enumerate(ldf_avg_lst):
-                duration, avgtype, indxpos = a[1][1], a[1][0], a[0]
-                indxstr, iterfunc = indxstrs[indxpos], avgfuncs[avgtype]
-                for col in range(self.a2a.shape[1]):
-                    itercol, colstr = self.a2a.iloc[:, col], self.a2a.columns[col]
+            for col in range(a2a_adj.shape[1]):
+                itercol, colstr = a2a_adj.iloc[:, col], a2a_adj.columns[col]
 
-                    if avgtype=='weighted':
+                if avgtype=='weighted':
 
-                        t_ic_1, t_ic_2 = self.iloc[:, col], self.iloc[:, (col + 1)]
-                        # Find first NaN value in t_ic_2.
-                        first_nan_year = t_ic_2.index[t_ic_2.count():][0]
-                        first_nan_indx = t_ic_2.index.searchsorted(first_nan_year)
+                    t_ic_1, t_ic_2 = self.iloc[:, col], self.iloc[:, (col + 1)]
+                    # Find first NaN value in t_ic_2.
+                    first_nan_year = t_ic_2.index[t_ic_2.count():][0]
+                    first_nan_indx = t_ic_2.index.searchsorted(first_nan_year)
+                    final_cell_indx = first_nan_indx
+                    if duration==0:
+                        first_cell_indx = 0
+                    else:
+                        first_cell_indx = (final_cell_indx-duration) if \
+                                          (final_cell_indx-duration)>=0 else 0
+
+                    # Divide sum of t_ic_2 by t_ic_1.
+                    ic_2 = t_ic_2[first_cell_indx:final_cell_indx]
+                    ic_1 = t_ic_1[first_cell_indx:final_cell_indx]
+                    sum_ic_2 = t_ic_2[first_cell_indx:final_cell_indx].sum()
+                    sum_ic_1 = t_ic_1[first_cell_indx:final_cell_indx].sum()
+
+                    try:
+                        iteravg = (sum_ic_2 / sum_ic_1)
+                    except ZeroDivisionError:
+                        iteravg = np.NaN
+
+                else: # avgtype in ('simple', 'geometric', 'medial')
+                    # Find index of first row with NaN.
+                    if any(itercol.map(lambda x: np.isnan(x))):
+                        first_nan_year = itercol.index[itercol.apply(lambda x: np.isnan(x))][0]
+                        first_nan_indx = itercol.index.searchsorted(first_nan_year)
                         final_cell_indx = first_nan_indx
                         if duration==0:
                             first_cell_indx = 0
                         else:
-                            first_cell_indx = (final_cell_indx-duration) if \
-                                              (final_cell_indx-duration)>=0 else 0
+                            first_cell_indx = (final_cell_indx - duration) if \
+                                              (final_cell_indx - duration)>=0 else 0
 
-                        # Divide sum of t_ic_2 by t_ic_1.
-                        ic_2 = t_ic_2[first_cell_indx:final_cell_indx]
-                        ic_1 = t_ic_1[first_cell_indx:final_cell_indx]
-                        sum_ic_2 = t_ic_2[first_cell_indx:final_cell_indx].sum()
-                        sum_ic_1 = t_ic_1[first_cell_indx:final_cell_indx].sum()
+                    else: # itercol has 0 NaN's
+                        final_cell_indx = len(itercol)
+                        first_cell_indx = 0 if duration==0 else (final_cell_indx-duration)
+                    try:
+                        link_ratios = itercol[first_cell_indx:final_cell_indx]
+                        iteravg = iterfunc(link_ratios[link_ratios>0])
+                    except ZeroDivisionError:
+                        iteravg = np.NaN
 
-                        try:
-                            iteravg = (sum_ic_2/sum_ic_1)
-                        except ZeroDivisionError:
-                            iteravg = np.NaN
-
-                    else: # avgtype in ('simple', 'geometric', 'medial')
-                        # find index of first row with NaN
-                        if any(itercol.map(lambda x: np.isnan(x))):
-                            first_nan_year = \
-                                itercol.index[itercol.apply(lambda x: np.isnan(x))][0]
-                            first_nan_indx = \
-                                itercol.index.searchsorted(first_nan_year)
-                            final_cell_indx = first_nan_indx
-                            if duration==0:
-                                first_cell_indx = 0
-                            else:
-                                first_cell_indx = (final_cell_indx-duration) if \
-                                                  (final_cell_indx-duration)>=0 else 0
-
-                        else: # itercol has 0 NaN's
-                            final_cell_indx = len(itercol)
-                            first_cell_indx = 0 if duration==0 else (final_cell_indx-duration)
-                        try:
-                            iteravg = iterfunc(itercol[first_cell_indx:final_cell_indx])
-
-                        except ZeroDivisionError:
-                            iteravg = np.NaN
-
-                    self._a2a_avgs.loc[indxstr, colstr] = iteravg
+                _a2a_avgs.loc[indxstr, colstr] = iteravg
 
         # Remove medial averages for the time being.
-        self._a2a_avgs = self._a2a_avgs[~self._a2a_avgs.index.str.contains("medial")]
+        #_a2a_avgs = _a2a_avgs[~_a2a_avgs.index.str.contains("medial")]
 
-        return(self._a2a_avgs)
+        return(_a2a_avgs)
 
 
 
@@ -842,9 +869,9 @@ class CumTriangle(_BaseCumTriangle):
                     {"paper", "talk", "poster"}.
         """
         if view.startswith("f"):
-
-
-
+            self._faceted_view(**kwargs)
+        else:
+            self._combined_view(**kwargs)
 
 
     def _combined_view(**kwargs):
@@ -1030,7 +1057,7 @@ class CumTriangle(_BaseCumTriangle):
             In [5]: cl = tri.base_cl(sel="medial-5", tail=1.015)
 
 
-        Provide custom collection of loss development factors::
+        Provide custom sequence of loss development factors::
 
             In [6]: ldfs = [5., 2.5, 1.25, 1.15, 1.10, 1.05, 1.025, 1.01, 1.005,]
             In [7]: cl = tri.base_cl(sel=ldfs, tail=1.001)
@@ -1102,14 +1129,13 @@ class CumTriangle(_BaseCumTriangle):
             In [1]: import trikit
             In [2]: raa = trikit.load("raa")
             In [3]: tri = trikit.totri(raa)
-            In [4]: cl = tri.boot_cl()
+            In [4]: bcl = tri.boot_cl()
         """
         kwds =  dict(
             sims=sims, q=q, procdist=procdist, parametric=parametric, two_sided=two_sided,
             interpolation=interpolation, random_state=random_state
             )
         return(BootstrapChainLadder(self).__call__(**kwds))
-
 
 
     def mack_cl(self, alpha=1, tail=1.0, dist="lognorm", q=[.75, .95], two_sided=False):
@@ -1167,6 +1193,18 @@ class CumTriangle(_BaseCumTriangle):
         Returns
         -------
         MackChainLadderResult
+
+
+        Examples
+        --------
+        Generate Mack chain ladder reserve estimates. ``tri`` is first created
+        using the raa dataset. In the call to ``mack_cl``, ``alpha`` is set to
+        2, and ``two_sided=True``::
+
+            In [1]: import trikit
+            In [2]: raa = trikit.load("raa")
+            In [3]: tri = trikit.totri(raa)
+            In [4]: mcl = tri.mack_cl(alpha=2, two_sided=True)
         """
         kwds = dict(alpha=alpha, tail=tail, dist=dist, q=q, two_sided=two_sided)
         return(MackChainLadder(self).__call__(**kwds))
@@ -1178,6 +1216,12 @@ class CumTriangle(_BaseCumTriangle):
         """
         raise NotImplementedError("mcmc_cl not yet implemented.")
 
+    def glm_estimator(self, var_power=2):
+        """
+        Generate reserve estimates via Generalized Linear Model framework.
+        Note that ``glm_estimator`` assumes development is complete by the final
+        development period. GLMs are fit using statsmodels Tweedie family
+        """
 
 
 

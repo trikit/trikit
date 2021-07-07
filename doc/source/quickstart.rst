@@ -195,7 +195,7 @@ Calling ``tri.a2a_avgs`` produces a table of candidate loss development factors,
 which contains arithmetic, geometric and weighted age-to-age averages for a 
 number of different periods::
 
-	In[11]: tri.a2a_avgs
+	In[11]: tri.a2a_avgs()
 	Out[11]:
 					 1       2       3       4       5       6       7       8       9
 	simple-1      1.72199 1.88743 1.12498 1.22551 1.00867 1.03773 1.02637 1.03309 1.00922
@@ -392,7 +392,7 @@ The result is of type ``chainladder.BaseChainLadderResult``.
 * ``tail``: The tail factor, which defaults to 1.0.  
 * ``sel``: Loss development factors, which defaults to "all-weighted". ``sel``
 can be either a string corresponding to a pre-computed pattern available in
-``tri.a2a_avgs.index``, or a custom set of loss development factors as a numpy
+``tri.a2a_avgs().index``, or a custom set of loss development factors as a numpy
 array or Pandas Series.
 
 Example #2 demonstrated how to access a number of candidate loss development patterns
@@ -400,7 +400,7 @@ by calling ``tri.a2a_avgs``. Available pre-computed options for ``sel`` can be a
 value present in ``tri.a2a_avgs``'s index. To obtain a list of available pre-computed
 loss development factors by name, run::
 
-	In [1]: tri.a2a_avgs.index.tolist()
+	In [1]: tri.a2a_avgs().index.tolist()
 	Out[1]:
 	['simple-1', 'simple-2', 'simple-3', 'simple-4', 'simple-5', 'simple-6', 'simple-7', 
 	'simple-8', 'all-simple', 'geometric-1', 'geometric-2', 'geometric-3', 'geometric-4', 
