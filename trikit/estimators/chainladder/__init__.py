@@ -48,6 +48,8 @@ class BaseChainLadder:
 
 
 
+
+
     def __call__(self, sel="all-weighted", tail=1.0):
         """
         Compile a summary of ultimate and reserve estimates resulting from
@@ -173,7 +175,7 @@ class BaseChainLadder:
         pd.Series
         """
         # Determine index for tail factor.
-        ldfs = self.tri.a2a_avgs.loc[sel]
+        ldfs = self.tri.a2a_avgs().loc[sel]
         increment = np.unique(ldfs.index[1:] - ldfs.index[:-1])[0]
         ldfs.loc[ldfs.index.max() + increment] = tail
         return(pd.Series(ldfs, name="ldf").sort_index())

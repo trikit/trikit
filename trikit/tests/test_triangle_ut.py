@@ -207,6 +207,14 @@ class CumTriangleTestCase(unittest.TestCase):
     def test_to_tbl(self):
         self.assertTrue(isinstance(self.tri.to_tbl(), pd.DataFrame))
 
+    def test_neg_handler(self):
+        # df = trikit.load("raa")
+        # df["val2"] = df.apply(lambda rec: rec["value"] if rec["dev"]!=1 else rec["value"]-1000, axis=1)
+        # tri = trikit.totri(df, tri_type="incr", value="val2")
+        pass
+
+
+
 
 
 

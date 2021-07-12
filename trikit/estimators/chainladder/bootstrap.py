@@ -123,15 +123,6 @@ class BootstrapChainLadder(BaseChainLadder):
             Quantile or sequence of quantiles to compute, which must be
             between 0 and 1 inclusive.
 
-        neg_handler: str
-            If ``neg_handler="first"``, any first development period negative
-            cells will be coerced to +1. If ``neg_handler="all"``, the minimum
-            value in all triangle cells is identified (identified as 'MIN_CELL').
-            If MIN_CELL is less than or equal to 0, (MIN_CELL + X = +1.0) is
-            solved for X. X is then added to every other cell in the triangle,
-            resulting in all triangle cells having a value strictly greater
-            than 0.
-
         procdist: str
             The distribution used to incorporate process variance. Currently,
             this can only be set to "gamma".
@@ -188,7 +179,7 @@ class BootstrapChainLadder(BaseChainLadder):
         sampling_dist = self._sampling_dist(resid_adj=adjust_residuals)
         dfsamples = self._bs_samples(
             sampling_dist=sampling_dist, fitted_tri_incr=tri_fit_incr,
-            sims=sims, neg_handler=neg_handler, parametric=parametric,
+            sims=sims, parametric=parametric,
             random_state=random_state
             )
         dfldfs = self._bs_ldfs(dfsamples=dfsamples)
@@ -230,9 +221,8 @@ class BootstrapChainLadder(BaseChainLadder):
         dfsumm.loc["total", ["cldf", "emergence"]] = np.NaN
 
         kwds = {
-            "sel":"all-weighted", "sims":sims, "neg_handler":neg_handler,
-            "procdist":procdist, "parametric":parametric, "q":q,
-            "interpolation":interpolation,
+            "sel":"all-weighted", "sims":sims, "procdist":procdist, "parametric":parametric,
+            "q":q, "interpolation":interpolation,
             }
 
         # Instantiate and return BootstrapChainLadderResult instance.

@@ -10,7 +10,7 @@ from . import BaseChainLadder, BaseChainLadderResult
 
 class MackChainLadder(BaseChainLadder):
     """
-    Perform Mack Chain Ladder method. The predicition variance is comprised
+    Mack Chain Ladder estimator. The predicition variance is comprised
     of the estimation variance and the process variance. Estimation variance
     arises from the inability to accurately define the distribution from which
     past events have been generated. Process variance arises from the
@@ -288,7 +288,7 @@ class MackChainLadder(BaseChainLadder):
     @property
     def mod_a2aind(self):
         """
-        Return self.tri.a2aind with lower-right 0s replaced with NaN.
+        Return self.tri.a2aind with lower right 0s replaced with NaN.
 
         Returns
         -------
@@ -704,7 +704,7 @@ class MackChainLadderResult(BaseChainLadderResult):
 
         origin: int
             Target origin period from which to return specified quantile(s).
-            If None, wuantiles from aggregate reserve distribution will
+            If None, quantiles from aggregate reserve distribution will
             be returned.
 
         Returns
@@ -804,3 +804,10 @@ class MackChainLadderResult(BaseChainLadderResult):
                 plt.savefig(exhibit_path)
             else:
                 plt.show()
+
+
+        def diagnostics(self):
+            """
+            Statistical diagnostics plots of Mack Chain Ladder estimator.
+            """
+            pass

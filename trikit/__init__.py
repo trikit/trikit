@@ -10,13 +10,12 @@
 | Copyright 2018 James D. Triveri                                             |
 -------------------------------------------------------------------------------
 """
+import collections
+import datetime
+from functools import partial
 import os
 import os.path
 import sys
-import collections
-import datetime
-import pathlib
-import os.path
 import warnings
 import numpy as np
 import pandas as pd
@@ -29,10 +28,10 @@ from .utils import (
 
 # Initialize dataset loading utility and lrdb-related functions.
 lrdb_path = dataref["lrdb"]
-load = _load(dataref=dataref)
-get_datasets = _get_datasets(dataref=dataref)
-get_lrdb_lobs = _get_lrdb_lobs(lrdb_path=lrdb_path)
-get_lrdb_groups = _get_lrdb_groups(lrdb_path=lrdb_path)
-get_lrdb_specs = _get_lrdb_specs(lrdb_path=lrdb_path)
+load = partial(_load, dataref=dataref)
+get_datasets = partial(_get_datasets, dataref=dataref)
+get_lrdb_lobs = partial(_get_lrdb_lobs, lrdb_path=lrdb_path)
+get_lrdb_groups = partial(_get_lrdb_groups, lrdb_path=lrdb_path)
+get_lrdb_specs = partial(_get_lrdb_specs, lrdb_path=lrdb_path)
 
 __version__ = "0.2.11"

@@ -47,7 +47,8 @@ class _BaseTriangle(pd.DataFrame):
         dev_ = "dev" if dev is None else dev
         value_ = "value" if value is None else value
 
-        data2 = data.copy(deep=True)
+        # data2 = data.copy(deep=True)
+        data2 = self._neg_handler(data, dev_, value_)
         data2 = data2[[origin_, dev_, value_]]
         data2 = data2.groupby([origin_, dev_], as_index=False).sum()
         data2 = data2.sort_values(by=[origin_, dev_])
@@ -113,6 +114,16 @@ class _BaseTriangle(pd.DataFrame):
         value_ = "value" if value is None else value
         if value_ not in data.columns:
             raise AttributeError("`{}` not present in data.".format(value_))
+
+
+    @staticmethod
+    def _neg_handler(data, dev, value):
+        """
+        Convert any first development period negative values to 1.0.
+        """
+        min_devp = data[dev].min()
+        data[value] = data.apply(lambda rec: 1 if rec[dev]==min_devp and rec[value]<=0 else rec[value], axis=1)
+        return(data)
 
 
     @property
@@ -803,7 +814,6 @@ class CumTriangle(_BaseCumTriangle):
 
         super().__init__(data, origin=origin, dev=dev, value=value)
 
-
     def to_incr(self):
         """
         Obtain incremental triangle based on cumulative triangle instance.
@@ -833,7 +843,7 @@ class CumTriangle(_BaseCumTriangle):
 
 
 
-    def plot(view="combined", **kwargs):
+    def plot(self, display="combined", **kwargs):
         """
         Plot cumulative loss development over a single set of axes or
         as faceted-by-origin exhibit.
@@ -868,13 +878,19 @@ class CumTriangle(_BaseCumTriangle):
                     Defaults to ``"notebook"``. Additional options include
                     {"paper", "talk", "poster"}.
         """
-        if view.startswith("f"):
-            self._faceted_view(**kwargs)
+        if kwargs is not None:
+            kwds = kwargs
         else:
-            self._combined_view(**kwargs)
+            kwds = {}
+
+        if display.startswith("f"):
+            self._faceted_view(**kwds)
+        else:
+            self._combined_view(**kwds)
 
 
-    def _combined_view(**kwargs):
+
+    def _combined_view(self, **kwargs):
         """
         Visualize triangle loss development using a combined view.
 
@@ -915,8 +931,13 @@ class CumTriangle(_BaseCumTriangle):
 
         for hex_color, dforg in zip(colors_hex, data_list):
 
+            xx = dforg.dev.values
+            yy = dforg.value.values
+            yy_divisor = 1 # 1000 if np.all(yy>1000) else 1
+            yy_axis_label = "(000's)" if yy_divisor==1000 else ""
+
             ax.plot(
-                dforg.dev.values, dforg.value.values / 1000, color=hex_color,
+                xx, yy / yy_divisor, color=hex_color,
                 linewidth=pltkwargs["linewidth"], linestyle=pltkwargs["linestyle"],
                 label=dforg.origin.values[0], marker=pltkwargs["marker"],
                 markersize=pltkwargs["markersize"]
@@ -928,7 +949,7 @@ class CumTriangle(_BaseCumTriangle):
 
         ax.get_yaxis().set_major_formatter(mpl.ticker.FuncFormatter(lambda v, p: format(int(v), ",")))
         ax.set_xlabel("dev", fontsize=8)
-        ax.set_ylabel("(000's)", fontsize=8)
+        ax.set_ylabel(yy_axis_label, fontsize=8)
         ax.set_ylim(bottom=0)
         ax.set_xlim(left=0)
         ax.set_xticks(xticks)
@@ -938,7 +959,6 @@ class CumTriangle(_BaseCumTriangle):
         ax.yaxis.set_ticks_position("none")
         ax.grid(True)
         ax.legend(loc="lower right", fancybox=True, framealpha=1, fontsize="x-small")
-
         plt.show()
 
 
@@ -970,6 +990,15 @@ class CumTriangle(_BaseCumTriangle):
         import matplotlib.pyplot as plt
         import seaborn as sns
 
+        pltkwargs = dict(
+            color="#334488", axes_style="darkgrid", context="notebook",
+            col_wrap=4, marker="s", markersize=5, alpha=1, linestyle="-",
+            linewidth=1.5, figsize=(9, 6), cmap="hsv"
+            )
+
+        if kwargs:
+            pltkwargs.update(kwargs)
+
         sns.set_context(context)
         data = self.to_tbl()
 
@@ -991,9 +1020,9 @@ class CumTriangle(_BaseCumTriangle):
 
             g.map(plt.plot, "dev", "value", **pltkwargs)
             g.set_axis_labels("", "")
-            g.set_titles("{col_name}", size=9)
-            g.set(xticks=data.dev.unique().tolist())
-            g.set_xticklabels(data.dev.unique().tolist(), size=8)
+            g.set_titles("{col_name}", size=8)
+            g.set(xticks=np.sort(data.dev.unique()))
+            g.set_xticklabels(np.sort(data.dev.unique()), size=7)
 
             for ii, _ in enumerate(g.axes):
                 ax_ = g.axes[ii]
@@ -1003,10 +1032,13 @@ class CumTriangle(_BaseCumTriangle):
                 ylabelsn = [jj for jj in ylabelsn if jj>=0]
                 ylabels = ["{:,.0f}".format(jj) for jj in ylabelsn]
                 if (len(ylabels)>0):
-                    ax_.set_yticklabels(ylabels, size=8)
+                    ax_.set(yticks=ylabelsn)
+                    ax_.set_yticklabels(ylabels, size=7)
                 ax_.tick_params(
                     axis='x', which='both', bottom=True, top=False, labelbottom=True
                     )
+                ax_.xaxis.set_ticks_position("none")
+                ax_.yaxis.set_ticks_position("none")
 
                 # Draw border around each facet.
                 for _, spine in ax_.spines.items():
