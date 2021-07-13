@@ -5,6 +5,8 @@ import functools
 import numpy as np
 import pandas as pd
 from scipy.stats import norm, lognorm
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
 from . import BaseChainLadder, BaseChainLadderResult
 
 
