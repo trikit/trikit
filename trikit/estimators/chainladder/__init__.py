@@ -1,5 +1,5 @@
 """
-This module contains the class definitions for ``BaseChainLadder``.-
+This module contains the class definition of ``BaseChainLadder``.
 """
 import collections
 import functools
@@ -45,9 +45,6 @@ class BaseChainLadder:
             A cumulative.CumTriangle instance.
         """
         self.tri = cumtri
-
-
-
 
 
     def __call__(self, sel="all-weighted", tail=1.0):

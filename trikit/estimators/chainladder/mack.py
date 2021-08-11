@@ -4,10 +4,11 @@ _MackChainLadder implementation.
 import functools
 import numpy as np
 import pandas as pd
+from scipy import special
 from scipy.stats import norm, lognorm
-import statsmodels.api as sm
-import statsmodels.formula.api as smf
+from scipy.optimize import root
 from . import BaseChainLadder, BaseChainLadderResult
+from ... import triangle
 
 
 class MackChainLadder(BaseChainLadder):
@@ -60,7 +61,7 @@ class MackChainLadder(BaseChainLadder):
     def __call__(self, alpha=1, tail=1.0, dist="lognorm", q=[.75, .95], two_sided=False):
         """
         Return a summary of ultimate and reserve estimates resulting from
-        the application of the development technique over self.tri. Summary
+        the application of the Mack Chain Ladder over self.tri. Summary
         DataFrame is comprised of origin year, maturity of origin year, loss
         amount at latest evaluation, cumulative loss development factors,
         projected ultimates and the reserve estimate, by origin year and in
@@ -138,7 +139,7 @@ class MackChainLadder(BaseChainLadder):
 
         dfmatur = maturity.to_frame().reset_index(drop=False).rename({"index":"origin"}, axis=1)
         dfcldfs = cldfs.to_frame().reset_index(drop=False).rename({"index":"maturity"}, axis=1)
-        dfcldfs["maturity"] = dfcldfs["maturity"].astype(np.str)
+        dfcldfs["maturity"] = dfcldfs["maturity"].astype(str)
         dfcldfs["emergence"] = 1 / dfcldfs["cldf"]
         dfsumm = dfmatur.merge(dfcldfs, on=["maturity"], how="left").set_index("origin")
         dfsumm.index.name = None
@@ -161,22 +162,20 @@ class MackChainLadder(BaseChainLadder):
         trisqrd = self._trisqrd(ldfs).drop("ultimate", axis=1)
         trisqrd.index = range(1, trisqrd.index.size + 1)
         trisqrd.columns = range(1, trisqrd.columns.size + 1)
-        n = self.tri.devp.size
 
         # Compute mse for aggregate reserve.
+        n = self.tri.devp.size
         mse_total = pd.Series(index=dfsumm.index[:-1], dtype=np.float)
         quotient = pd.Series(devpvar / ldfs**2, dtype=np.float).reset_index(drop=True)
         quotient.index = quotient.index + 1
-
         for indx, ii in enumerate(mse_total.index[1:], start=2):
             mse_ii, ult_ii = mse[ii],  ultimates[ii]
             ults_sum = ultimates[ultimates.index>ii].dropna().sum()
             rh_sum = sum(
-                quotient[jj] / sum(trisqrd.loc[mm, jj] for mm in range(1, (n - jj) + 1))
-                for jj in range(n + 1 - indx, n)
-                )
+                quotient[jj] / sum(trisqrd.loc[mm, jj]
+                    for mm in range(1, (n - jj) + 1)) for jj in range(n + 1 - indx, n)
+                    )
             mse_total[ii] = mse_ii + 2 * ult_ii * ults_sum * rh_sum
-
 
         # Reset trisqrd columns and index back to original values.
         trisqrd.columns, trisqrd.index = self.tri.columns, self.tri.index
@@ -209,11 +208,8 @@ class MackChainLadder(BaseChainLadder):
 
         dfsumm.loc[self.tri.index.min(), ["cv"] + qtlhdrs] = np.NaN
 
-        # Instantiate and return MackChainLadderResult instance.
-        kwds = {
-            "alpha":alpha, "tail":tail, "dist":dist, "q":q, "two_sided":two_sided,
-            }
-
+        # Bind and return MackChainLadderResult instance.
+        kwds = {"alpha":alpha, "tail":tail, "dist":dist, "q":q, "two_sided":two_sided,}
         mcl_result = MackChainLadderResult(
             summary=dfsumm, tri=self.tri, ldfs=ldfs, trisqrd=trisqrd,
             process_error=proc_error, parameter_error=param_error, devpvar=devpvar,
@@ -250,7 +246,6 @@ class MackChainLadder(BaseChainLadder):
         tuple of list
         """
         qtls = np.asarray([q] if isinstance(q, (float, int)) else q)
-
         if np.all(np.logical_and(qtls <= 1, qtls >= 0)):
             if two_sided:
                 qtls = np.sort(np.unique(np.append((1 - qtls) / 2., (1 + qtls) / 2.)))
@@ -258,13 +253,10 @@ class MackChainLadder(BaseChainLadder):
                 qtls = np.sort(np.unique(qtls))
         else:
             raise ValueError("Values for quantiles must fall between [0, 1].")
-
         qtlhdrs = [
             "{:.5f}".format(ii).rstrip("0").rstrip(".") + "%" for ii in 100 * qtls
             ]
-
         return(qtls, qtlhdrs)
-
 
 
     @property
@@ -313,7 +305,7 @@ class MackChainLadder(BaseChainLadder):
             * ``2``: Regression of $C_{k+1}$ on $C_{k}$ with 0 intercept.
 
         tail: float
-            Tail factor. At present, must be 1.0. This will change in a
+            Tail factor. At present, must be 1.0. This may change in a
             future release.
 
         Returns
@@ -330,7 +322,7 @@ class MackChainLadder(BaseChainLadder):
     def _ldf_variance(self, devpvar, alpha=1):
         """
         Compute the variance of a given development period's link ratios
-        vs. provided ldfs.
+        w.r.t. selected ldfs.
 
         devpvar: pd.Series
             The development period variance, usually represented as
@@ -357,7 +349,7 @@ class MackChainLadder(BaseChainLadder):
         """
         Compute the development period variance, usually represented as
         $\hat{\sigma}^{2}_{k}$ in the literature. For a triangle with
-        ``n`` development periods, result will contain ``n-1`` elements.
+        ``k`` development periods, result will contain ``k-1`` elements.
 
         Parameters
         ----------
@@ -432,7 +424,6 @@ class MackChainLadder(BaseChainLadder):
             latest_cum = trisqrd.at[ii, latest_devp]
             kk0 = n + 2 - ii
             dfpe.at[ii, kk0] = latest_cum * devpvar.iloc[kk0 - 2]
-
             for kk in range(kk0 + 1, n + 1):
                 term0 = (ldfs.iloc[kk - 2]**2) * dfpe.at[ii, kk - 1]
                 term1 = trisqrd.at[ii, kk - 1] * devpvar.iloc[kk - 2]
@@ -485,9 +476,7 @@ class MackChainLadder(BaseChainLadder):
             latest_cum = trisqrd.at[ii, latest_devp]
             kk0 = n + 2 - ii
             dfpe.at[ii, kk0] = latest_cum**2 * ldfvar.iloc[kk0 - 2]
-
             for kk in range(kk0 + 1, n + 1):
-
                 term0 = (ldfs.iloc[kk - 2]**2) * dfpe.at[ii, kk - 1]
                 term1 = (trisqrd.at[ii, kk - 1]**2) * ldfvar.iloc[kk - 2]
                 term2 = ldfvar.iloc[kk - 2] * dfpe.at[ii, kk - 1]
@@ -501,7 +490,9 @@ class MackChainLadder(BaseChainLadder):
     def _mean_squared_error(self, process_error, parameter_error):
         """
         Compute the mean squared error of reserve estimates for each
-        origin period.
+        origin period. The standard error for each origin period
+        is the square root of the mean squared error.
+
 
         Parameters
         ----------
@@ -521,16 +512,6 @@ class MackChainLadder(BaseChainLadder):
         pd.Series
         """
         return(pd.Series(process_error + parameter_error, name="mse"))
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -637,6 +618,250 @@ class MackChainLadderResult(BaseChainLadderResult):
             "0":"th", "1":"st", "2":"nd", "3":"rd", "4":"th", "5":"th", "6":"th",
             "7":"th", "8":"th", "9":"th",
             }
+
+
+    def _residuals_by_devp(self):
+        """
+        Calculate standardized residuals of selected loss development factors
+        vs. age-to-age factors.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        dfresid = pd.DataFrame(columns=mcl.tri.a2a.columns, index=mcl.tri.a2a.index)
+        ldfs = mcl.ldfs
+        ldfvar = mcl.ldfvar
+        dfa2a = mcl.tri.a2a
+        dfa2aind = mcl.tri.a2aind
+        for ii in dfa2a.columns:
+            ldf_ii = ldfs[ii]
+            ldfvar_ii = ldfvar[ii]
+            a2a_ii = dfa2a.loc[:,ii]
+            a2aind_ii = dfa2aind.loc[:,ii]
+            v = a2a_ii * a2aind_ii
+            v= v[v>0]
+            n = v.size
+            #t_ii =
+
+
+    def _spearman_corr_coeffs(self):
+        """
+        Compute the Spearman correlation coefficients for each pair of equal
+        sized columns from ``_ranked_a2a``.
+
+        For adjacent columns, a Spearman coefficient close to 0 indicates that
+        the development factors between development years $k-1$ and $k$ and
+        those between developmenr years $k$ and $k+1$ are uncorrelated. Any
+        other value of $T_{k}$ indicates that the factors are positively or
+        negatively correlated.
+
+        In the resulting DataFrame, columns are defined as:
+
+            - k:
+                An enumeration of the target development period.
+            - w:
+                Quanity used to weight the Spearman coefficient, specified
+                as ``n - k - 1``, where ``n`` is the number of origin periods
+                in the triangle.
+            - T_k:
+                Spearman correlation coefficient. Defined as
+
+                $T_{k} = 1 - 6 \sum_{i=1}^{n-k}
+
+        Returns
+        -------
+        pd.DataFrame
+
+        References
+        ----------
+        1. Mack, Thomas (1993) *Measuring the Variability of Chain Ladder Reserve
+        Estimates*, 1993 CAS Prize Paper Competition on 'Variability of Loss Reserves'.
+        """
+        dfranks = self.tri.ranked_a2a
+        coeffs_list = []
+        s_indices = [2*ii for ii in range(dfranks.columns.size // 2)]
+        r_indices = [1 + ii for ii in s_indices]
+        n = self.tri.devp.size
+        for s_indx, r_indx in zip(s_indices, r_indices):
+            # s_indx, r_indx = 0, 1
+            k = int(dfranks.iloc[:,s_indx].name.replace("s_", ""))
+            w = n - k - 1
+            s_ii = dfranks.iloc[:,s_indx]
+            r_ii = dfranks.iloc[:,r_indx]
+            T_k = 1 - 6 * np.sum((r_ii - s_ii)**2 / ((n - k)**3 - n + k))
+            coeffs_list.append({"k":k, "w":w, "T_k":T_k,})
+        return(pd.DataFrame().from_dict(coeffs_list, orient="columns"))
+
+
+    def _spearman_corr_total(self):
+        """
+        Weighted average of each adjacent column's Spearman coefficient
+        from ``_spearman_corr_coeffs``. Correlation coefficients are weighted
+        by
+
+        """
+        # Compute w-weighted average of T_k from _spearman_corr_coeffs.
+        df = self._spearman_corr_coeffs()
+        return((df["w"] * df["T_k"]).sum() / df["w"].sum())
+
+
+    def _devp_corr_test_var(self):
+        """
+        Return the variance used in the development period correlation test.
+
+        Returns
+        -------
+        float
+        """
+        return((self.tri.devp.size - 2) * (self.tri.devp.size - 3) / 2)
+
+
+    def devp_corr_test(self, p=.50):
+        """
+        Significance test to assess the degree of development period correlation.
+        The first element of the returned tuple contains the upper and lower
+        bounds of the test interval. The second element represents the test
+        statistic, the weighted average of Spearman rank correlation coefficients.
+        If the test statistic falls within the range bounded by the first element,
+        the null hypothesis of having uncorrelated development factors is not
+        rejected. If the test statistic falls outside the interval, development
+        period correlations should be analyzed in greater detail.
+
+        Parameters
+        ----------
+        p: float
+            Represents the central normal interval outside of which
+            development factors are assumed to exhibit some degree of
+            correlation.
+
+        Returns
+        -------
+        tuple
+        """
+        def fnorm(x, p):
+            return(norm.cdf(x) - norm.cdf(-x) - p)
+
+        f = functools.partial(fnorm, p=p)
+        z = root(f, np.random.rand()).x.item()
+        s = np.sqrt(self._devp_corr_test_var())
+        return((-z / s, z / s), self._spearman_corr_total())
+
+
+
+    def _cy_effects_table(self):
+        """
+        Construct a tabular summary of values used in assessing the presence of
+        significant calendar year influences in the set of age-to-age factors.
+        Resulting DataFrame contains the following columns:
+
+        - j:
+            The diagonal in question. For a triangle with n periods, j ranges
+            from 2 to n - 1. The most recent diagonal is associated with
+            j = n - 1.
+
+        - S:
+            Represents the number of small age-to-age factors for a given
+            diagonal. Recall that small age-to-age factors are those less
+            than the median for a given development period.
+
+        - L:
+            Represents the number of large age-to-age factors for a given
+            diagonal. Recall that large age-to-age factors are those greater
+            than the median for a given development period.
+
+        - Z:
+            For a given j, $Z = min(S, L)$.
+
+        - n:
+            For a given j, is defined as $S + L$.
+
+        - m:
+            For a given j, is defined as $floor([n - 1] / 2)$.
+
+        - E_Z:
+            For a given j, is defined as $\frac{n}{2} - \binom{n-1}{m} \times \frac{n}{2^{n}}$.
+
+        - V_Z:
+            For a given j, is defined as
+            $\frac{n(n-1)}{4} - \binom{n-1}{m} \times \frac{n(n-1)}{2^{n}} + \mu - \mu^{2}$.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        summlist = []
+        dflvi = self.tri.a2a_lvi
+        dfhl = self.tri.a2a_assignment
+        dflvi = dflvi.reset_index(drop=False).rename({"index":"devp"}, axis=1)
+        devpinc = dflvi["devp"].diff(1).dropna().unique().item()
+        origininc = dflvi["origin"].diff(-1).dropna().unique().item()
+        diag_indx = sorted(
+            list(enumerate(dflvi["devp"].values[::-1], start=1)), key=lambda v: v[-1]
+            )
+
+        # Begin with latest diagonal. Work backwards.
+        for jj, devp in diag_indx[:-1]:
+            dcounts = pd.Series(dfhl.lookup(dflvi["origin"], dflvi["devp"])).value_counts()
+            dsumm = {"j":jj, "S":dcounts.get(-1, 0), "L":dcounts.get(1, 0)}
+            summlist.append(dsumm)
+            # Adjust dflvi by shifting origin period back a single period
+            # relative to devp. Drop record in which origin is missing.
+            dflvi["origin"] = dflvi["origin"].shift(-1)
+            dflvi = dflvi[~pd.isnull(dflvi.origin)]
+            dflvi["origin"] = dflvi["origin"].astype(int)
+
+        dfcy = pd.DataFrame().from_dict(summlist).sort_values("j")
+
+        # Z is defined as the minimum of S and L by record.
+        dfcy["Z"] = dfcy.apply(lambda rec: min(rec.S, rec.L), axis=1)
+
+        # n is defined as the sum of S + L by record.
+        dfcy["n"] = dfcy["S"] + dfcy["L"]
+
+        # m is defined as the largest integer <= (n - 1) / 2.
+        dfcy["m"] = np.floor(.50 * (dfcy["n"] - 1))
+
+        # E_Z is the expected value of Z.
+        dfcy["E_Z"] = .50 * dfcy["n"] - special.binom(dfcy["n"].values - 1, dfcy["m"].values) * \
+            (dfcy["n"] / np.power(2, dfcy["n"]))
+
+        # V_Z is the variance of Z.
+        dfcy["V_Z"] = .25 * dfcy["n"] * (dfcy["n"] - 1) - \
+            special.binom(dfcy["n"].values - 1, dfcy["m"].values) * \
+            (dfcy["n"] * (dfcy["n"] - 1) / np.power(2, dfcy["n"])) + \
+            dfcy["E_Z"] - dfcy["E_Z"]**2
+
+        return(dfcy)
+
+
+
+    def cy_effects_test(self, p=.05):
+        """
+        We reject the hypothesis, with an error probability of p, of having no
+        significant calendar year effects only if not:
+
+            E_Z - 1.96 * sqrt(V_Z)  <=  Z  <=  E_Z + 1.96 * sqrt(V_Z) (if p = .05).
+
+        Parameters
+        ----------
+        p: float
+            Significance level with which to perform test for calendar year
+            effects. Test is two-sided (see above).
+
+        Returns
+        -------
+        tuple
+        """
+        dfcy = self._cy_effects_table().sum()
+        dfcy = dfcy.sum()
+        Z = dfcy.get("Z")
+        mu = dfcy.get("E_Z")
+        v = dfcy.get("V_Z")
+        var_mult = np.abs(norm.ppf(p / 2))
+        lb = mu - var_mult * np.sqrt(v)
+        ub = mu + var_mult * np.sqrt(v)
+        return((lb, ub), Z)
 
 
     def _qtls_formatter(self, q):

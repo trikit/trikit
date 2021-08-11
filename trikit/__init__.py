@@ -1,14 +1,28 @@
 """
--------------------------------------------------------------------------------
-|  _                                                                          |
-| | |_ _ __(_) | _(_) |_                                                      |
-| | __| '__| | |/ / | __|                                                     |
-| | |_| |  | |   <| | |_                                                      |
-|  \__|_|  |_|_|\_\_|\__|                                                     |
-|                                                                             |
-| A Pythonic Approach to Actuarial Reserving                                  |
-| Copyright 2018 James D. Triveri                                             |
--------------------------------------------------------------------------------
+  _
+ | |_ _ __(_)/| _(_) |
+ | __| '__| | |/ / | __|
+ | |_| |  | |   <| | |_
+  \__|_|  |_|_|\_\_|\__|
+
+A Pythonic Approach to Actuarial Reserving
+Copyright 2018 James D. Triveri
+
+
+
+
+##### 0.2.11 Release TODO #####
+
+ 0. GLM reserve estimator
+ 1. Add additional Mack exhibits.
+ 2. Remove redundant triangle methods.
+ 3. Bootstrap residual diagnostic.
+ 5. Mack correlation test.
+ 4. MCMC reserve estimator
+ 8. Add airspeed velocity benchmarking classes.
+ 9. Write script to update version specified in __init__.py.
+10. Update random seed initializer to new numpy format.
+11. Verify incurred losses in lrdb have bulk removed.
 """
 import collections
 import datetime

@@ -189,10 +189,10 @@ class _BaseTriangle(pd.DataFrame):
         """
         if self._clvi is None:
             self._clvi = pd.DataFrame({
-                "origin":self.apply(lambda x: x.last_valid_index(), axis=0).values
-                },index=self.columns)
-            self._clvi["row_offset"] = \
-                self._clvi["origin"].map(lambda x: self.index.get_loc(x))
+                "origin":self.apply(lambda v: v.last_valid_index(), axis=0).values
+                },index=self.columns
+                )
+            self._clvi["row_offset"] = self._clvi["origin"].map(lambda v: self.index.get_loc(v))
         return(self._clvi)
 
 
@@ -290,7 +290,7 @@ class _BaseTriangle(pd.DataFrame):
             dfind, matlist  = (1 - self.triind), list()
             for i in range(dfind.index.size):
                 lossyear = dfind.index[i]
-                maxindex = dfind.loc[lossyear].to_numpy().nonzero()[0].max()
+                maxindex = dfind.loc[lossyear].values.nonzero()[0].max()
                 itermatur = dfind.columns[maxindex]
                 matlist.append(itermatur)
             self._maturity = pd.Series(data=matlist, index=self.index, name="maturity")
@@ -318,7 +318,6 @@ class _BaseTriangle(pd.DataFrame):
         if np.abs(offset)>(self.devp.size - 1):
             raise ValueError("abs(offset) cannot exceed the number of development periods.")
         df = self.latest.copy()
-        df["latest"] = np.NaN
         df = df.reset_index(drop=False).rename(
             {"index":"origin_indx"}, axis=1)[["origin_indx"]]
         df["dev_indx"] = df["origin_indx"].values[::-1]
@@ -330,10 +329,6 @@ class _BaseTriangle(pd.DataFrame):
             value=df.apply(lambda rec: self.iat[rec.origin_indx, rec.dev_indx], axis=1)
             )
         return(df[["origin", "dev", "value"]])
-
-
-
-
 
 
 
@@ -398,9 +393,6 @@ class _BaseIncrTriangle(_BaseTriangle):
         # Replace NaN values with 1.0 in value column.
         # data.loc[np.where(np.isnan(data.value.values))[0], "value"] = 1.
         super().__init__(data, origin=origin, dev=dev, value=value)
-
-
-
 
 
 
@@ -481,6 +473,10 @@ class _BaseCumTriangle(_BaseTriangle):
         super().__init__(data=data, origin=origin, dev=dev, value=value)
 
         # Properties.
+        self._a2a_assignment = None
+        self._ranked_a2a = None
+        self._a2a_lvi = None
+        self._weights = None
         self._a2aind = None
         self._a2a = None
 
@@ -529,6 +525,55 @@ class _BaseCumTriangle(_BaseTriangle):
         return(np.NaN if arr.size==0 else arr.mean())
 
 
+    @staticmethod
+    def _medial(vals, weights=None):
+        """
+        Compute the medial average of elements in ``vals``. Medial average
+        eliminates the min and max values, then returns the arithmetic
+        average of the remaining items.
+        Parameters
+        ----------
+        vals: np.ndarray
+            An array of values, typically representing link ratios from a
+            single development period.
+        weights: np.ndarray
+            Weights to assign specific values in the average computation.
+            If None, each value is assigned equal weight.
+        Returns
+        -------
+        float
+        """
+        if weights is None:
+            w = np.ones(len(vals))
+        else:
+            w = weights
+            if len(w)!=len(vals):
+                raise ValueError("`vals` and `weights` must have same size")
+
+        # Return first element of arr_all if all array elements are the same.
+        arr_all = np.sort(np.asarray(vals, dtype=np.float))
+        if np.all(arr_all==arr_all[0]):
+            avg = arr_all[0]
+
+        elif arr_all.shape[0]==1:
+            avg = arr_all[0]
+
+        elif arr_all.shape[0]==2:
+            avg = (w * arr_all).sum() / w.sum()
+
+        else:
+            medial_indicies = np.where(np.logical_and(arr_all!=arr_all.min(), arr_all!=arr_all.max()))
+            arr = arr_all[medial_indicies]
+            w = w[medial_indicies]
+
+            if arr.shape[0]==0:
+                avg = np.NaN
+            else:
+                avg = (w * arr).sum() / w.sum()
+
+        return(avg)
+
+
     @property
     def a2a(self):
         """
@@ -548,7 +593,8 @@ class _BaseCumTriangle(_BaseTriangle):
     def a2aind(self):
         """
         Determine which cells should be included and which to exclude
-        when computing age-to-age averages.
+        when computing age-to-age averages. Cells populated with 1
+        are included, cells populated with 0 are excluded.
 
         Returns
         -------
@@ -651,65 +697,87 @@ class _BaseCumTriangle(_BaseTriangle):
         self._a2aind.at[indx, column] = value
 
 
-    @staticmethod
-    def _medial(vals, weights=None):
+    @property
+    def a2a_lvi(self):
         """
-        Compute the medial average of elements in ``vals``. Medial average
-        eliminates the min and max values, then returns the arithmetic
-        average of the remaining items.
-        Parameters
-        ----------
-        vals: np.ndarray
-            An array of values, typically representing link ratios from a
-            single development period.
-        weights: np.ndarray
-            Weights to assign specific values in the average computation.
-            If None, each value is assigned equal weight.
+        Reference to last valid index for triangle age-to-age factors.
+
         Returns
         -------
-        float
+        pd.DataFrame
         """
-        # vals = list(vals)
-        # if len(vals)==0:
-        #     avg_ = None
-        # elif len(vals)==1:
-        #     avg_ = vals[0]
-        # elif len(vals)==2:
-        #     avg_ = sum(vals) / len(vals)
-        # else:
-        #     keep_ = sorted(vals)[1:-1]
-        #     avg_ = sum(keep_) / len(keep_)
-        # return(avg_)
+        # Bind reference to last valid index by column for self.tri.a2a.
+        if self._a2a_lvi is None:
+            self._a2a_lvi = pd.DataFrame({
+                "origin":self.a2a.apply(lambda v: v.last_valid_index(), axis=0).values
+            },index=self.a2a.columns
+            )
+            self._a2a_lvi["row_offset"] = self._a2a_lvi["origin"].map(lambda v: self.index.get_loc(v))
+        return(self._a2a_lvi)
 
-        if weights is None:
-            w = np.ones(len(vals))
-        else:
-            w = weights
-            if len(w)!=len(vals):
-                raise ValueError("`vals` and `weights` must have same size")
 
-        # Return first element of arr_all if all array elements are the same.
-        arr_all = np.sort(np.asarray(vals))
-        if np.all(arr_all==arr_all[0]):
-            avg = arr_all[0]
 
-        elif arr_all.shape[0]==1:
-            avg = arr_all[0]
 
-        elif arr_all.shape[0]==2:
-            avg = (w * arr_all).sum() / w.sum()
 
-        else:
-            medial_indicies = np.where(np.logical_and(arr_all!=arr_all.min(), arr_all!=arr_all.max()))
-            arr = arr_all[medial_indicies]
-            w = w[medial_indicies]
 
-            if arr.shape[0]==0:
-                avg = np.NaN
-            else:
-                avg = (w * arr).sum() / w.sum()
 
-        return(avg)
+    @property
+    def ranked_a2a(self):
+        """
+        Construct triangle of ranked age-to-age factors for use in development
+        period correlation testing.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        if self._ranked_a2a is None:
+            a2a_lvi = self.a2a_lvi
+            rank_list = []
+            for devp_indx, devp in enumerate(a2a_lvi.index[:-1]):
+                last_valid_origin = a2a_lvi[a2a_lvi.index==devp].origin.item()
+                last_valid_index = a2a_lvi[a2a_lvi.index==devp].row_offset.item()
+                a2a_ii = self.a2a.loc[:,devp]
+                r_ii = a2a_ii.rank().to_frame().rename({devp:"r_{}".format(devp_indx + 1)}, axis=1)
+                s_ii = a2a_ii[a2a_ii.index<last_valid_origin].rank().to_frame().rename(
+                    {devp:"s_{}".format(devp_indx + 2)}, axis=1
+                    )
+                rank_list.append(r_ii)
+                rank_list.append(s_ii)
+            self._ranked_a2a = pd.concat(rank_list[1:-1], axis=1).dropna(how="all")
+        return(self._ranked_a2a)
+
+
+    @property
+    def a2a_assignment(self):
+        """
+        Identify triangle age-to-age factors into high and low categories based
+        on value relative to the median for a given development period. Factors
+        in excess of the median are assigned a value of +1. Age-to-age factors
+        with value less than the median are assigned a value of -1. For
+        development periods with an odd number of values, the true median is set
+        to 0. Returned DataFrame has same dimensionality as self.tri.a2a.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        if self._a2a_assignment is None:
+            self._a2a_assignment = pd.DataFrame(columns=self.a2a.columns, index=self.a2a.index)
+            dfmedian = self.a2a.median(axis=0)
+            for devp in self.a2a.columns:
+                devp_median = dfmedian[devp]
+                for r_indx, a2a in enumerate(self.a2a[devp]):
+                    origin = self.a2a.index[r_indx]
+                    if not np.isnan(a2a):
+                        if np.allclose(a2a, devp_median):
+                            self._a2a_assignment.at[origin, devp] = 0
+                        elif a2a > devp_median:
+                            self._a2a_assignment.at[origin, devp] = 1
+                        else:
+                            self._a2a_assignment.at[origin, devp] = -1
+        return(self._a2a_assignment)
+
 
 
     def a2a_avgs(self):
@@ -1248,12 +1316,14 @@ class CumTriangle(_BaseCumTriangle):
         """
         raise NotImplementedError("mcmc_cl not yet implemented.")
 
-    def glm_estimator(self, var_power=2):
+
+    def glm(self, var_power=2):
         """
         Generate reserve estimates via Generalized Linear Model framework.
         Note that ``glm_estimator`` assumes development is complete by the final
         development period. GLMs are fit using statsmodels Tweedie family
         """
+        raise NotImplementedError("glm reserve estimator not yet implemented.")
 
 
 
@@ -1291,10 +1361,9 @@ def totri(data, tri_type="cum", data_format="incr", data_shape="tabular",
     data_shape:{"tabular", "triangle"}
         Indicates whether ``data`` is formatted as a triangle instead of
         tabular loss data. In some workflows, triangles may have already
-        been created, and are available in external files. In such cases, the
-        triangle formatted data is read into a DataFrame, then coerced
-        into the desired triangle representation directly. Default value is
-        False.
+        been created and are available. In such cases, the triangle-formatted
+        data is read into a DataFrame, then coerced into the desired triangle
+        representation. Default value is "tabular".
 
     origin: str
         The field in ``data`` representing origin year. When ``data_shape="triangle"``,
@@ -1317,8 +1386,8 @@ def totri(data, tri_type="cum", data_format="incr", data_shape="tabular",
 
         if data_format.lower().strip().startswith("i"):
             # data is in incremental triangle format (but not typed as such).
-            inctri = data.reset_index(drop=False).rename({"index":"origin"}, axis=1)
-            df = pd.melt(inctri, id_vars=["origin"], var_name="dev", value_name="value")
+            incrtri = data.reset_index(drop=False).rename({"index":"origin"}, axis=1)
+            df = pd.melt(incrtri, id_vars=["origin"], var_name="dev", value_name="value")
 
         elif data_format.lower().strip().startswith("c"):
             # data is in cumulative triangle format (but not typed as such).
@@ -1326,12 +1395,12 @@ def totri(data, tri_type="cum", data_format="incr", data_shape="tabular",
             incrtri.iloc[:,0] = data.iloc[:, 0]
             incrtri = incrtri.reset_index(drop=False).rename({"index":"origin"}, axis=1)
             df = pd.melt(incrtri, id_vars=["origin"], var_name="dev", value_name="value")
-            df = df[~np.isnan(df["value"])].astype({"origin":np.int, "dev":np.int, "value":np.float})
+            df = df[~pd.isnull(df["value"])].astype({"origin":np.int, "dev":np.int, "value":np.float})
 
         else:
             raise NameError("Invalid data_format argument: `{}`.".format(tri_type))
 
-        df = df[~np.isnan(df["value"])].astype({"origin":np.int, "dev":np.int, "value":np.float})
+        df = df[~pd.isnull(df["value"])].astype({"origin":int, "dev":int, "value":float})
         df = df.sort_values(by=["origin", "dev"]).reset_index(drop=True)
 
     elif data_shape=="tabular":

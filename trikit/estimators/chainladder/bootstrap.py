@@ -241,7 +241,7 @@ class BootstrapChainLadder(BaseChainLadder):
     @staticmethod
     def _qtls_formatter(q, two_sided=False):
         """
-        Return array_like of formatted quantiles for MackChainLadder
+        Return array_like of formatted quantiles for BootstrapChainLadder
         summary.
 
         Parameters
@@ -390,7 +390,7 @@ class BootstrapChainLadder(BaseChainLadder):
     @staticmethod
     def _tri_fit_incr(fitted_tri_cum):
         """
-        Return the fitted incremental triangle.
+        Return a fitted incremental triangle.
 
         Parameters
         ----------
@@ -661,13 +661,13 @@ class BootstrapChainLadder(BaseChainLadder):
 
         Parameters
         ----------
-        forecasts: pd.DataFrame
+        dfforecasts: pd.DataFrame
             DateFrame of bootstraps forecasts generated within
             ``self._bs_forecasts``.
 
         scale_param: float
             the sum of the squared unscaled Pearson residuals over the
-            degrees of freedom. Computed within ``self._scale_param``.
+            degrees of freedom. Available in ``self._scale_param``.
 
         procdist: str
             Specifies the distribution used to incorporate process error.
@@ -908,9 +908,9 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
         pd.DataFrame
         """
         if self._origin_dist is None:
-            keepcols_ = ["latest", "ultimate", "reserve"]
+            dist_columns = ["latest", "ultimate", "reserve"]
             self._origin_dist = self.reserve_dist.groupby(
-                ["sim", "origin"], as_index=False)[keepcols_].sum()
+                ["sim", "origin"], as_index=False)[dist_columns].sum()
         return(self._origin_dist)
 
 
@@ -928,41 +928,6 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
             self._agg_dist = self.origin_dist.drop("origin", axis=1)
             self._agg_distribution = self._aggregate_distribution.groupby("sim", as_index=False).sum()
         return(self._aggregate_distribution)
-
-
-    @property
-    def fit_assessment(self):
-        """
-        Return a summary assessing the fit of the parametric model used for
-        bootstrap resampling. Applicable when ``parametric=True``. Returns a
-        dictionary with keys ``kstest``, ``anderson``, ``shapiro``, ``skewtest``,
-        ``kurtosistest`` and ``normaltest``, corresponding to statistical
-        tests available in ``scipy.stats``.
-
-        Returns
-        -------
-        dict
-        """
-        if self._fit_assessment is None:
-            if not self.parametric:
-                mean_ = self.sampling_dist.mean()
-                stddev_ = self.sampling_dist.std(ddof=1)
-                dist_ = stats.norm(loc=mean_, scale=stddev_)
-                D, p_ks = stats.kstest(self.sampling_dist, dist_.cdf)
-                W, p_sw = stats.shapiro(self.sampling_dist)
-                Z, p_sk = stats.skewtest(self.sampling_dist, axis=0, nan_policy="omit")
-                K, p_kt = stats.kurtosistest(self.sampling_dist, axis=0, nan_policy="omit")
-                S, p_nt = stats.normaltest(self.sampling_dist, axis=0, nan_policy="omit")
-                A, crit, sig = stats.anderson(self.sampling_dist, dist="norm")
-                self._fit_assessment = {
-                    "kstest":{"statistic":D, "p-value":p_ks},
-                    "anderson":{"statistic":A, "critical_values":crit, "significance_levels":sig},
-                    "shapiro":{"statistic":W, "p-value":p_sw},
-                    "skewtest":{"statistic":Z, "p-value":p_sk},
-                    "kurtosistest":{"statistic":K, "p-value":p_kt},
-                    "normaltest":{"statistic":S, "p-value":p_nt},
-                    }
-        return(self._fit_assessment)
 
 
     @property
@@ -1016,10 +981,10 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
                         unscaled_med,
                         ],
                     "adjusted":[
-                        _adjusted_size, adjusted_sum , adjusted_ssqr, adjusted_min,
-                        _adjusted_max,  adjusted_mean, adjusted_skew, adjusted_mode,
-                        _adjusted_cvar, adjusted_kurt, adjusted_var , adjusted_stdv,
-                        _adjusted_med,
+                        adjusted_size, adjusted_sum , adjusted_ssqr, adjusted_min,
+                        adjusted_max,  adjusted_mean, adjusted_skew, adjusted_mode,
+                        adjusted_cvar, adjusted_kurt, adjusted_var , adjusted_stdv,
+                        adjusted_med,
                         ],
                     },
                     index=[
@@ -1030,7 +995,6 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
                     )
 
         return(self._residuals_detail)
-
 
 
 
