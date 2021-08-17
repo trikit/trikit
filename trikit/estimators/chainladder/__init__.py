@@ -1,7 +1,7 @@
 """
 This module contains the class definition of ``BaseChainLadder``.
 """
-import collections
+from collections.abc import Sequence
 import functools
 import warnings
 import pandas as pd
@@ -104,7 +104,7 @@ class BaseChainLadder:
                 increment = np.unique(sel.index[1:] - sel.index[:-1])[0]
                 sel.loc[sel.index.max() + increment] = tail
 
-            elif isinstance(sel, (collections.Sequence, np.ndarray)):
+            elif isinstance(sel, (Sequence, np.ndarray)):
                 sel = np.asarray(sel, dtype=np.float)
                 if len(sel)!=len(self.tri.devp) - 1:
                     if sel.size==(self.tri.devp.size-1):

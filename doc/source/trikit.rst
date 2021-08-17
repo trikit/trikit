@@ -7,8 +7,8 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   trikit.chainladder
    trikit.datasets
+   trikit.tests
 
 Submodules
 ----------
@@ -28,7 +28,6 @@ trikit.utils module
    :members:
    :undoc-members:
    :show-inheritance:
-
 
 Module contents
 ---------------

@@ -22,6 +22,7 @@ import os.path
 import logging
 import timeit
 import trikit
+from trikit.estimators import chainladder
 
 
 
@@ -50,7 +51,7 @@ class BaseChainLadderTestCase(unittest.TestCase):
         self.ldfs_sum = r_cl.ldfs.dropna().sum()
         self.dactual_raa = dactual_raa
 
-        self.rtri = tri
+        self.tri = tri
         self.custom_ldfs = np.asarray([2.75, 1.55, 1.50, 1.25, 1.15, 1.075, 1.03, 1.02, 1.01])
         self.custom_ldfs_reserves_total = 145820.33941776195
 
@@ -109,7 +110,7 @@ class MackChainLadderTestCase(unittest.TestCase):
         df["dev"] = df["dev"] * 12
         df["origin"] = df["origin"] + 2000
         tri = trikit.totri(df, tri_type="cum", data_shape="tabular", data_format="incr")
-        mcl = trikit.chainladder.mack.MackChainLadder(cumtri=tri)
+        mcl = chainladder.mack.MackChainLadder(cumtri=tri)
         r_lognorm = mcl(alpha=1, dist="lognorm")
         r_norm = mcl(alpha=1, dist="norm")
 
@@ -281,7 +282,7 @@ class BootstrapChainLadderTestCase(unittest.TestCase):
     def setUp(self):
         df = trikit.load(dataset="raa")
         tri = trikit.totri(df, tri_type="cum", data_shape="tabular", data_format="incr")
-        bcl = trikit.chainladder.bootstrap.BootstrapChainLadder(tri)
+        bcl = chainladder.bootstrap.BootstrapChainLadder(tri)
         r_bcl = bcl()
 
 

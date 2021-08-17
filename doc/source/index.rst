@@ -1,6 +1,6 @@
 
-trikit
-======
+trikit: A Pythonic Approach to Actuarial Reserving
+================================================================================
 
 :Release: |release|
 :Date: |today|
@@ -14,12 +14,15 @@ A Pythonic approach to actuarial reserving
    :titlesonly:
    
    Project Overview <overview>
-   Quickstart Guide <quickstart>
-   Triangle Objects <triangle>
-   The Chain Ladder Method <chainladder>
+   Quickstart <quickstart>
+   Triangles <triangle>
+   Estimators <trikit.estimators>
    Sample Datasets <datasets>
    CAS Loss Reserving Database <lrdb>  
    Frequently Asked Questions <questions>
+   Modules <modules>
+   
+   
    
 
 Tutorial

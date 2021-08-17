@@ -32,4 +32,4 @@ get_lrdb_lobs = partial(_get_lrdb_lobs, lrdb_path=lrdb_path)
 get_lrdb_groups = partial(_get_lrdb_groups, lrdb_path=lrdb_path)
 get_lrdb_specs = partial(_get_lrdb_specs, lrdb_path=lrdb_path)
 
-__version__ = "0.3.0"
+__version__ = '0.3.0'

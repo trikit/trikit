@@ -18,41 +18,13 @@ Triangle Functions
 Triangle Class Definitions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. autoclass:: trikit.triangle._BaseTriangle
-	:members:
-	:private-members:
-	:no-undoc-members:
-
-
 .. autoclass:: trikit.triangle.IncrTriangle
 	:members:
 	:private-members:
 	:no-undoc-members:
-	
-	
+
+
 .. autoclass:: trikit.triangle.CumTriangle
 	:members:
 	:private-members:
 	:no-undoc-members:
-
-
-
-
-
-
-
-
-.. autoclass:: triangle.CumTriangle
-	:members:
-	:private-members:
-	:no-undoc-members:
-	
-	
-	
-.. autoclass:: trikit.triangle.CumTriangle
-	:members:
-
-
-
-.. autoclass:: CumTriangle
-	:members:

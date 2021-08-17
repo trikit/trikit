@@ -716,11 +716,6 @@ class _BaseCumTriangle(_BaseTriangle):
         return(self._a2a_lvi)
 
 
-
-
-
-
-
     @property
     def ranked_a2a(self):
         """
@@ -1123,7 +1118,7 @@ class CumTriangle(_BaseCumTriangle):
 
         Parameters
         ----------
-       sel: str, pd.Series or array_like
+        sel: str, pd.Series or array_like
             If ``sel`` is a string, the specified loss development patterns will be
             the associated entry from ``self.tri.a2a_avgs``.
             If ``sel`` is array_like, values will be used in place of loss development

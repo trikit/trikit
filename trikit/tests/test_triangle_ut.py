@@ -208,16 +208,11 @@ class CumTriangleTestCase(unittest.TestCase):
         self.assertTrue(isinstance(self.tri.to_tbl(), pd.DataFrame))
 
     def test_a2a_ranks(self):
-        self.assertTrue(self.tri.ranked_a2a["s_2"].sum()==32)
+        self.assertTrue(self.tri.ranked_a2a["s_2"].sum()==36)
 
     def test_a2a_assignment(self):
         self.assertTrue(self.tri.a2a_assignment.sum().sum()==0)
 
-    def test_neg_handler(self):
-        # df = trikit.load("raa")
-        # df["val2"] = df.apply(lambda rec: rec["value"] if rec["dev"]!=1 else rec["value"]-1000, axis=1)
-        # tri = trikit.totri(df, tri_type="incr", value="val2")
-        pass
 
 
 
