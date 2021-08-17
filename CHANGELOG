@@ -1,5 +1,23 @@
 
-### Version 0.2.11
+## Version 0.3.0
+
+* Added `devp_corr_test` method to `MackChainLadderResult` in order to test for development period correlation.
+
+* Added `cy_effects_test` method to `MackChainLadderResult` in order to test for calendar year effects.
+
+* Added `diagnostics` method to `MackChainLadderResult`. Produces faceted quad plot with reserve distribution,
+development by origin and standardized residuals by development period and origin.
+
+* Changed `totri` trignale type argument from `type_` to `tri_type`.
+
+* Cumulative triangle `cl` method no longer supported. Chain ladder methods available to cumulative triangle
+instances can now be accessed via `base_cl`, `mack_cl` and `boot_cl`.
+
+* Medial LDF averages are included when calling a triangle's `a2a_avgs` method.
+
+
+
+## Version 0.2.11
 
 * Added MackChainLadder implementation.
 
