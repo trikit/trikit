@@ -504,7 +504,7 @@ Which produces the following:
 
 
 ## Quantifying Reserve Variability
----
+
 
 The Base Chain Ladder method provides an estimate by origin and in total
 of future outstanding claim liabilities, but offers no indication of the
@@ -750,7 +750,7 @@ There are a number of parameters which control the style of the
 generated exhibits. Refer to the docstring for more information.
 
 ## References
----
+
 
 1.  Mack, Thomas (1993) *Measuring the Variability of Chain Ladder
     Reserve Estimates*, 1993 CAS Prize Paper Competition on
@@ -770,13 +770,13 @@ generated exhibits. Refer to the docstring for more information.
     Actuaries. 2016.
 
 ## Contact
----
+
 
 Please contact james.triveri@gmail.com with suggestions or feature
 requests.
 
 ## Relevant Links
---------------
+
 
 - trikit Source: https://github.com/trikit/trikit
 - CAS Loss Reserving Database: https://www.casact.org/research/index.cfm?fa=loss_reserves_data
