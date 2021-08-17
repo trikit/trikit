@@ -50,6 +50,10 @@ class BaseChainLadderTestCase(unittest.TestCase):
         self.ldfs_sum = r_cl.ldfs.dropna().sum()
         self.dactual_raa = dactual_raa
 
+        self.rtri = tri
+        self.custom_ldfs = np.asarray([2.75, 1.55, 1.50, 1.25, 1.15, 1.075, 1.03, 1.02, 1.01])
+        self.custom_ldfs_reserves_total = 145820.33941776195
+
 
     def test_ldfs(self):
         # Test computed vs. reference LDF pattern.
@@ -85,6 +89,14 @@ class BaseChainLadderTestCase(unittest.TestCase):
             np.abs(self.reserves_sum - self.dactual_raa["reserves_sum"]) < 1.,
             "Non-equality between computed vs. reference reserves."
             )
+
+    def test_custom_ldfs(self):
+        cl = self.tri.base_cl(sel=self.custom_ldfs)
+        self.assertTrue(
+            np.abs(self.custom_ldfs_reserves_total - cl.reserves.sum()) < 1.,
+            "Non-equality of reserves using cutstom ldfs."
+            )
+
 
 
 # MackChainLadder -------------------------------------------------------------

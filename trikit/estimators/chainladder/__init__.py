@@ -89,34 +89,32 @@ class BaseChainLadder:
         """
         if isinstance(sel, str):
             ldfs = self._ldfs(sel=sel, tail=tail)
+
         else:
             if isinstance(sel, pd.Series):
                 # Check whether sel has the appropriate length.
-                if not self.tri.devp.size==sel.index.size:
-                    # Check if all but last development period are identical.
-                    if not self.tri.devp[:-1].size==sel.index.size:
-                        raise ValueError(
-                            "sel has {} values, LDF overrides require {}.".format(
-                                sel.size, self.tri.devp.size - 1
-                                )
+                if sel.index.size!=(self.tri.devp.size - 1):
+                    raise ValueError(
+                        "sel has {} values, LDF overrides require {}.".format(
+                            sel.size, self.tri.devp.size - 1
                             )
-                    else:
-                        # Only tail factor is missing: Append tail factor to sel.
-                        increment = np.unique(sel.index[1:] - sel.index[:-1])[0]
-                        sel.loc[sel.index.max() + increment] = tail
+                        )
+
+                # Append tail factor to sel.
+                increment = np.unique(sel.index[1:] - sel.index[:-1])[0]
+                sel.loc[sel.index.max() + increment] = tail
 
             elif isinstance(sel, (collections.Sequence, np.ndarray)):
                 sel = np.asarray(sel, dtype=np.float)
-                if sel.size!=self.tri.devp.size:
+                if len(sel)!=len(self.tri.devp) - 1:
                     if sel.size==(self.tri.devp.size-1):
-                        # Append sel with tail.
-                        sel = np.append(sel, tail)
-                    else:
                         raise ValueError(
                             "sel has {} values, LDF overrides require at least {}.".format(
                                 sel.size, self.tri.devp.size - 1
                                 )
                             )
+                # Append sel with tail.
+                sel = np.append(sel, tail)
 
             # Coerce sel to pd.Series.
             ldfs = pd.Series(sel, index=self.tri.devp, dtype=np.float)
