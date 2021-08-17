@@ -13,7 +13,7 @@ from scipy import stats
 from .estimators.chainladder import BaseChainLadder
 from .estimators.chainladder.bootstrap import BootstrapChainLadder
 from .estimators.chainladder.mack import MackChainLadder
-from .estimators.glm import GLM
+from .estimators.glm import GLMEstimator
 
 
 
@@ -1310,18 +1310,12 @@ class CumTriangle(_BaseCumTriangle):
         return(MackChainLadder(self).__call__(**kwds))
 
 
-    def mcmc_cl(self):
-        """
-        Markov Chain Monte Carlo reserve estimator.
-        """
-        raise NotImplementedError("mcmc_cl not yet implemented.")
-
-
-    def glm(self, var_power=2):
+    def glm(self, var_power=1):
         """
         Generate reserve estimates via Generalized Linear Model framework.
         Note that ``glm_estimator`` assumes development is complete by the final
         development period. GLMs are fit using statsmodels Tweedie family
+        with log link.
         """
         raise NotImplementedError("glm reserve estimator not yet implemented.")
 

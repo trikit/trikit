@@ -345,6 +345,8 @@ class BaseChainLadderResult:
             for key_ in kwargs:
                 setattr(self, key_, kwargs[key_])
 
+        self._markers = ["o", "v", "^", "s", "8", "p", "D", "d", "h"]
+
         self._summspecs = {
             "ultimate":"{:,.0f}".format, "reserve":"{:,.0f}".format,
             "latest":"{:,.0f}".format, "cldf":"{:.5f}".format,

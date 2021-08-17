@@ -622,27 +622,53 @@ class MackChainLadderResult(BaseChainLadderResult):
 
     def _residuals_by_devp(self):
         """
-        Calculate standardized residuals of selected loss development factors
-        vs. age-to-age factors.
+        Calculate standardized residuals by development period.
 
         Returns
         -------
         pd.DataFrame
         """
-        dfresid = pd.DataFrame(columns=mcl.tri.a2a.columns, index=mcl.tri.a2a.index)
-        ldfs = mcl.ldfs
-        ldfvar = mcl.ldfvar
-        dfa2a = mcl.tri.a2a
-        dfa2aind = mcl.tri.a2aind
-        for ii in dfa2a.columns:
-            ldf_ii = ldfs[ii]
-            ldfvar_ii = ldfvar[ii]
-            a2a_ii = dfa2a.loc[:,ii]
-            a2aind_ii = dfa2aind.loc[:,ii]
-            v = a2a_ii * a2aind_ii
-            v= v[v>0]
-            n = v.size
-            #t_ii =
+        devpx = self.tri.devp.values[:-1]
+        devpy = np.roll(devpx, shift=-1)
+        xy = list(zip(devpx, devpy))[:-1]
+        resids_list = []
+        for x, y in xy:
+            # Multiply triangle values at development period x by ldf at development
+            # period x, then compute difference against triangle values at development
+            # period y.
+            yact_init = self.tri[y]
+            comp_indices = yact_init[~pd.isnull(yact_init)].index
+            n = comp_indices.size
+            yact = yact_init[comp_indices]
+            yhat = self.tri.loc[comp_indices,x] * self.ldfs.get(x)
+            dfresid = pd.Series(yhat - yact, name="residuals").to_frame()
+            dfresid["sigma"] = np.sqrt((dfresid["residuals"]**2).sum() / n - 1)
+            dfresid["std_residuals"] = dfresid["residuals"] / (dfresid["sigma"] * np.sqrt((n - 1) / n))
+            dfresid["t"] = x
+            resids_list.append(dfresid)
+        return(pd.concat(resids_list))
+
+
+    def _residuals_by_origin(self):
+        """
+        Calculate standardized residuals by origin period.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        resids_list = []
+        for origin in self.tri.origins[:-1]:
+            dfresid = self.tri.loc[origin].to_frame().rename({origin:"yact"}, axis=1)
+            dfresid["yhat"] = (dfresid["yact"] * self.ldfs).shift(1)
+            dfresid = dfresid.dropna(how="any")
+            dfresid["residuals"] = dfresid["yhat"] - dfresid["yact"]
+            n = dfresid.shape[0]
+            dfresid["sigma"] = np.sqrt((dfresid["residuals"]**2).sum() / n - 1)
+            dfresid["std_residuals"] = dfresid["residuals"] / (dfresid["sigma"] * np.sqrt((n - 1) / n))
+            dfresid["t"] = origin
+            resids_list.append(dfresid)
+        return(pd.concat(resids_list))
 
 
     def _spearman_corr_coeffs(self):
@@ -790,7 +816,7 @@ class MackChainLadderResult(BaseChainLadderResult):
         -------
         pd.DataFrame
         """
-        summlist = []
+        summ_list = []
         dflvi = self.tri.a2a_lvi
         dfhl = self.tri.a2a_assignment
         dflvi = dflvi.reset_index(drop=False).rename({"index":"devp"}, axis=1)
@@ -804,14 +830,14 @@ class MackChainLadderResult(BaseChainLadderResult):
         for jj, devp in diag_indx[:-1]:
             dcounts = pd.Series(dfhl.lookup(dflvi["origin"], dflvi["devp"])).value_counts()
             dsumm = {"j":jj, "S":dcounts.get(-1, 0), "L":dcounts.get(1, 0)}
-            summlist.append(dsumm)
+            summ_list.append(dsumm)
             # Adjust dflvi by shifting origin period back a single period
             # relative to devp. Drop record in which origin is missing.
             dflvi["origin"] = dflvi["origin"].shift(-1)
             dflvi = dflvi[~pd.isnull(dflvi.origin)]
             dflvi["origin"] = dflvi["origin"].astype(int)
 
-        dfcy = pd.DataFrame().from_dict(summlist).sort_values("j")
+        dfcy = pd.DataFrame().from_dict(summ_list).sort_values("j")
 
         # Z is defined as the minimum of S and L by record.
         dfcy["Z"] = dfcy.apply(lambda rec: min(rec.S, rec.L), axis=1)
@@ -854,7 +880,6 @@ class MackChainLadderResult(BaseChainLadderResult):
         tuple
         """
         dfcy = self._cy_effects_table().sum()
-        dfcy = dfcy.sum()
         Z = dfcy.get("Z")
         mu = dfcy.get("E_Z")
         v = dfcy.get("V_Z")
@@ -1033,8 +1058,134 @@ class MackChainLadderResult(BaseChainLadderResult):
                 plt.show()
 
 
-        def diagnostics(self):
-            """
-            Statistical diagnostics plots of Mack Chain Ladder estimator.
-            """
-            pass
+    def diagnostics(self, **kwargs):
+        """
+        Statistical diagnostics plots of Mack Chain Ladder estimator.
+        Exhibit is a faceted quad plot, representing the estimated
+        reserve distribution, the path to ultimate for each origin period,
+        and residuals by origin and development period.
+        """
+        import matplotlib as mpl
+        import matplotlib.pyplot as plt
+        import matplotlib.cm as cm
+
+        pltkwargs = dict(
+            marker="s", markersize=5, alpha=1, linestyle="-", linewidth=1.,
+            figsize=(9, 9), cmap="rainbow",
+            )
+        if kwargs:
+            pltkwargs.update(kwargs)
+
+        dfdens_all = self._data_transform()
+        dfdens = dfdens_all[(dfdens_all.origin=="total")]
+        dfresid0 = self._residuals_by_devp()
+        dfresid1 = self._residuals_by_origin()
+        cl_data = pd.melt(self.trisqrd, var_name="devp", ignore_index=False).reset_index(
+            drop=False).rename({"index":"origin"}, axis=1)
+        grps = cl_data.groupby("origin", as_index=False)
+        data_list = [grps.get_group(ii) for ii in self.tri.origins]
+
+        # Get unique hex color for each unique origin period.
+        fcolors = cm.get_cmap(pltkwargs["cmap"], len(self.tri.origins))
+        colors_rgba = [fcolors(ii) for ii in np.linspace(0, 1, len(self.tri.origins))]
+        colors_hex = [mpl.colors.to_hex(ii, keep_alpha=False) for ii in colors_rgba]
+
+        fig, ax = plt.subplots(2, 2, figsize=pltkwargs["figsize"], tight_layout=True)
+
+        # Upper left facet represents aggregate reserve distribution.
+        mean_agg_reserve = self.summary.at["total", "reserve"]
+        ax[0,0].set_title("Aggregate Reserve Distribution", fontsize=8, loc="left", weight="bold")
+        ax[0,0].plot(dfdens.x.values, dfdens.y.values, color="#000000", linewidth=1.)
+        ax[0,0].axvline(mean_agg_reserve,  linestyle="--", color="red", linewidth=1.)
+        ax[0,0].get_xaxis().set_major_formatter(mpl.ticker.FuncFormatter(lambda v, p: format(int(v), ",")))
+        ax[0,0].set_ylim(bottom=0)
+        ax[0,0].set_xlim(left=0)
+        ax[0,0].set_xlabel("")
+        ax[0,0].set_ylabel("")
+        ax[0,0].tick_params(axis="x", which="major", direction="in", labelsize=6)
+        ax[0,0].set_yticks([])
+        ax[0,0].set_yticklabels([])
+        ax[0,0].xaxis.set_ticks_position("none")
+        ax[0,0].yaxis.set_ticks_position("none")
+        ax[0,0].grid(False)
+        ax[0,0].annotate(
+            "mean total reserve = {:,.0f}".format(mean_agg_reserve),
+            xy=(mean_agg_reserve, self.rvs.total.pdf(mean_agg_reserve) * .50),
+            xytext=(-9, 0), textcoords="offset points", fontsize=8, rotation=90,
+            color="#000000",
+            )
+        for axis in ["top", "bottom", "left", "right"]:
+            ax[0,0].spines[axis].set_linewidth(0.5)
+
+
+        # Upper right facet represents Chain Ladder development paths (trisqrd).
+        for ii, hex_color, dforg in zip(range(len(colors_hex)), colors_hex, data_list):
+            xx = dforg["devp"].values
+            yy = dforg["value"].values
+            marker = self._markers[ii % len(self._markers)]
+            yy_divisor = 1 # 1000 if np.all(yy>1000) else 1
+            yy_axis_label = "(000's)" if yy_divisor==1000 else ""
+            ax[0,1].plot(
+                xx, yy / yy_divisor, color=hex_color,
+                linewidth=pltkwargs["linewidth"], linestyle=pltkwargs["linestyle"],
+                label=dforg.origin.values[0], marker=marker,
+                markersize=pltkwargs["markersize"]
+                )
+        for axis in ["top", "bottom", "left", "right"]:
+            ax[0,1].spines[axis].set_linewidth(0.5)
+
+        ax[0,1].set_title("Development by Origin", fontsize=8, loc="left", weight="bold")
+        ax[0,1].get_yaxis().set_major_formatter(mpl.ticker.FuncFormatter(lambda v, p: format(int(v), ",")))
+        ax[0,1].set_xlabel("devp", fontsize=8)
+        ax[0,1].set_ylabel(yy_axis_label, fontsize=7)
+        ax[0,1].set_ylim(bottom=0)
+        ax[0,1].set_xlim(left=cl_data["devp"].min())
+        ax[0,1].set_xticks(np.sort(cl_data["devp"].unique()))
+        ax[0,1].tick_params(axis="x", which="major", direction="in", labelsize=6)
+        ax[0,1].tick_params(axis="y", which="major", direction="in", labelsize=6)
+        ax[0,1].xaxis.set_ticks_position("none")
+        ax[0,1].yaxis.set_ticks_position("none")
+        ax[0,1].grid(False)
+        ax[0,1].legend(loc="lower right", fancybox=True, framealpha=1, fontsize="x-small")
+
+
+        # Lower left facet represents residuals by development period.
+        ax[1,0].set_title("std. residuals by devp", fontsize=8, loc="left", weight="bold")
+        ax[1,0].scatter(
+            dfresid0["t"].values, dfresid0["std_residuals"].values,
+            marker="o", edgecolor="#000000", color="#FFFFFF", s=15,
+            linewidths=.75
+            )
+        ax[1,0].axhline(0, linestyle="dashed", linewidth=1.)
+        ax[1,0].set_xlabel("devp", fontsize=7)
+        ax[1,0].set_ylabel("std. residuals", fontsize=7)
+        ax[1,0].set_xticks(np.sort(dfresid0.t.unique()))
+        ax[1,0].tick_params(axis="x", which="major", direction="in", labelsize=6)
+        ax[1,0].tick_params(axis="y", which="major", direction="in", labelsize=6)
+        ax[1,0].xaxis.set_ticks_position("none")
+        ax[1,0].yaxis.set_ticks_position("none")
+        ax[1,0].grid(False)
+        for axis in ["top", "bottom", "left", "right"]:
+            ax[1,0].spines[axis].set_linewidth(0.5)
+
+        # Lower right facet represents residuals by origin period.
+        ax[1,1].set_title("std. residuals by origin", fontsize=8, loc="left", weight="bold")
+        ax[1,1].scatter(
+            dfresid1["t"].values, dfresid1["std_residuals"].values,
+            marker="o", edgecolor="#000000", color="#FFFFFF", s=15,
+            linewidths=.75
+            )
+        ax[1,1].axhline(0, linestyle="dashed", linewidth=1.)
+        ax[1,1].set_xlabel("origin", fontsize=8)
+        ax[1,1].set_ylabel("std. residuals", fontsize=8)
+        ax[1,1].set_xticks(np.sort(dfresid1.t.unique()))
+        ax[1,1].tick_params(axis="x", which="major", direction="in", labelsize=6)
+        ax[1,1].tick_params(axis="y", which="major", direction="in", labelsize=6)
+        ax[1,1].xaxis.set_ticks_position("none")
+        ax[1,1].yaxis.set_ticks_position("none")
+        ax[1,1].grid(False)
+        for axis in ["top", "bottom", "left", "right"]:
+            ax[1,1].spines[axis].set_linewidth(0.5)
+
+        plt.show()
+

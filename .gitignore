@@ -20,9 +20,9 @@ pmip
 *.tmp
 *.vim
 .vscode
+.asv/
 tags
 cscope.out
-# gnu global
 GPATH
 GRTAGS
 GSYMS

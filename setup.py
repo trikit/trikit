@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 """
 Copyright 2018 James D. Triveri
-
-trikit setup.py.
 """
 import pathlib
 from setuptools import setup, find_packages

@@ -1,12 +1,13 @@
 
 .. _quickstart:
 
-=============================================================================
+================================================================================
 trikit Quickstart Guide
-=============================================================================
+================================================================================
 
 :Author: James D. Triveri
-:Release: 0.2.11
+:Release: 0.3.0
+
 
 .. highlight:: python
 
@@ -23,8 +24,8 @@ triangle objects.
 Along with the core ``IncrTriangle`` and ``CumTriangle`` data structures, 
 trikit exposes a few common methods for estimating unpaid claim liabilities,
 as well as techniques to quantify variability around those estimates. 
-Currently available reserve estimators are ``BaseChainLadder`` and 
-``BootstrapChainLadder``. Refer to the examples below for sample use cases. 
+Currently available reserve estimators are ``BaseChainLadder``, ``MackChainLadder`` 
+and ``BootstrapChainLadder``. Refer to the examples below for sample use cases. 
 
 
 Finally, in addition to the library's core Chain Ladder functionality, ``trikit``
@@ -37,10 +38,20 @@ As of version 0.2.6, only the Commercial Auto Database is bundled with trikit.
 Future releases will include additional loss reserving databases. 
 
 
+Installation
+********************************************************************************
+
+
+
+`trikit` can be installed by running:
+
+```sh
+$ python -m pip install trikit
+```
 
 
 Quickstart
-*****************************************************************************
+********************************************************************************
 
 We begin by loading the RAA sample dataset, which represents Automatic 
 Factultative business in General Liability provided by the Reinsurance 
@@ -227,8 +238,8 @@ number of different periods::
 	all-weighted  2.99936 1.62352 1.27089 1.17167 1.11338 1.04193 1.03326 1.01694 1.00922
 
 
-We can obtain a reference to an incremental version of ``tri`` by calling
-``to_incr``::
+We can obtain a reference to an incremental representation of the cumulative triangle
+by calling ``tri.to_incr``::
 
 	In[12]: tri.to_incr()
 	Out[12]:
@@ -317,12 +328,12 @@ cumulative triangle instance::
 				)
 	In [4]: dftri
 	Out[4]:
-		1          2         3         4        5
-	1  1010  767.00000 444.00000 239.00000 80.00000
-	2  1207 1100.00000 623.00000 556.00000      nan
-	3  1555 1203.00000 841.00000       nan      nan
-	4  1313  900.00000       nan       nan      nan
-	5  1905        nan       nan       nan      nan
+		  1     2    3    4   5
+	1  1010.  767. 444. 239. 80.
+	2  1207. 1100. 623. 556. nan
+	3  1555. 1203. 841. nan  nan
+	4  1313.  900. nan  nan  nan
+	5  1905.  nan  nan  nan  nan
 
 	In [5]: tri = totri(dftri, data_shape="triangle")
 	In [6]: type(tri)
@@ -335,6 +346,11 @@ date by development period. The exhibit can be obtained as follows::
 
 	In [5]: tri.plot()
 
+
+Which yields:
+
+.. image:: ./images/tridev_combined.png
+   :align: center
 
 
 
@@ -365,7 +381,7 @@ of availavble lines of business (lobs), use ``trikit.get_lrdb_lobs()``)::
 	1996 142,301 326,584     nan     nan     nan       nan       nan       nan       nan       nan
 	1997 143,970     nan     nan     nan     nan       nan       nan       nan       nan       nan
 
-To obtain base chain ladder reserve point estimates, call the cumulative triangle's
+To obtain base chain ladder reserve estimates, call the cumulative triangle's
 ``base_cl`` method::
 
 	In [5]: result = tri.base_cl()
@@ -410,7 +426,7 @@ loss development factors by name, run::
 
 
 If instead of ``all-weighted``, a 5-year geometric loss development pattern is 
-preferred, along with a tail factor of 1.015, the call to ``cl`` would be modified 
+preferred, along with a tail factor of 1.015, the call to ``base_cl`` would be modified
 as follows::
 
 	In [1]: tri.base_cl(sel="geometric-5", tail=1.015)
@@ -468,27 +484,32 @@ having ``n`` development periods, ``ValueError`` will be raised::
 
 
 A faceted plot by origin combining actuals and forcasts can be obtained by calling
-``BaseChainLadderResult``'s plot method::
+``result``'s plot method::
 
 	In [1]: result = tri.cl(sel="geometric-5", tail=1.015)
 	In [2]: result.plot()
 
 
+Which produces the following:
+
+    .. image:: ./images/cl_plot.png
+    :align: center
+
 
 Quantifying Reserve Variability
-*****************************************************************************
+*******************************************************************************
 
-The base chain ladder method provides an estimate by origin and in total of 
-future claim liabilities, but offers no indication of the variability around 
-those point estimates. We can obtain quantiles of the predictive distribution
-of reserve estimates through various trikit estimators.
+The Base Chain Ladder method provides an estimate by origin and in total of
+future outstanding claim liabilities, but offers no indication of the variability
+around those point estimates. We can obtain quantiles of the predictive
+distribution of reserve estimates through a number of trikit estimators.
 
 
 Mack Chain Ladder
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The Mack Chain Ladder is a distribution free model which estimates the first
-two moments of the standard chain ladder forecasts. Within trikit, the Mack Chain
+two moments of standard chain ladder forecasts. Within trikit, the Mack Chain
 Ladder is encapsulated within a cumulative triangle's ``mack_cl`` method.
 ``mack_cl`` accepts a number of optional arguments:
 
@@ -534,7 +555,7 @@ Using the ``ta83`` sample dataset, calling ``mack_cl`` with default arguments yi
 	total               nan       nan 34,358,090 53,038,959 18,680,869 2,447,318 0.13101 20,226,192 22,955,604
 
 The ``MackChainLadderResult``'s ``plot`` method returns a faceted plot of estimated
-reserve distributions by origin period and in total. The mean is highlighted, along with
+reserve distributions by origin and in total. The mean is highlighted, along with
 any quantiles passed to the ``plot`` method via ``q``. We can compare the estimated distributions 
 when ``dist="lognorm"`` vs. ``dist="norm"``, highlighting the mean and 95th percentile. 
 First we take a look at ``dist="lognorm"``::
@@ -558,6 +579,76 @@ Which generates:
 
 .. image:: ./images/mack_norm_facet.png
     :align: center
+
+
+Testing for Development Period Correlation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In [1] Appendix G, Mack proposes an approximate test to assess whether one
+of the basic Chain Ladder assumptions holds, namely that subsequent development
+periods are uncorrelated. The test can be performed via `MackChainLadderResult``'s
+``devp_corr_test`` method. We next apply the test to the RAA dataset::
+
+
+	In [1]: from trikit import load, totri
+	In [2]: df = load("raa")
+	In [3]: tri = totri(data=df)
+	In [4]: mcl = tri.mack_cl()
+	In [5]: mcl.devp_corr_test()
+    Out[5]: ((-0.12746658149149367, 0.12746658149149367), 0.0695578231292517)
+
+
+``devp_corr_test`` returns a 2-tuple: The first element represents the bounds
+of the test interval ((-0.127, 0.127)). The second element is the test statistic
+for the triangle under consideration. In this example, the test statistic falls
+within the bounds of the test interval, therefore we do not reject the null-hypothesis
+of having uncorrelated development factors. If the test statistic falls outside the
+interval, the correlations should be analyzed in more detail. Refer to [1] for more
+information.
+
+
+
+Testing for Calendar Year Effects
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In [1] Appendix H, Mack proposes a test to assess the independence of the origin
+periods. This test can be performed via ``MackChainLadderResult``'s ``cy_effects_test``
+method. Again using the RAA dataset::
+
+    In [1]: from trikit import load, totri
+	In [2]: df = load("raa")
+	In [3]: tri = totri(data=df)
+	In [4]: mcl = tri.mack_cl()
+	In [5]: mcl.cy_effects_test()
+    Out[5]: ((8.965613354894957, 16.78438664510504), 14.0)
+
+Similar to ``devp_corr_test``, ``cy_effects_test`` returns a 2-tuple, with the first
+element representing the bounds of the test interval ((8.97, 16.78)) and the second
+element the test statistic. In this example, the test statistic falls within the
+bounds of thew test interval, therefore we do not reject the null-hypothesis of not
+having significant calendar year influences. Refer to [1] for more
+information.
+
+
+Mack Chain Ladder Diagnostics
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``MackChainLadderResult`` exposes a ``diagnostics`` method, which generates a faceted plot
+that includes the estimated aggregate reserve distribution, development by origin
+and standardized residuals by development period and by orgin::
+
+     In [1]: from trikit import load, totri
+	 In [2]: df = load("raa")
+	 In [3]: tri = totri(data=df)
+	 In [4]: mcl = tri.mack_cl()
+	 In [5]: mcl.diagnostics()
+
+
+Which produces the following:
+
+    .. image:: ./images/mack_diagnostics.png
+    :align: center
+
 
 
 
@@ -650,6 +741,29 @@ There are a number of parameters which control the style of the generated exhibi
 Refer to the docstring for more information.   
 
 
+
+References
+----------
+
+1. Mack, Thomas (1993) *Measuring the Variability of Chain Ladder Reserve
+    Estimates*, 1993 CAS Prize Paper Competition on 'Variability of Loss Reserves'.
+
+2. Mack, Thomas, (1993), *Distribution-Free Calculation of the Standard Error
+   of Chain Ladder Reserve Estimates*, ASTIN Bulletin 23, no. 2:213-225.
+
+3. Mack, Thomas, (1999), *The Standard Error of Chain Ladder Reserve Estimates:
+   Recursive Calculation and Inclusion of a Tail Factor*, ASTIN Bulletin 29,
+   no. 2:361-366.
+
+4. England, P., and R. Verrall, (2002), *Stochastic Claims Reserving in General
+  Insurance*, British Actuarial Journal 8(3): 443-518.
+
+5. Murphy, Daniel, (2007), *Chain Ladder Reserve Risk Estimators*, CAS E-Forum,
+   Summer 2007.
+
+6. Carrato, A., McGuire, G. and Scarth, R. 2016. *A Practitioner's
+   Introduction to Stochastic Reserving*, The Institute and Faculty of
+   Actuaries. 2016.
 
 
 Contact
