@@ -1,8 +1,6 @@
 """
 Reserve estimator benchmarks.
 """
-import sys
-sys.path.append("G:\\Repos\\_trikit_\\trikit")
 import numpy as np
 import pandas as pd
 import trikit
