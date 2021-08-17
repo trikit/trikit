@@ -761,13 +761,11 @@ generated exhibits. Refer to the docstring for more information.
 3.  Mack, Thomas, (1999), *The Standard Error of Chain Ladder Reserve
     Estimates: Recursive Calculation and Inclusion of a Tail Factor*,
     ASTIN Bulletin 29, no. 2:361-366.
-
-4\. England, P., and R. Verrall, (2002), *Stochastic Claims Reserving in
-General Insurance*, British Actuarial Journal 8(3): 443-518.
-
+4.  England, P., and R. Verrall, (2002), *Stochastic Claims Reserving in
+    General Insurance*, British Actuarial Journal 8(3): 443-518.
 5.  Murphy, Daniel, (2007), *Chain Ladder Reserve Risk Estimators*, CAS
     E-Forum, Summer 2007.
-6.  Carrato, A., McGuire, G. and Scarth, R. 2016. *A Practitioner\'s
+6.  Carrato, A., McGuire, G. and Scarth, R. 2016. *A Practitioner's
     Introduction to Stochastic Reserving*, The Institute and Faculty of
     Actuaries. 2016.
 
