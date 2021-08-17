@@ -400,7 +400,7 @@ class BaseChainLadderResult:
             on="origin", how="left"
             )
 
-        dfult = df0[df0["dev"]=="ultimate"]
+        dfult = df0[df0["dev"]=="ultimate"].copy()
         dev_increment = np.unique(self.ldfs.index[1:] - self.ldfs.index[:-1])[0]
         dfult["dev"] =  self.ldfs.index.max() + dev_increment
         dfult["rectype"] = "forecast"

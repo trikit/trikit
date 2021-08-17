@@ -1042,7 +1042,7 @@ class MackChainLadderResult(BaseChainLadderResult):
                         )
                     ax_ii.annotate(
                         origin, xy=(.85, .925), xytext=(.85, .925), xycoords='axes fraction',
-                        textcoords='axes fraction', fontsize=10, rotation=0, color="#000000",
+                        textcoords='axes fraction', fontsize=9, rotation=0, color="#000000",
                         )
                     ax_ii.set_xticklabels([]); ax_ii.set_yticklabels([])
                     ax_ii.set_title(""); ax_ii.set_xlabel(""); ax_ii.set_ylabel("")

@@ -1221,8 +1221,6 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
                     ax_ii.set_yticks(y_ticks)
                     ax_ii.set_yticklabels(y_ticklabels, size=7)
 
-
-
                     ax_ii.annotate(
                         origin, xy=(.075, .90), xytext=(.075, .90), xycoords='axes fraction',
                         textcoords='axes fraction', fontsize=9, rotation=0, color="#000000",
@@ -1342,7 +1340,7 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
                     xmin = np.max([0, dfmetrics[dfmetrics.origin==origin]["min_res"].item()])
                     xmax = dfmetrics[dfmetrics.origin==origin]["max_res"].item() * 1.025
                     xmed = dfmetrics[dfmetrics.origin==origin]["med_res"].item()
-                    origin_str = "{} reserve".format(origin)
+                    origin_str = "{}".format(origin)
                     ax_ii.set_xlim([0, xmax])
                     ax_ii.axvline(xmed, color="#E02C70", linestyle="--", linewidth=1.5)
                     ax_ii.grid(False)
@@ -1356,8 +1354,8 @@ class BootstrapChainLadderResult(BaseChainLadderResult):
                         ["{:,.0f}".format(jj) for jj in ax_ii.get_xticks()], size=7
                         )
                     ax_ii.annotate(
-                        origin_str, xy=(.65, .925), xycoords='axes fraction',
-                        textcoords='axes fraction', fontsize=8, rotation=0, color="#000000",
+                        origin_str, xy=(.85, .925), xycoords='axes fraction',
+                        textcoords='axes fraction', fontsize=9, rotation=0, color="#000000",
                         )
                     ax_ii.annotate(
                         "median = {:,.0f}".format(xmed), (xmed, ymedloc), xytext=(7.5, 0),

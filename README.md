@@ -738,6 +738,11 @@ In [2]: bcl = tri.boot_cl(sims=2500, two_sided=True, random_state=516)
 In [2]: bcl.plot(q=.90)
 ```
 
+Resulting in:
+
+![image](./doc/source/images/bcl_facet.png)
+
+
 In addition, we can obtain a faceted plot of the distribution of
 bootstrap samples by origin and in aggregate by calling
 `BoostrapChainLadderResult`\'s `hist` method:
@@ -746,7 +751,12 @@ bootstrap samples by origin and in aggregate by calling
 In [4]: bcl.hist()
 ```
 
-There are a number of parameters which control the style of the
+Which generates:
+
+![image](./doc/source/images/bcl_hists.png)
+
+
+There are a number of parameters which can be used to control the style of the
 generated exhibits. Refer to the docstring for more information.
 
 ## References
