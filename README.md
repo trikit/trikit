@@ -346,6 +346,11 @@ obtained as follows:
 In [5]: tri.plot()
 ```
 
+Which yields:
+
+![image](./doc/source/images/tridev_combined.png)
+
+
 
 Reserve Estimators
 ------------------
@@ -493,6 +498,10 @@ In [1]: result = tri.cl(sel="geometric-5", tail=1.015)
 In [2]: result.plot()
 ```
 
+Which produces the following:
+
+![image](./doc/source/images/cl_plot.png)
+
 
 ## Quantifying Reserve Variability
 ---
@@ -564,7 +573,9 @@ take a look at `dist="lognorm"`:
 In [7]: mcl.plot()
 ```
 
+Which produces the following:
 
+![image](./doc/source/images/mack_lognorm_facet.png){.align-center}
 
 Next we produce the same exhibit, this time setting `dist="norm"`:
 
@@ -574,6 +585,11 @@ In [9]: mcl = tri.cl(range_method="mack", **mclargs)
 In[10]: mcl.plot()
 ```
 
+Which generates:
+
+![image](./doc/source/images/mack_norm_facet.png){.align-center}
+
+### Testing for Development Period Correlation
 
 
 In [1] Appendix G, Mack proposes an approximate test to assess whether
@@ -637,6 +653,10 @@ In [3]: tri = totri(data=df)
 In [4]: mcl = tri.mack_cl()
 In [5]: mcl.diagnostics()
 ```
+
+Which produces the following:
+
+![image](./doc/source/images/mack_diagnostics.png)
 
 
 ### Bootstrap Chain Ladder
