@@ -3,7 +3,7 @@
 
 
 **Author:**   James D. Triveri   
-**Release:** 0.3.0
+**Release:** 0.3.1
 
 
 trikit is a collection of Loss Reserving utilities developed to

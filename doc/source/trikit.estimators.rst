@@ -1,34 +1,19 @@
-.. _estimators:
-
 trikit.estimators package
-=========================================================
+=========================
 
-Submodules
-----------
+Subpackages
+-----------
 
-trikit.estimators.chainladder.bootstrap module
-------------------------------------------------
+.. toctree::
+   :maxdepth: 4
 
-.. automodule:: trikit.estimators.chainladder.bootstrap
-   :members:
-   :undoc-members:
-   :show-inheritance:
-	   
-	   
-	   
-trikit.estimators.chainladder.mack module
--------------------------------------------------
-
-.. automodule:: trikit.estimators.chainladder.mack
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
+   trikit.estimators.chainladder
+   trikit.estimators.glm
 
 Module contents
---------------------
+---------------
 
-.. automodule:: trikit.estimators.chainladder
+.. automodule:: trikit.estimators
    :members:
    :undoc-members:
    :show-inheritance:

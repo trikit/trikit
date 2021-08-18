@@ -8,6 +8,7 @@ Subpackages
    :maxdepth: 4
 
    trikit.datasets
+   trikit.estimators
    trikit.tests
 
 Submodules

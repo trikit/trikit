@@ -1,5 +1,5 @@
 
-## Version 0.3.0
+## Version 0.3.1
 
 * Added `devp_corr_test` method to `MackChainLadderResult` in order to test for development period correlation.
 

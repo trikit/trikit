@@ -6,7 +6,7 @@ trikit Quickstart Guide
 ================================================================================
 
 :Author: James D. Triveri
-:Release: 0.3.0
+:Release: 0.3.1
 
 
 .. highlight:: python
@@ -42,7 +42,6 @@ Installation
 
 
 trikit can be installed by running::
-
 
 	$ python -m pip install trikit
 
