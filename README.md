@@ -343,12 +343,6 @@ obtained as follows:
 In [5]: tri.plot()
 ```
 
-Which yields:
-
-![image](./doc/source/images/tridev_combined.png)
-
-
-
 Reserve Estimators
 ------------------
 
@@ -493,9 +487,6 @@ In [1]: result = tri.cl(sel="geometric-5", tail=1.015)
 In [2]: result.plot()
 ```
 
-Which produces the following:
-
-![image](./doc/source/images/cl_plot.png)
 
 
 ## Quantifying Reserve Variability
@@ -568,9 +559,6 @@ take a look at `dist="lognorm"`:
 In [7]: mcl.plot()
 ```
 
-Which produces the following:
-
-![image](./doc/source/images/mack_lognorm_facet.png)
 
 Next we produce the same exhibit, this time setting `dist="norm"`:
 
@@ -580,9 +568,6 @@ In [9]: mcl = tri.cl(range_method="mack", **mclargs)
 In[10]: mcl.plot()
 ```
 
-Which generates:
-
-![image](./doc/source/images/mack_norm_facet.png)
 
 ### Testing for Development Period Correlation
 
@@ -648,10 +633,6 @@ In [3]: tri = totri(data=df)
 In [4]: mcl = tri.mack_cl()
 In [5]: mcl.diagnostics()
 ```
-
-Which produces the following:
-
-![image](./doc/source/images/mack_diagnostics.png)
 
 
 ### Bootstrap Chain Ladder
@@ -731,9 +712,7 @@ In [2]: bcl = tri.boot_cl(sims=2500, two_sided=True, random_state=516)
 In [2]: bcl.plot(q=.90)
 ```
 
-Resulting in:
 
-![image](./doc/source/images/bcl_facet.png)
 
 
 In addition, we can obtain a faceted plot of the distribution of
@@ -744,9 +723,6 @@ bootstrap samples by origin and in aggregate by calling
 In [4]: bcl.hist()
 ```
 
-Which generates:
-
-![image](./doc/source/images/bcl_hists.png)
 
 
 There are a number of parameters which can be used to control the style of the
@@ -757,7 +733,7 @@ generated exhibits. Refer to the docstring for more information.
 
 1.  Mack, Thomas (1993) *Measuring the Variability of Chain Ladder
     Reserve Estimates*, 1993 CAS Prize Paper Competition on
-    \'Variability of Loss Reserves\'.
+    Variability of Loss Reserves.
 2.  Mack, Thomas, (1993), *Distribution-Free Calculation of the Standard
     Error of Chain Ladder Reserve Estimates*, ASTIN Bulletin 23, no.
     2:213-225.
