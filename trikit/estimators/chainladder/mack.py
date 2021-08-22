@@ -8,7 +8,7 @@ from scipy import special
 from scipy.stats import norm, lognorm
 from scipy.optimize import root
 from . import BaseChainLadder, BaseChainLadderResult
-from ... import triangle
+
 
 
 class MackChainLadder(BaseChainLadder):
@@ -819,16 +819,16 @@ class MackChainLadderResult(BaseChainLadderResult):
         summ_list = []
         dflvi = self.tri.a2a_lvi
         dfhl = self.tri.a2a_assignment
-        dflvi = dflvi.reset_index(drop=False).rename({"index":"devp"}, axis=1)
-        devpinc = dflvi["devp"].diff(1).dropna().unique().item()
+        dflvi = dflvi.reset_index(drop=False).rename({"index":"dev"}, axis=1)
+        devpinc = dflvi["dev"].diff(1).dropna().unique().item()
         origininc = dflvi["origin"].diff(-1).dropna().unique().item()
-        diag_indx = sorted(
-            list(enumerate(dflvi["devp"].values[::-1], start=1)), key=lambda v: v[-1]
-            )
+        diag_indx = sorted(list(enumerate(dflvi["dev"].values[::-1], start=1)), key=lambda v: v[-1])
+        dfhl2 = dfhl.reset_index(drop=False).rename({"index":"origin"}, axis=1).melt(
+            id_vars=["origin"], var_name=["dev"]).dropna(subset=["value"])
 
         # Begin with latest diagonal. Work backwards.
         for jj, devp in diag_indx[:-1]:
-            dcounts = pd.Series(dfhl.lookup(dflvi["origin"], dflvi["devp"])).value_counts()
+            dcounts = dflvi.merge(dfhl2, on=["origin", "dev"])["value"].value_counts()
             dsumm = {"j":jj, "S":dcounts.get(-1, 0), "L":dcounts.get(1, 0)}
             summ_list.append(dsumm)
             # Adjust dflvi by shifting origin period back a single period
@@ -1080,7 +1080,7 @@ class MackChainLadderResult(BaseChainLadderResult):
         dfdens = dfdens_all[(dfdens_all.origin=="total")]
         dfresid0 = self._residuals_by_devp()
         dfresid1 = self._residuals_by_origin()
-        cl_data = pd.melt(self.trisqrd, var_name="devp", ignore_index=False).reset_index(
+        cl_data = pd.melt(self.trisqrd, var_name="dev", ignore_index=False).reset_index(
             drop=False).rename({"index":"origin"}, axis=1)
         grps = cl_data.groupby("origin", as_index=False)
         data_list = [grps.get_group(ii) for ii in self.tri.origins]
@@ -1136,7 +1136,7 @@ class MackChainLadderResult(BaseChainLadderResult):
 
         ax[0,1].set_title("Development by Origin", fontsize=8, loc="left", weight="bold")
         ax[0,1].get_yaxis().set_major_formatter(mpl.ticker.FuncFormatter(lambda v, p: format(int(v), ",")))
-        ax[0,1].set_xlabel("devp", fontsize=8)
+        ax[0,1].set_xlabel("dev", fontsize=8)
         ax[0,1].set_ylabel(yy_axis_label, fontsize=7)
         ax[0,1].set_ylim(bottom=0)
         ax[0,1].set_xlim(left=cl_data["devp"].min())
@@ -1157,7 +1157,7 @@ class MackChainLadderResult(BaseChainLadderResult):
             linewidths=.75
             )
         ax[1,0].axhline(0, linestyle="dashed", linewidth=1.)
-        ax[1,0].set_xlabel("devp", fontsize=7)
+        ax[1,0].set_xlabel("dev", fontsize=7)
         ax[1,0].set_ylabel("std. residuals", fontsize=7)
         ax[1,0].set_xticks(np.sort(dfresid0.t.unique()))
         ax[1,0].tick_params(axis="x", which="major", direction="in", labelsize=6)

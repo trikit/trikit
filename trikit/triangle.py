@@ -10,9 +10,10 @@ import itertools
 import numpy as np
 import pandas as pd
 from scipy import stats
-from .estimators.chainladder import BaseChainLadder
-from .estimators.chainladder.bootstrap import BootstrapChainLadder
-from .estimators.chainladder.mack import MackChainLadder
+import warnings
+from .estimators.base import BaseChainLadder
+from .estimators.bootstrap import BootstrapChainLadder
+from .estimators.mack import MackChainLadder
 from .estimators.glm import GLMEstimator
 
 
@@ -211,10 +212,12 @@ class _BaseTriangle(pd.DataFrame):
         """
         if self._latest is None:
             lindx = self.apply(lambda devp: devp.last_valid_index(), axis=1)
-            self._latest = pd.DataFrame(
-                {"latest":self.lookup(lindx.index, lindx.values),
-                 "origin":lindx.index, "dev":lindx.values})
-        return(self._latest[["origin", "dev", "latest"]].sort_index())
+            dflindx = lindx.to_frame().reset_index(drop=False).rename(
+                {0:"dev", "index":self.origin}, axis=1)
+            self._latest = dflindx.merge(self.to_tbl(), on=[self.origin, self.dev]).rename(
+                {self.value:"latest"}, axis=1)
+            self._latest = self._latest[["origin", "dev", "latest"]].sort_index()
+        return(self._latest)
 
 
     @property

@@ -622,9 +622,9 @@ class BootstrapChainLadder(BaseChainLadder):
             dfcombined["dev"].values>=dfcombined["l_act_dev"].values, dfcombined.index.values, -1)
         dfacts = dfcombined[(dfcombined["origin"].values==min_origin_year) | (dfcombined["_l_init_indx"].values==-1)]
         dffcst = dfcombined[~dfcombined.index.isin(dfacts.index)].sort_values(by=["sim", "origin", "dev"])
-
         dffcst["_l_act_indx"] = dffcst.groupby(["sim", "origin"])["_l_init_indx"].transform("min")
-        dffcst["l_act_cum"] = dffcst.lookup(dffcst["_l_act_indx"].values, ["samp_cum"] * dffcst.shape[0])
+        l_act_cum = dffcst.loc[dffcst["_l_act_indx"], "samp_cum"].values
+        dffcst["l_act_cum"] = l_act_cum
         dffcst["_cum_ldf"] = dffcst.groupby(["sim", "origin"])["ldf"].transform("cumprod").shift(periods=1)
         dffcst["_samp_cum2"] = dffcst["l_act_cum"].values * dffcst["_cum_ldf"].values
         dffcst["_samp_cum2"] = np.where(np.isnan(dffcst["_samp_cum2"].values), 0, dffcst["_samp_cum2"].values)

@@ -4,17 +4,17 @@ Database.
 The list of available datasets will continue to grow with each release.
 Please check back periodically.
 """
-import os.path
+from pathlib import Path
 
-datasets_dir = os.path.dirname(__file__)
+datasets_dir = Path(__file__).parent
 
 dataref = {
-    "raa": os.path.join(datasets_dir,  "RAA.csv"),
-    "ta83": os.path.join(datasets_dir,  "TaylorAshe83.csv"),
-    "lrdb": os.path.join(datasets_dir,  "lrdb.csv"),
-    "autoliab": os.path.join(datasets_dir,  "AutoLiabMedical.csv"),
-    "glre": os.path.join(datasets_dir,  "GLReinsurance2004.csv"),
-    "singinjury": os.path.join(datasets_dir,  "SingaporeInjury.csv"),
-    "singproperty": os.path.join(datasets_dir,  "SingaporeProperty.csv"),
+    "raa": str(datasets_dir.joinpath("RAA.csv")),
+    "ta83": str(datasets_dir.joinpath("TaylorAshe83.csv")),
+    "lrdb": str(datasets_dir.joinpath("lrdb.csv")),
+	"amw09": str(datasets_dir.joinpath("amw09.csv")),
+    "autoliab": str(datasets_dir.joinpath("AutoLiabMedical.csv")),
+    "glre": str(datasets_dir.joinpath("GLReinsurance2004.csv")),
+    "singinjury": str(datasets_dir.joinpath("SingaporeInjury.csv")),
+    "singproperty": str(datasets_dir.joinpath("SingaporeProperty.csv")),
     }
-

@@ -1,3 +1,10 @@
+## Version 0.3.2
+
+* Removed instances using Pandas lookup function. 
+
+* Added `load_lrdb` function dedicated to CAS Loss Reserving Database data.
+
+* Added amz09 loss triangle.  
 
 ## Version 0.3.1
 

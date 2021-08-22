@@ -164,6 +164,7 @@ class MackChainLadderTestCase(unittest.TestCase):
         self.dactual_ta83 = dactual_ta83
 
 
+
     def test_ldfs(self):
         # Test computed vs. reference LDF pattern.
         self.assertEqual(
@@ -270,8 +271,28 @@ class MackChainLadderTestCase(unittest.TestCase):
             )
 
     def test_devp_corr_test(self):
-        pass
+        ref_tt0 = (-0.12746658149149367, 0.12746658149149367)
+        ref_tt1 = 0.0695578231292517
+        tri = trikit.totri(trikit.load("raa"))
+        tt = tri.mack_cl().devp_corr_test()
+        test1 = all([np.allclose(ii,jj) for ii,jj in zip(ref_tt0, tt[0])])
+        test2 = np.allclose(ref_tt1, tt[-1])
+        self.assertTrue(
+            test1 and test2,
+            "Non-equality between computed vs. reference devp correlation test."
+            )
 
+    def test_cy_effects_test(self):
+        ref_tt0 = (8.965613354894957, 16.78438664510504)
+        ref_tt1 = 14.
+        tri = trikit.totri(trikit.load("raa"))
+        tt = tri.mack_cl().cy_effects_test()
+        test1 = all([np.allclose(ii,jj) for ii,jj in zip(ref_tt0, tt[0])])
+        test2 = np.allclose(ref_tt1, tt[-1])
+        self.assertTrue(
+            test1 and test2,
+            "Non-equality between computed vs. reference cy effects test."
+            )
 
 
 
