@@ -740,61 +740,80 @@ number of optional arguments:
     `RandomState` instance used by np.random. Default value is None.
 
 We next demonstrate how to apply the Bootstrap Chain Ladder to the RAA
-dataset. The example sets `sims=2500`, `two_sided=True` and
-`random_state=516` for reproducability:
+dataset. The example sets `sims=1000`, `two_sided=False` and
+`random_state=516` for reproducibility:
 
 ```python
 In [1]: from trikit import load, totri
-In [2]: df = load("raa")
-In [3]: tri = totri(data=df)
-In [4]: bcl = tri.boot_cl(sims=2500, two_sided=True, random_state=516)
-In [5]: bcl
-Out[1]:
-      maturity    cldf emergence  latest ultimate reserve   2.5%  12.5%  87.5%   97.5%
-1981        10 1.00000   1.00000  18,834   18,834       0      0      0      0       0
-1982         9 1.00922   0.99087  16,704   16,858     154   -691    -71    543   1,610
-1983         8 1.02631   0.97437  23,466   24,083     617 -1,028   -100  1,727   3,115
-1984         7 1.06045   0.94300  27,067   28,703   1,636   -518    227  3,351   5,129
-1985         6 1.10492   0.90505  26,180   28,927   2,747     50    859  4,826   7,209
-1986         5 1.23020   0.81288  15,852   19,501   3,649    724  1,688  5,986   8,226
-1987         4 1.44139   0.69377  12,314   17,749   5,435  1,536  2,730  8,622  11,521
-1988         3 1.83185   0.54590  13,112   24,019  10,907  4,477  6,577 15,557  20,131
-1989         2 2.97405   0.33624   5,395   16,045  10,650  2,824  5,452 16,603  21,204
-1990         1 8.92023   0.11210   2,063   18,402  16,339    565  5,164 29,130  41,923
-total              nan       nan 160,987  213,122  52,135  7,938 22,526 86,344 120,069
+In [2]: tri = load("raa", tri_type="cum")
+In [3]: bcl = tri.boot_cl(sims=1000, two_sided=False, random_state=516)
+In [4]: bcl
+Out[4]:
+      maturity    cldf emergence  latest ultimate reserve std_error    cv    75%    95%
+1981        10 1.00000   1.00000  18,834   18,834       0         0   nan      0      0
+1982         9 1.00922   0.99087  16,704   16,863     159       529 3.331    245  1,108
+1983         8 1.02631   0.97437  23,466   24,395     929     1,026 1.104  1,101  2,609
+1984         7 1.06045   0.94300  27,067   28,648   1,581     1,592 1.007  2,472  4,704
+1985         6 1.10492   0.90505  26,180   29,087   2,907     1,883 0.648  3,914  6,341
+1986         5 1.23020   0.81288  15,852   19,762   3,910     1,931 0.494  4,892  7,114
+1987         4 1.44139   0.69377  12,314   17,738   5,424     2,538 0.468  6,947 10,061
+1988         3 1.83185   0.54590  13,112   24,365  11,253     3,980 0.354 13,565 18,735
+1989         2 2.97405   0.33624   5,395   16,325  10,930     4,940 0.452 13,870 19,879
+1990         1 8.92023   0.11210   2,063   18,973  16,910    11,028 0.652 22,863 37,008
+total              nan       nan 160,987  214,989  54,002    14,832 0.275 62,597 80,200
 ```
 
-`reserve` represents the median of the predicitive distribution of reserve estimates 
-by origin and in total, and `2.5%`, `12.5%`, `87.5%` and `97.5%` represent various 
-percentiles of the predictive distribution of reserve estimates. The lower
-percentiles, `2.5%` and `12.5%` are included since `two_sided=True`.
+`reserve` represents the mean of the predicitive distribution of reserve estimates 
+by origin and in total, and `75%` and `95%` represent quantiles of the distribution.
 
-The `BoostrapChainLadderResult` object includes two exhibits: The first
-is similar to `BaseChainLadderResult`'s `plot`, but includes the upper
-and lower bounds of the specified quantile of the predictive
-distribution. To obtain the faceted plot showing the 5th and 95th
+
+Additional quantiles of the bootstrapped reserve distribution can be obtained by calling
+`get_quantiles`. `q` can be either a single float or an array of floats representing the
+percentiles of interest (which must fall within [0, 1]). We set `lb=0` to set negative 
+quantiles to 0:
+
+```python
+In [5]: bcl.get_quantiles(q=[.05, .10, .25, .75, .90, .95], lb=0)
+Out[5]:
+          5th    10th    25th    75th    90th    95th
+1981      0.0     0.0     0.0     0.0     0.0     0.0
+1982      0.0     0.0     0.0   245.0   694.0  1108.0
+1983      0.0     0.0    30.0  1101.0  2001.0  2609.0
+1984      0.0   142.0   618.0  2472.0  3758.0  4704.0
+1985    349.0   693.0  1449.0  3914.0  5234.0  6341.0
+1986   1117.0  1454.0  2319.0  4892.0  6348.0  7114.0
+1987   1838.0  2396.0  3555.0  6947.0  8832.0 10061.0
+1988   5469.0  6452.0  8256.0 13565.0 16339.0 18735.0
+1989   3671.0  4892.0  7257.0 13870.0 17667.0 19879.0
+1990   1793.0  4278.0  8790.0 22863.0 30904.0 37008.0
+total 31588.0 36193.0 43009.0 62597.0 73218.0 80200.0
+```
+
+
+
+`BoostrapChainLadderResult` exposes two exhibits: The first is similar to `BaseChainLadderResult`'s 
+`plot`, but includes the upper and lower bounds of the specified quantile of the 
+predictive distribution. To obtain the faceted plot displaying the 5th and 95th
 percentiles, run:
 
 ```python
-In [2]: bcl = tri.boot_cl(sims=2500, two_sided=True, random_state=516)
-In [2]: bcl.plot(q=.90)
+In [5]: bcl = tri.boot_cl(sims=2500, two_sided=True, random_state=516)
+In [6]: bcl.plot(q=.90)
 ```
 
 
-
-
-In addition, we can obtain a faceted plot of the distribution of
-bootstrap samples by origin and in aggregate by calling
-`BoostrapChainLadderResult`\'s `hist` method:
+In addition, we can obtain a faceted plot of the distribution of bootstrap samples by origin 
+and in aggregate by calling `BoostrapChainLadderResult`'s `hist` method:
 
 ```python
-In [4]: bcl.hist()
+In [7]: bcl.hist()
 ```
 
 
 
 There are a number of parameters which can be used to control the style of the
-generated exhibits. Refer to the docstring for more information.
+generated exhibits. Refer to the documentation for more information.
+
 
 ## References
 

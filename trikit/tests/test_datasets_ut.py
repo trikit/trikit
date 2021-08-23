@@ -38,6 +38,7 @@ class DatasetsTestCase(unittest.TestCase):
             "singinjury"  :11026482.299999999,
             "singproperty":25101206.26,
             "lrdb"        :10178930,
+            "amw09"       :92741342.0,
             }
 
     def test_raa(self):
@@ -80,6 +81,12 @@ class DatasetsTestCase(unittest.TestCase):
         self.assertEqual(
             trikit.load("raa").value.sum(), self.dactual["raa"],
             "Issue detected with raa sample dataset."
+            )
+
+    def test_amw09(self):
+        self.assertEqual(
+            trikit.load("amw09").value.sum(), self.dactual["amw09"],
+            "Issue detected with amw09 sample dataset."
             )
 
     def test_lrdb(self):

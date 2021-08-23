@@ -4,7 +4,14 @@
 
 * Added `load_lrdb` function dedicated to CAS Loss Reserving Database data.
 
-* Added amz09 loss triangle.  
+* Added amz09 loss triangle.
+
+* Added get_quantiles method to BootstrapChainLadderResult and MackChainLadderResult.
+
+* Added `tri_type` parameter to load and load_lrdb functions to convert sample datasets
+to triangles directly.
+
+
 
 ## Version 0.3.1
 

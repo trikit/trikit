@@ -975,7 +975,7 @@ class CumTriangle(_BaseCumTriangle):
 
         pltkwargs = dict(
             marker="s", markersize=5, alpha=1, linestyle="-", linewidth=1.5,
-            figsize=(9, 6), cmap="hsv",
+            figsize=(9.5, 6.5), cmap="gist_rainbow",
             )
 
         if kwargs:
@@ -990,22 +990,22 @@ class CumTriangle(_BaseCumTriangle):
         fcolors = cm.get_cmap(pltkwargs["cmap"], len(self.origins))
         colors_rgba = [fcolors(ii) for ii in np.linspace(0, 1, len(self.origins))]
         colors_hex = [mpl.colors.to_hex(ii, keep_alpha=False) for ii in colors_rgba]
+        markers = ["o", "v", "^", "s", "p", "D", "d", "h"]
 
         fig, ax = plt.subplots(1, 1, figsize=pltkwargs["figsize"], tight_layout=True)
 
         ax.set_title("Loss Development by Origin", fontsize=9, loc="left")
 
-        for hex_color, dforg in zip(colors_hex, data_list):
-
-            xx = dforg.dev.values
-            yy = dforg.value.values
+        for ii, hex_color, dforg in zip(range(len(colors_hex)), colors_hex, data_list):
+            xx = dforg["dev"].values
+            yy = dforg["value"].values
+            marker = markers[ii % len(markers)]
             yy_divisor = 1 # 1000 if np.all(yy>1000) else 1
             yy_axis_label = "(000's)" if yy_divisor==1000 else ""
-
             ax.plot(
                 xx, yy / yy_divisor, color=hex_color,
                 linewidth=pltkwargs["linewidth"], linestyle=pltkwargs["linestyle"],
-                label=dforg.origin.values[0], marker=pltkwargs["marker"],
+                label=dforg.origin.values[0], marker=marker,
                 markersize=pltkwargs["markersize"]
                 )
 

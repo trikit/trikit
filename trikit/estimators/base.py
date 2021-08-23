@@ -656,6 +656,9 @@ class BaseRangeEstimatorResult(BaseChainLadderResult):
             "7":"th", "8":"th", "9":"th",
             }
 
+        self._summspecs.update({"std_error":"{:,.0f}".format, "cv":"{:.3f}".format})
+
+
 
     def _qtls_formatter(self, q):
         """

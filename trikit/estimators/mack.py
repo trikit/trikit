@@ -1096,4 +1096,3 @@ class MackChainLadderResult(BaseRangeEstimatorResult):
             ax[1,1].spines[axis].set_linewidth(0.5)
 
         plt.show()
-

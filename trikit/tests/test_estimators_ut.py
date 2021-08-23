@@ -22,7 +22,7 @@ import os.path
 import logging
 import timeit
 import trikit
-from trikit.estimators import chainladder
+from trikit.estimators import base, mack, bootstrap
 
 
 
@@ -30,9 +30,9 @@ from trikit.estimators import chainladder
 
 class BaseChainLadderTestCase(unittest.TestCase):
     def setUp(self):
-        data = trikit.load(dataset="raa")
-        tri = trikit.totri(data, tri_type="cum", data_shape="tabular", data_format="incr")
-        # cl = trikit.estimators.chainladder.BaseChainLadder(cumtri=tri)
+        tri = trikit.load(dataset="raa", tri_type="cum")
+        # tri = trikit.totri(data, tri_type="cum", data_shape="tabular", data_format="incr")
+        # cl = base.BaseChainLadder(cumtri=tri)
         # r_cl = cl()
         r_cl = tri.base_cl()
 
@@ -44,13 +44,12 @@ class BaseChainLadderTestCase(unittest.TestCase):
             "reserves_sum" :52135.228261210155,
             }
 
-        self.ultimates_sum = r_cl.ultimates.drop("total").dropna().sum()
-        self.reserves_sum = r_cl.reserves.drop("total").dropna().sum()
+        self.ultimates_sum = r_cl.ultimate.drop("total").dropna().sum()
+        self.reserves_sum = r_cl.reserve.drop("total").dropna().sum()
         self.latest_sum = r_cl.latest.dropna().sum()
         self.cldfs_sum = r_cl.cldfs.dropna().sum()
         self.ldfs_sum = r_cl.ldfs.dropna().sum()
         self.dactual_raa = dactual_raa
-
         self.tri = tri
         self.custom_ldfs = np.asarray([2.75, 1.55, 1.50, 1.25, 1.15, 1.075, 1.03, 1.02, 1.01])
         self.custom_ldfs_reserves_total = 145820.33941776195
@@ -110,7 +109,7 @@ class MackChainLadderTestCase(unittest.TestCase):
         df["dev"] = df["dev"] * 12
         df["origin"] = df["origin"] + 2000
         tri = trikit.totri(df, tri_type="cum", data_shape="tabular", data_format="incr")
-        mcl = chainladder.mack.MackChainLadder(cumtri=tri)
+        mcl = mack.MackChainLadder(cumtri=tri)
         r_lognorm = mcl(alpha=1, dist="lognorm")
         r_norm = mcl(alpha=1, dist="norm")
 
@@ -153,12 +152,12 @@ class MackChainLadderTestCase(unittest.TestCase):
         self.mse_sum = r_lognorm.mse.dropna().sum()
         self.std_error_sum = r_lognorm.std_error.drop("total").dropna().sum()
         self.cv_sum = r_lognorm.cv.drop("total").dropna().sum()
-        self.mse_total_sum = r_lognorm.mse_total.dropna().sum()
+        # self.mse_total_sum = r_lognorm.mse_total.dropna().sum()
         self.process_error_sum = r_lognorm.process_error.dropna().sum()
         self.parameter_error_sum = r_lognorm.parameter_error.dropna().sum()
         self.ldfs_sum = r_lognorm.ldfs.dropna().sum()
-        self.ultimates_sum = r_lognorm.ultimates.drop("total").dropna().sum()
-        self.reserves_sum = r_lognorm.reserves.drop("total").dropna().sum()
+        self.ultimates_sum = r_lognorm.ultimate.drop("total").dropna().sum()
+        self.reserves_sum = r_lognorm.reserve.drop("total").dropna().sum()
         self.devpvar_sum = r_lognorm.devpvar.dropna().sum()
         self.ldfvar_sum = r_lognorm.ldfvar.dropna().sum()
         self.dactual_ta83 = dactual_ta83
@@ -301,11 +300,9 @@ class MackChainLadderTestCase(unittest.TestCase):
 
 class BootstrapChainLadderTestCase(unittest.TestCase):
     def setUp(self):
-        df = trikit.load(dataset="raa")
-        tri = trikit.totri(df, tri_type="cum", data_shape="tabular", data_format="incr")
-        bcl = chainladder.bootstrap.BootstrapChainLadder(tri)
+        tri = trikit.load(dataset="raa", tri_type="cum")
+        bcl = bootstrap.BootstrapChainLadder(tri)
         r_bcl = bcl()
-
 
         dactual_raa = {
             "ldfs_sum"            :13.28018030198903,
@@ -327,8 +324,8 @@ class BootstrapChainLadderTestCase(unittest.TestCase):
             "bs_reserves_sum"     :5227886.663640983,
             }
 
-        self.ultimates_sum = r_bcl.ultimates.drop("total").dropna().sum()
-        self.reserves_sum = r_bcl.reserves.drop("total").dropna().sum()
+        self.ultimates_sum = r_bcl.ultimate.drop("total").dropna().sum()
+        self.reserves_sum = r_bcl.reserve.drop("total").dropna().sum()
         self.latest_sum = r_bcl.latest.dropna().sum()
         self.cldfs_sum = r_bcl.cldfs.dropna().sum()
         self.ldfs_sum = r_bcl.ldfs.dropna().sum()
