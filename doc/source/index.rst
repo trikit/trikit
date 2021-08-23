@@ -20,7 +20,6 @@ A Pythonic approach to actuarial reserving
    Sample Datasets <datasets>
    CAS Loss Reserving Database <lrdb>  
    Frequently Asked Questions <questions>
-   Modules <modules>
    
    
    

@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from numpy.random import RandomState
 from scipy import stats
-from ..chainladder import BaseChainLadder, BaseChainLadderResult
+from .base import BaseChainLadder, BaseChainLadderResult
 
 
 

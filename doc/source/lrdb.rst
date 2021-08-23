@@ -5,8 +5,6 @@
 The CAS Loss Reserving Database
 ================================================================================
 
-
-
 The |LRDB|__ is a collection of loss data originally compiled by Glenn Meyers 
 intended to be used for claims reserving studies. The data includes major 
 personal and commercial lines of business from U.S. property casualty insurers.
@@ -65,8 +63,10 @@ its performance retrospectively [#f1]_.
 **train_ind**
 	**1** indicates whether the value associated with a particular 
 	``origin-dev`` combination would fall in the upper-left of a typical loss 
-	triangle   
-
+	triangle. **0** indicates what would typically be indentified as a future
+    observation at the time triangles are constructed. These "lower right"
+    triangle values can be treated as a holdout set to test the adequacy
+    of a reserve estimator.
 
 The following table provides a description of the type of losses associated 
 with each unique combination of ``loss_key`` and
@@ -148,15 +148,31 @@ passed to ``load_lrdb``. For example, to retrieve the subset of commercial auto 
 ``grcode=1767``::
 
     In [1]: from trikit import load_lrdb
-    In [2]: df = load(grcode=1767, lob="comauto")
+    In [2]: df = load_lrdb(grcode=1767, lob="comauto")
     In [3]: type(df)
-    pandas.core.frame.DataFrame
+    Out[3]: pandas.core.frame.DataFrame
 
 
+Alternatively, the resulting subset can be transformed to a triangle of the desired type::
 
-Notice that with ``grcode`` and ``lob`` specified as above, the
-returned DataFrame contains 55 records as expected (recall that by default,
-``train_ind`` is set to False, otherwise the shape of the returned
+    In [4]: tri = load_lrdb(tri_type="cum", grcode=1767, lob="comauto")
+    In [5]: tri
+    Out[5]:
+              1       2       3       4       5         6         7         8         9         10
+    1988 110,231 263,079 431,216 611,278 797,428   985,570 1,174,922 1,366,229 1,558,096 1,752,096
+    1989 121,678 279,896 456,640 644,767 837,733 1,033,837 1,233,015 1,432,670 1,633,619       nan
+    1990 123,376 298,615 500,570 714,683 934,671 1,157,979 1,383,820 1,610,193       nan       nan
+    1991 117,457 280,058 463,396 662,003 865,401 1,071,271 1,278,228       nan       nan       nan
+    1992 124,611 291,399 481,170 682,203 889,029 1,101,390       nan       nan       nan       nan
+    1993 137,902 323,854 533,211 753,639 980,180       nan       nan       nan       nan       nan
+    1994 150,582 345,110 561,315 792,392     nan       nan       nan       nan       nan       nan
+    1995 150,511 345,241 560,278     nan     nan       nan       nan       nan       nan       nan
+    1996 142,301 326,584     nan     nan     nan       nan       nan       nan       nan       nan
+    1997 143,970     nan     nan     nan     nan       nan       nan       nan       nan       nan
+
+
+Notice that with ``grcode`` and ``lob`` specified as above, the returned DataFrame contains 55 records
+as expected (recall that by default, ``train_ind`` is set to False, otherwise the shape of the returned
 DataFrame would be (100, 3).
 
 

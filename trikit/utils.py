@@ -12,17 +12,8 @@ from . import triangle
 
 def _load(dataset, tri_type=None, dataref=None):
     """
-	Load the specified dataset, returning a DataFrame of incremental
-	losses. If ``tri_type`` is not None, return sample dataset as specified
-	triangle (one of ``{"cum", "incr"}``).additional keyword arguments are used
-	to subset the CAS Loss Reserving Database to the records of interest.
-	Within the Loss Reserving Database, "loss_key" and "grname" uniquely
-	partition losses into 100 record blocks if ``lower_right_ind`` =True,
-	otherwise losses are partitioned into 55 record blocks. All available
-	combinations of "loss_key" and "grcode" (referred to as "specs")
-	can be obtained by calling ``get_lrdb_specs``.
-	If ``dataset`` is something other than "lrdb", then only the name of
-	the target dataset as a string is required.
+	Load the specified sample dataset. If ``tri_type`` is not None, return sample
+	dataset as specified triangle (one of ``{"cum", "incr"}``).
 
 	Parameters
 	----------
@@ -176,7 +167,7 @@ def _get_datasets(dataref):
     list
         Names of available sample datasets.
     """
-    return(list(dataref.keys()))
+    return(sorted([ii for ii in dataref.keys() if ii!="lrdb"]))
 
 
 

@@ -7,11 +7,14 @@ import pandas as pd
 from scipy import special
 from scipy.stats import norm, lognorm
 from scipy.optimize import root
-from . import BaseChainLadder, BaseChainLadderResult
+from .base import (
+    BaseChainLadder, BaseChainLadderResult, BaseRangeEstimator,
+    BaseRangeEstimatorResult
+    )
 
 
 
-class MackChainLadder(BaseChainLadder):
+class MackChainLadder(BaseRangeEstimator):
     """
     Mack Chain Ladder estimator. The predicition variance is comprised
     of the estimation variance and the process variance. Estimation variance
@@ -191,7 +194,6 @@ class MackChainLadder(BaseChainLadder):
                 std_params = np.sqrt(np.log(1 + (dfsumm["std_error"] / dfsumm["reserve"])**2)).replace(np.NaN, 0)
                 mean_params = np.clip(np.log(dfsumm["reserve"]), a_min=0, a_max=None) - .50 * std_params**2
                 rv_list = [lognorm(scale=np.exp(ii), s=jj) for ii,jj in zip(mean_params, std_params)]
-
         else:
             raise ValueError(
                 "dist must be one of {'norm', 'lognorm'}, not `{}`.".format(dist)
@@ -208,62 +210,19 @@ class MackChainLadder(BaseChainLadder):
 
         dfsumm.loc[self.tri.index.min(), ["cv"] + qtlhdrs] = np.NaN
 
-        # Bind and return MackChainLadderResult instance.
-        kwds = {"alpha":alpha, "tail":tail, "dist":dist, "q":q, "two_sided":two_sided,}
         mcl_result = MackChainLadderResult(
-            summary=dfsumm, tri=self.tri, ldfs=ldfs, trisqrd=trisqrd,
+            summary=dfsumm, tri=self.tri, ldfs=ldfs, trisqrd=trisqrd, dist=dist,
             process_error=proc_error, parameter_error=param_error, devpvar=devpvar,
-            ldfvar=ldfvar, mse=mse, mse_total=mse_total, cv=cv, rvs=rvs, **kwds
+            ldfvar=ldfvar, rvs=rvs, alpha=alpha, tail=tail
             )
 
         return(mcl_result)
 
 
-
-
-    @staticmethod
-    def _qtls_formatter(q, two_sided=False):
-        """
-        Return array_like of formatted quantiles for MackChainLadder
-        summary.
-
-        Parameters
-        ----------
-        q: array_like of float or float
-            Quantile or sequence of quantiles to compute, which must be
-            between 0 and 1 inclusive.
-
-        two_sided: bool
-            Whether the two_sided interval should be included in summary
-            output. For example, if ``two_sided==True`` and ``q=.95``, then
-            the 2.5th and 97.5th quantiles of the estimated reserve
-            distribution will be returned [(1 - .95) / 2, (1 + .95) / 2]. When
-            False, only the specified quantile(s) will be computed. Defaults
-            to False.
-
-        Returns
-        -------
-        tuple of list
-        """
-        qtls = np.asarray([q] if isinstance(q, (float, int)) else q)
-        if np.all(np.logical_and(qtls <= 1, qtls >= 0)):
-            if two_sided:
-                qtls = np.sort(np.unique(np.append((1 - qtls) / 2., (1 + qtls) / 2.)))
-            else:
-                qtls = np.sort(np.unique(qtls))
-        else:
-            raise ValueError("Values for quantiles must fall between [0, 1].")
-        qtlhdrs = [
-            "{:.5f}".format(ii).rstrip("0").rstrip(".") + "%" for ii in 100 * qtls
-            ]
-        return(qtls, qtlhdrs)
-
-
     @property
     def mod_tri(self):
         """
-        Return modified triangle-shaped DataFrame with same indices as
-        self.tri.a2a.
+        Return modified triangle-shaped DataFrame with same indices as self.tri.a2a.
 
         Returns
         -------
@@ -436,7 +395,7 @@ class MackChainLadder(BaseChainLadder):
 
     def _parameter_error(self, ldfs, ldfvar):
         """
-         Return a triangle-shaped DataFrame containing elementwise parameter
+        Return a triangle-shaped DataFrame containing elementwise parameter
         error. To obtain the parameter error for a given origin period,
         cells are aggregated across columns.
 
@@ -515,13 +474,12 @@ class MackChainLadder(BaseChainLadder):
 
 
 
-
-class MackChainLadderResult(BaseChainLadderResult):
+class MackChainLadderResult(BaseRangeEstimatorResult):
     """
-    MackChainLadder output.
+    Container class for MackChainLadder output.
     """
-    def __init__(self, summary, tri, ldfs, trisqrd, process_error, parameter_error,
-                 devpvar, ldfvar, mse, mse_total, cv, rvs, **kwargs):
+    def __init__(self, summary, tri, alpha, tail, ldfs, trisqrd, dist, process_error,
+                 parameter_error, devpvar, ldfvar, rvs, **kwargs):
         """
         Container class for ``MackChainLadder`` output.
 
@@ -533,8 +491,21 @@ class MackChainLadderResult(BaseChainLadderResult):
         tri: trikit.triangle.CumTriangle
             A cumulative triangle instance.
 
+        alpha: int
+            MackChainLadder alpha parameter.
+
+        tail: float
+            Tail factor.
+
         ldfs: pd.Series
             Loss development factors.
+
+        trisqrd: pd.DataFrame
+            Projected claims growth for each future development period.
+
+        dist: str
+            The distribution function chosen to approximate the true distribution of
+            reserves by origin period. Wither "norm" or "lognorm".
 
         process_error: pd.Series
             Reserve estimate process error indexed by origin. Represents the
@@ -546,23 +517,6 @@ class MackChainLadderResult(BaseChainLadderResult):
             Reserve estimate parameter error indexed by origin. Represents
             the risk that the parameters used in the methods or models are not
             representative of future outcomes.
-
-        mse: pd.Series
-            Estimated mean squared error (mse) of each origin period. The
-            earliest origin period's mse will be 0, since it is assumed to be
-            fully developed.
-
-        mse_total: pd.Series
-            Mean squared error (mse) of aggregate reserve estimate. Reserve
-            estimators for individual origin periods are correlated due to the
-            fact that they rely on the same parameters $\hat{f}_{j}$ and
-            $\hat{\sigma}^2_{j}$ (``ldfs`` and ``devpvar`` respectively). To
-            compute the mean square error for the total reserve, we aggregate
-            mean square error estimates for individual origin periods
-            (available in ``mse`` parameter), plus an allowance for the
-            correlation between estimators[6]. The values in ``mse_total`` are
-            aggregated to obtain an estimate for the mean squared error of the
-            total reserve.
 
         devpvar: pd.Series
             The development period variance, usually represented as
@@ -580,28 +534,18 @@ class MackChainLadderResult(BaseChainLadderResult):
             with parameters mu and sigma having distribution specified by
             ``dist``.
 
-        cv: pd.Series.
-            Coefficient of variation, the ratio of standard deviation and mean.
-             Here, ``cv = std_error / reserves``.
-
         kwargs: dict
             Additional parameters originally passed into ``MackChainLadder``'s
             ``__call__`` method.
         """
-        super().__init__(summary=summary, tri=tri, ldfs=ldfs, trisqrd=trisqrd, **kwargs)
 
-        self.std_error = summary["std_error"]
-        self.cv = summary["cv"]
-        self.parameter_error = parameter_error
-        self.process_error = process_error
-        self.mse_total = mse_total
-        self.summary = summary
+        super().__init__(summary=summary, tri=tri, ldfs=ldfs, tail=tail, trisqrd=trisqrd,
+                         process_error=process_error, parameter_error=parameter_error)
+
+        self.alpha = alpha
+        self.dist = dist
         self.devpvar = devpvar
-        self.trisqrd = trisqrd
         self.ldfvar = ldfvar
-        self.ldfs = ldfs
-        self.tri = tri
-        self.mse = mse
         self.rvs = rvs
 
         if kwargs is not None:
@@ -612,12 +556,6 @@ class MackChainLadderResult(BaseChainLadderResult):
         mack_summ_hdrs = {ii:"{:,.0f}".format for ii in self.summary.columns if ii.endswith("%")}
         mack_summ_hdrs.update({"std_error":"{:,.0f}".format, "cv":"{:.5f}".format})
         self._summspecs.update(mack_summ_hdrs)
-
-        # Quantile suffix for plot method annotations.
-        self.dsuffix = {
-            "0":"th", "1":"st", "2":"nd", "3":"rd", "4":"th", "5":"th", "6":"th",
-            "7":"th", "8":"th", "9":"th",
-            }
 
 
     def _residuals_by_devp(self):
@@ -861,7 +799,6 @@ class MackChainLadderResult(BaseChainLadderResult):
         return(dfcy)
 
 
-
     def cy_effects_test(self, p=.05):
         """
         We reject the hypothesis, with an error probability of p, of having no
@@ -889,40 +826,9 @@ class MackChainLadderResult(BaseChainLadderResult):
         return((lb, ub), Z)
 
 
-    def _qtls_formatter(self, q):
+    def _mack_data_transform(self):
         """
-        Return array_like of actual and formatted quantiles for MackChainLadder
-        summary.
-
-        Parameters
-        ----------
-        q: array_like of float or float
-            Quantile or sequence of quantiles to compute, which must be
-            between 0 and 1 inclusive.
-
-        Returns
-        -------
-        tuple of list
-        """
-        qtls = np.asarray([q] if isinstance(q, (float, int)) else q)
-        if np.all(np.logical_and(qtls <= 1, qtls >= 0)):
-            qtls = np.sort(np.unique(qtls))
-        else:
-            raise ValueError("Values for quantiles must fall between [0, 1].")
-
-        qtlhdrs = [
-            "{:.5f}".format(ii).rstrip("0").rstrip(".") for ii in 100 * qtls
-            ]
-        qtlhdrs = [
-            ii + "th" if "." in ii else ii + self.dsuffix[ii[-1]] for ii in qtlhdrs
-            ]
-        return(qtls, qtlhdrs)
-
-
-    def _data_transform(self):
-        """
-        Generate data by origin period and in total to plot estimated
-        reserve distributions.
+        Generate data by origin period and in total to plot estimated reserve distributions.
 
         Returns
         -------
@@ -939,31 +845,33 @@ class MackChainLadderResult(BaseChainLadderResult):
         return(df.dropna(how="all", subset=["x", "y"]))
 
 
-
-    def get_quantiles(self, q=[.05, .25, .50, .75, .95], origin=None):
+    def get_quantiles(self, q):
         """
-        Get quantile of estimated reserve distribution for an individual
-        origin period or in total. Returns a tuple of ndarrays: The first
-        representing user-provided quantiles, the second representing values
-        estimated by the reserve distribution.
+        Get quantiles of estimated reserve distribution for an individual origin periods and
+        in total. Returns a DataFrame, with columns representing the percentiles of interest.
 
         Parameters
         ----------
         q: array_like of float or float
-            Quantile or sequence of quantiles to compute, which must be
-            between 0 and 1 inclusive. Default value is
-            ``[.05, .25, .50, .75, .95]``.
-
-        origin: int
-            Target origin period from which to return specified quantile(s).
-            If None, quantiles from aggregate reserve distribution will
-            be returned.
+            Quantile or sequence of quantiles to compute, which must be between 0 and 1
+            inclusive.
 
         Returns
         -------
-        tuple of ndarrays
+        pd.DataFrame
         """
-        pass
+        qarr = np.asarray(q, dtype=np.float)
+        if np.any(np.logical_and(qarr > 1, qarr < 0)):
+            raise ValueError("q values must fall within [0, 1].")
+        else:
+            qtls, qtlhdrs = self._qtls_formatter(q=q)
+            qtl_pairs = [(qtlhdrs[ii], qtls[ii]) for ii in range(len(qtls))]
+            dqq = {
+                str(ii[0]):[self.rvs[origin].ppf(ii[-1]) for origin in self.rvs.index]
+                    for ii in qtl_pairs
+                }
+        return(pd.DataFrame().from_dict(dqq).set_index(self.summary.index))
+
 
 
     def plot(self, q=.95, dist_color="#000000", q_color="#E02C70", axes_style="darkgrid",
@@ -1076,7 +984,7 @@ class MackChainLadderResult(BaseChainLadderResult):
         if kwargs:
             pltkwargs.update(kwargs)
 
-        dfdens_all = self._data_transform()
+        dfdens_all = self._mack_data_transform()
         dfdens = dfdens_all[(dfdens_all.origin=="total")]
         dfresid0 = self._residuals_by_devp()
         dfresid1 = self._residuals_by_origin()

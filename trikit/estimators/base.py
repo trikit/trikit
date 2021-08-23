@@ -142,11 +142,9 @@ class BaseChainLadder:
         dfsumm.loc["total"] = dfsumm.sum()
         dfsumm.loc["total", "maturity"] = ""
         dfsumm.loc["total", ["cldf", "emergence"]] = np.NaN
-        kwds = {"sel":sel,}
 
-        # Initialize and return BaseChainLadderResult instance.
         cl_result = BaseChainLadderResult(
-            summary=dfsumm, tri=self.tri, ldfs=ldfs, tail=tail, trisqrd=trisqrd, **kwds
+            summary=dfsumm, tri=self.tri, sel=sel, ldfs=ldfs, tail=tail, trisqrd=trisqrd
             )
 
         return(cl_result)
@@ -287,7 +285,7 @@ class BaseChainLadderResult:
     Summary class consisting of output resulting from invocation of
     ``BaseChainLadder``'s ``__call__`` method.
     """
-    def __init__(self, summary, tri, ldfs, tail, trisqrd, **kwargs):
+    def __init__(self, summary, tri, sel, ldfs, tail, trisqrd):
         """
         Container object for ``BaseChainLadder`` output.
 
@@ -299,49 +297,31 @@ class BaseChainLadderResult:
         tri: trikit.triangle._CumTriangle
             A cumulative triangle instance.
 
-        tail: float
-            Tail factor. Defaults to 1.0.
+        sel: str or array_like
+            Reference to loss development selection. If ldf overrides are
+            utilized, ``sel`` will be identical to ``ldfs``.
 
         ldfs: pd.Series
             Loss development factors.
 
-        cldfs: pd.Series
-            Cumulative loss development factors.
+        tail: float
+            Tail factor. Defaults to 1.0.
 
-        latest: pd.Series
-            Latest loss amounts by origin.
-
-        maturity: pd.Series
-            Represents ther maturity of each origin relative to development
-            period.
-
-        ultimates: pd.Series
-            Represents Chain Ladder ultimate projections.
-
-        reserves: pd.Series
-            Represents the projected reserve amount. For each origin period,
-            this equates to the ultimate loss projection minus the latest
-            loss amount for the origin period (reserve = ultimate - latest).
-
-        kwargs: dict
-            Additional keyword arguments passed into ``BaseChainLadder``'s
-            ``run`` method.
+        trisqrd: pd.DataFrame
+            Projected claims growth for each future development period.
         """
         self.emergence = summary["emergence"]
-        self.ultimates = summary["ultimate"]
+        self.ultimate = summary["ultimate"]
         self.maturity = summary["maturity"]
-        self.reserves = summary["reserve"]
+        self.reserve = summary["reserve"]
         self.latest = summary["latest"]
         self.cldfs = summary["cldf"]
         self.summary = summary
         self.trisqrd = trisqrd
         self.ldfs = ldfs
         self.tail = tail
+        self.sel = sel
         self.tri = tri
-
-        if kwargs is not None:
-            for key_ in kwargs:
-                setattr(self, key_, kwargs[key_])
 
         self._markers = ["o", "v", "^", "s", "8", "p", "D", "d", "h"]
 
@@ -611,4 +591,99 @@ class BaseChainLadderResult:
 
     def __repr__(self):
         return(self.summary.to_string(formatters=self._summspecs))
+
+
+
+
+
+class BaseRangeEstimator(BaseChainLadder):
+
+    @staticmethod
+    def _qtls_formatter(q, two_sided=False):
+        """
+        Return array_like of formatted quantiles.
+
+        Parameters
+        ----------
+        q: array_like of float or float
+            Quantile or sequence of quantiles to compute, which must be
+            between 0 and 1 inclusive.
+
+        two_sided: bool
+            Whether the two_sided interval should be included in summary
+            output. For example, if ``two_sided==True`` and ``q=.95``, then
+            the 2.5th and 97.5th quantiles of the estimated reserve
+            distribution will be returned [(1 - .95) / 2, (1 + .95) / 2]. When
+            False, only the specified quantile(s) will be computed. Defaults
+            to False.
+
+        Returns
+        -------
+        tuple of list
+        """
+        qtls = np.asarray([q] if isinstance(q, (float, int)) else q)
+        if np.all(np.logical_and(qtls <= 1, qtls >= 0)):
+            if two_sided:
+                qtls = np.sort(np.unique(np.append((1 - qtls) / 2., (1 + qtls) / 2.)))
+            else:
+                qtls = np.sort(np.unique(qtls))
+        else:
+            raise ValueError("Values for quantiles must fall between [0, 1].")
+        qtlhdrs = [
+            "{:.5f}".format(ii).rstrip("0").rstrip(".") + "%" for ii in 100 * qtls
+        ]
+        return(qtls, qtlhdrs)
+
+
+
+class BaseRangeEstimatorResult(BaseChainLadderResult):
+
+    def __init__(self, summary, tri, ldfs, tail, trisqrd, process_error, parameter_error):
+        """
+        Container class for reserve estimators which quantify reserve variability.
+        """
+        super().__init__(summary=summary, tri=tri, ldfs=ldfs, tail=tail, trisqrd=trisqrd, sel=None)
+
+        self.parameter_error = parameter_error
+        self.process_error = process_error
+        self.std_error = summary["std_error"]
+        self.mse = summary["std_error"]**2
+        self.cv = summary["cv"]
+
+        # Quantile suffix for plot method annotations.
+        self.dsuffix = {
+            "0":"th", "1":"st", "2":"nd", "3":"rd", "4":"th", "5":"th", "6":"th",
+            "7":"th", "8":"th", "9":"th",
+            }
+
+
+    def _qtls_formatter(self, q):
+        """
+        Return array_like of actual and formatted quantiles.
+
+        Parameters
+        ----------
+        q: array_like of float or float
+            Quantile or sequence of quantiles to compute, which must be
+            between 0 and 1 inclusive.
+
+        Returns
+        -------
+        tuple of list
+        """
+        qtls = np.asarray([q] if isinstance(q, (float, int)) else q)
+        if np.all(np.logical_and(qtls <= 1, qtls >= 0)):
+            qtls = np.sort(np.unique(qtls))
+        else:
+            raise ValueError("Values for quantiles must fall between [0, 1].")
+
+        qtlhdrs = [
+            "{:.5f}".format(ii).rstrip("0").rstrip(".") for ii in 100 * qtls
+            ]
+        qtlhdrs = [
+            ii + "th" if "." in ii else ii + self.dsuffix[ii[-1]] for ii in qtlhdrs
+            ]
+        return(qtls.tolist(), qtlhdrs)
+
+
 

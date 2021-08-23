@@ -16,15 +16,15 @@ methods and attributes used when working in Pandas can be be applied
 to trikit triangle objects.
 
 Along with the core `IncrTriangle` and `CumTriangle` data structures,
-trikit exposes a few common methods for estimating unpaid claim
+trikit exposes a number of common methods for estimating unpaid claim
 liabilities, as well as techniques to quantify variability around those
 estimates. Currently available reserve estimators are `BaseChainLadder`,
 `MackChainLadder` and `BootstrapChainLadder`. Refer to the examples
 below for sample use cases.
 
-Finally, in addition to the library\'s core Chain Ladder functionality,
-`trikit` exposes a convenient interface that links to the Casualty
-Actuarial Society\'s Schedule P Loss Rerserving Database. The database
+Finally, in addition to the library's core Chain Ladder functionality,
+trikit exposes a convenient interface that links to the Casualty
+Actuarial Society's Schedule P Loss Rerserving Database. The database
 contains information on Commercial Auto losses for all property-casualty
 insurers that write business in the U.S. More information related to the
 the Schedule P Loss Reserving Database can be found
@@ -44,7 +44,6 @@ $ python -m pip install trikit
 
 
 ## Quickstart
-
 
 
 We begin by loading the RAA sample dataset, which represents Automatic
@@ -70,14 +69,29 @@ A list of available datasets can be obtained by calling `get_datasets`:
 
 ```python
 In [4]: trikit.get_datasets()
-Out[4]:
-['raa', 'ta83', 'lrdb', 'autoliab', 'glre', 'singinjury', 'singproperty']
+Out[4]: ['amw09', 'autoliab', 'glre', 'raa', 'singinjury', 'singproperty', 'ta83']
 ```
 
 Any of the datasets listed above can be read in the same way using
-`trikit.load`. `trikit.load` takes additional arguments to subset
-records when accessing the CAS Loss Reserving Database. Refer to the
-documentation for more information.
+`trikit.load`. Note that sample datasets can be returned as triangle objects directly. For 
+example, the RAA dataset can be returned as a cumulative triangle as follows:
+
+```python
+In [5]: tri = trikit.load("raa", tri_type="cum")
+In [6]: tri
+Out[6]:
+        1      2      3      4      5      6      7      8      9      10
+1981 5,012  8,269 10,907 11,805 13,539 16,181 18,009 18,608 18,662 18,834
+1982   106  4,285  5,396 10,666 13,782 15,599 15,496 16,169 16,704    nan
+1983 3,410  8,992 13,873 16,141 18,735 22,214 22,863 23,466    nan    nan
+1984 5,655 11,555 15,766 21,266 23,425 26,083 27,067    nan    nan    nan
+1985 1,092  9,565 15,836 22,169 25,955 26,180    nan    nan    nan    nan
+1986 1,513  6,445 11,702 12,935 15,852    nan    nan    nan    nan    nan
+1987   557  4,020 10,946 12,314    nan    nan    nan    nan    nan    nan
+1988 1,351  6,947 13,112    nan    nan    nan    nan    nan    nan    nan
+1989 3,133  5,395    nan    nan    nan    nan    nan    nan    nan    nan
+1990 2,063    nan    nan    nan    nan    nan    nan    nan    nan    nan
+```
 
 ### Working with Triangles
 
@@ -105,7 +119,7 @@ combinations of the arguments listed above.
 
 #### **Example 1:** Create a cumulative loss triangle from tabular incremental data
 
-Referring again to the RAA dataset, let\'s create a cumulative loss
+Referring again to the RAA dataset, let's create a cumulative loss
 triangle. We mentioned above that trikit sample datasets are Pandas
 DataFrames which reflect incremental losses, so `data_format="incr"` and
 `data_shape="tabular"`, both of which are defaults. Also, the default
@@ -255,8 +269,7 @@ Out[12]:
 
 #### **Example 2:** Create an incremental loss triangle from tabular incremental data
 
-The call to `totri` is identical to Example \#1, but we change
-`tri_type` from \"cum\" to \"incr\":
+The call to `totri` is identical to Example #1, but we change `tri_type` from "cum" to "incr":
 
 ```python
 In [1]: import pandas as pd
@@ -304,7 +317,7 @@ Out[7]:
 #### **Example 3:** Create a cumulative loss triangle from data formatted as a triangle
 
 There may be situations in which data is already formatted as a
-triangle, and we\'re interested in creating a triangle instance from
+triangle, and we're interested in creating a triangle instance from
 this data. In the next example, we create a DataFrame with the same
 shape as a triangle, which we then pass into `totri` with
 `data_shape="triangle"` to obtain a cumulative triangle instance:
@@ -346,16 +359,16 @@ In [5]: tri.plot()
 Reserve Estimators
 ------------------
 
-trikit includes a number of reserve estimators. Let\'s refer to the CAS
+trikit includes a number of reserve estimators. Let's refer to the CAS
 Loss Reserving Dastabase (lrdb) included with trikit, focusing on
 `grcode=1767` and `lob="comauto"` (`grcode` uniquely identifies each
 company in the database. To obtain a full list of grcodes and associated
-companies, use `trikit.get_lrdb_groups()`; to obtain a list of
-available lines of business (lobs), use `trikit.get_lrdb_lobs()`):
+companies, use `trikit.get_lrdb_specs`; to obtain a list of
+available lines of business (lobs), use `trikit.get_lrdb_lobs`):
 
 ```python
-In [1]: from trikit import load, totri
-In [2]: df = load("lrdb", lob="comauto", grcode=1767)
+In [1]: from trikit import load_lrdb, totri
+In [2]: df = load_lrdb(lob="comauto", grcode=1767)
 In [3]: tri = totri(df)
 In [4]: tri
           1       2       3       4       5         6         7         8         9         10
@@ -370,6 +383,16 @@ In [4]: tri
 1996 142,301 326,584     nan     nan     nan       nan       nan       nan       nan       nan
 1997 143,970     nan     nan     nan     nan       nan       nan       nan       nan       nan
 ```
+
+
+Similar to `load`, `load_lrdb` also accepts a `tri_type` argument, which returns the lrdb subset 
+as an incremental or cumulative triangle:
+
+```python
+In [5]: tri = load_lrdb(tri_type="cum", lob="comauto", grcode=1767)
+```
+
+
 
 To obtain base chain ladder reserve estimates, call the cumulative
 triangle's `base_cl` method:
@@ -392,7 +415,45 @@ Out[6]:
 total               nan       nan 10,178,930 20,666,007 10,487,077
 ```
 
-The result is of type `chainladder.BaseChainLadderResult`.
+The result is of type `chainladder.BaseChainLadderResult`. The columns of `result` can be 
+accessed in total or individually. The result above can be returned as a DataFrame by calling 
+`result.summary`:
+
+```python
+In [7]: result.summary
+Out[7]:
+      maturity       cldf  emergence      latest      ultimate       reserve
+1988        10   1.000000   1.000000   1752096.0  1.752096e+06  0.000000e+00
+1989         9   1.124511   0.889275   1633619.0  1.837022e+06  2.034034e+05
+1990         8   1.282332   0.779829   1610193.0  2.064802e+06  4.546094e+05
+1991         7   1.491108   0.670642   1278228.0  1.905977e+06  6.277486e+05
+1992         6   1.779362   0.561999   1101390.0  1.959771e+06  8.583811e+05
+1993         5   2.201455   0.454245    980180.0  2.157822e+06  1.177642e+06
+1994         4   2.870169   0.348412    792392.0  2.274299e+06  1.481907e+06
+1995         3   4.070523   0.245669    560278.0  2.280624e+06  1.720346e+06
+1996         2   6.687568   0.149531    326584.0  2.184053e+06  1.857469e+06
+1997         1  15.625064   0.064000    143970.0  2.249541e+06  2.105571e+06
+total                 NaN        NaN  10178930.0  2.066601e+07  1.048708e+07
+```
+
+To access the reserve estimates as a Series, call `result.reserve`:
+
+```python
+In [8]: result.reserve
+Out[8]:
+1988            0.0
+1989       203403.0
+1990       454609.0
+1991       627749.0
+1992       858381.0
+1993      1177642.0
+1994      1481907.0
+1995      1720346.0
+1996      1857469.0
+1997      2105571.0
+total    10487077.0
+Name: reserve, dtype: float64
+```
 
 `base_cl` accepts two optional arguments:
 
@@ -410,8 +471,8 @@ To obtain a list of available pre-computed loss development factors by
 name, run:
 
 ```python
-In [1]: tri.a2a_avgs().index.tolist()
-Out[1]:
+In [9]: tri.a2a_avgs().index.tolist()
+Out[9]:
 ['simple-1', 'simple-2', 'simple-3', 'simple-4', 'simple-5', 'simple-6', 'simple-7', 
 'simple-8', 'all-simple', 'geometric-1', 'geometric-2', 'geometric-3', 'geometric-4', 
 'geometric-5', 'geometric-6', 'geometric-7', 'geometric-8', 'all-geometric', 
@@ -424,8 +485,8 @@ pattern is preferred, along with a tail factor of 1.015, the call to
 `base_cl` would be modified as follows:
 
 ```python
-In [1]: tri.base_cl(sel="geometric-5", tail=1.015)
-Out[1]:
+In[10]: tri.base_cl(sel="geometric-5", tail=1.015)
+Out[10]:
       maturity     cldf emergence     latest   ultimate    reserve
 1988        10  1.01500   0.98522  1,752,096  1,778,377     26,281
 1989         9  1.14138   0.87613  1,633,619  1,864,578    230,959
@@ -449,11 +510,11 @@ external set of LDFs using the same loss reserve database subset
 (`grcode=1767` and `lob="commauto"`):
 
 ```python
-In [1]: df = load("lrdb", lob="commauto", grcode=1767)
-In [2]: tri = totri(df)
-In [3]: ldfs = np.asarray([2.75, 1.55, 1.50, 1.25, 1.15, 1.075, 1.03, 1.02, 1.01])
-In [4]: cl = tri.base_cl(sel=ldfs)
-In [5]: cl
+In[11]: tri = load_lrdb(tri_type="cum", lob="commauto", grcode=1767)
+In[12]: ldfs = np.asarray([2.75, 1.55, 1.50, 1.25, 1.15, 1.075, 1.03, 1.02, 1.01])
+In[13]: cl = tri.base_cl(sel=ldfs)
+In[14]: cl
+Out[14]:
       maturity     cldf emergence     latest   ultimate   reserve
 1988        10  1.00000   1.00000  1,752,096  1,752,096         0
 1989         9  1.01000   0.99010  1,633,619  1,649,955    16,336
@@ -472,21 +533,20 @@ If `ldfs` is not of the correct length (length `n-1` for a triangle having `n`
 development periods), `ValueError` is raised:
 
 ```python
-In [6]: ldfs = np.asarray([2.75, 1.55, 1.50, 1.25, 1.15, 1.075, 1.03])
-In [7]: result = tri.cl(sel=ldfs)
+In[15]: ldfs = np.asarray([2.75, 1.55, 1.50, 1.25, 1.15, 1.075, 1.03])
+In[16]: result = tri.base_cl(sel=ldfs)
 Traceback (most recent call last):
-File "trikit\trikit\chainladder\__init__.py", line 117, in __call__
+File "trikit\chainladder\base.py", line 117, in __call__
 ValueError: sel has 7 values, LDF overrides require 9.
 ```
 
 A faceted plot by origin combining actuals and forcasts can be obtained
-by calling `result`\'s plot method:
+by calling `result`'s plot method:
 
 ```python
-In [1]: result = tri.cl(sel="geometric-5", tail=1.015)
-In [2]: result.plot()
+In[17]: result = tri.base_cl(sel="geometric-5", tail=1.015)
+In[18]: result.plot()
 ```
-
 
 
 ## Quantifying Reserve Variability
@@ -511,7 +571,7 @@ Mack Chain Ladder method is dispatched by calling a cumulative triangle's
     Chain Ladder age-to-age factors are computed. When `alpha=2`, a
     regression of \$[C](){k+1}\$ on \$[C](){k}\$ with 0 intercept is
     performed. Default is 1.
--   `dist`: Either \"norm\" or \"lognorm\". Represents the selected
+-   `dist`: Either "norm\" or "lognorm\". Represents the selected
     distribution to approximate the true distribution of reserves by
     origin period and in aggregate. Setting `dist="norm"` specifies a
     normal distribution. `dist="lognorm"` assumes a log-normal
@@ -529,11 +589,10 @@ arguments yields:
 
 ```python
 In [1]: from trikit import load, totri
-In [2]: df = load("ta83")
-In [3]: tri = totri(data=df)
-In [4]: mcl = tri.mack_cl()
-In [6]: mcl
-Out[6]:
+In [2]: tri = load("ta83", tri_type="cum")
+In [3]: mcl = tri.mack_cl()
+In [4]: mcl
+Out[4]:
       maturity     cldf emergence     latest   ultimate    reserve std_error      cv        75%        95%
 1           10  1.00000   1.00000  3,901,463  3,901,463          0         0     nan        nan        nan
 2            9  1.01772   0.98258  5,339,085  5,433,719     94,634    75,535 0.79818    118,760    234,717
@@ -548,24 +607,35 @@ Out[6]:
 total               nan       nan 34,358,090 53,038,959 18,680,869 2,447,318 0.13101 20,226,192 22,955,604
 ```
 
-The `MackChainLadderResult`'s `plot` method returns a faceted plot of
-estimated reserve distributions by origin and in total. The mean is
-highlighted, along with any quantiles passed to the `plot` method via
-`q`. We can compare the estimated distributions when `dist="lognorm"`
-vs. `dist="norm"`, highlighting the mean and 95th percentile. First we
+Quantiles of the estimated reserve distribution can be obtained by calling `get_quantiles`.
+`q` can be either a single float or an array of floats representing the percentiles of
+interest (which must fall within [0, 1]):
+
+```python
+In [5]: mcl.get_quantiles(q=[.05, .10, .25, .50, .75, .90, .95])
+Out[5]:
+             5th       10th       25th       50th       75th       90th       95th
+1            nan        nan        nan        nan        nan        nan        nan
+2        23306.0    30078.0    46063.0    73962.0   118760.0   181873.0   234717.0
+3       298788.0   327792.0   382673.0   454491.0   539788.0   630163.0   691334.0
+4       513108.0   549091.0   614936.0   697395.0   790911.0   885754.0   947870.0
+5       619750.0   681372.0   798314.0   951928.0  1135100.0  1329915.0  1462149.0
+6       854941.0   947780.0  1125948.0  1363448.0  1651045.0  1961416.0  2174408.0
+7      1392853.0  1526576.0  1779281.0  2109405.0  2500779.0  2914751.0  3194587.0
+8      2661766.0  2883868.0  3297115.0  3826066.0  4439877.0  5076093.0  5499652.0
+9      2885978.0  3130850.0  3587259.0  4172800.0  4853918.0  5561511.0  6033399.0
+10     2760122.0  3065251.0  3652226.0  4437118.0  5390689.0  6422971.0  7133025.0
+total 14945656.0 15671023.0 16962489.0 18522596.0 20226192.0 21893054.0 22955604.0
+```
+
+The `MackChainLadderResult`'s `plot` method returns a faceted plot of estimated reserve 
+distributions by origin and in total. The mean is highlighted, along with any quantiles 
+passed to the `plot` method via `q`. We can compare the estimated distributions when 
+`dist="lognorm"` vs. `dist="norm"`, highlighting the mean and 95th percentile. First we
 take a look at `dist="lognorm"`:
 
 ```python
 In [7]: mcl.plot()
-```
-
-
-Next we produce the same exhibit, this time setting `dist="norm"`:
-
-```python
-In [8]: mclargs = {"alpha":1, "dist":"norm", "two_sided":False,}
-In [9]: mcl = tri.cl(range_method="mack", **mclargs)
-In[10]: mcl.plot()
 ```
 
 
@@ -605,11 +675,10 @@ dataset:
 
 ```python
 In [1]: from trikit import load, totri
-In [2]: df = load("raa")
-In [3]: tri = totri(data=df)
-In [4]: mcl = tri.mack_cl()
-In [5]: mcl.cy_effects_test()
-Out[5]: ((8.965613354894957, 16.78438664510504), 14.0)
+In [2]: tri = load("raa", tri_type="cum")
+In [3]: mcl = tri.mack_cl()
+In [4]: mcl.cy_effects_test()
+Out[4]: ((8.965613354894957, 16.78438664510504), 14.0)
 ```
 
 Similar to `devp_corr_test`, `cy_effects_test` returns a 2-tuple, with
@@ -628,10 +697,9 @@ development period and by origin:
 
 ```python
 In [1]: from trikit import load, totri
-In [2]: df = load("raa")
-In [3]: tri = totri(data=df)
-In [4]: mcl = tri.mack_cl()
-In [5]: mcl.diagnostics()
+In [2]: tri = load("raa", tri_type="cum")
+In [3]: mcl = tri.mack_cl()
+In [4]: mcl.diagnostics()
 ```
 
 

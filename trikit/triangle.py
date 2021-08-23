@@ -1132,30 +1132,22 @@ class CumTriangle(_BaseCumTriangle):
         tail: float
             Chain ladder tail factor. Defaults to 1.0.
 
-        custom_ldfs: array_like
-            An alternative set of loss development factors derived outside
-            of available patterns in ``triangle.CumTriangle.a2a_avgs``.
-            If ``custom_ldfs`` is specified, ``sel`` is ignored. ``custom_ldfs``
-            should be array_like with length (tri.devp.size - 1). Defaults to None.
-
-
         Examples
         --------
         Generate chain ladder reserve point estimates using the raa dataset.
         ``tri`` is first created using the raa dataset::
 
             In [1]: import trikit
-            In [2]: raa = trikit.load("raa")
-            In [3]: tri = trikit.totri(raa)
+            In [2]: tri = trikit.load("raa", tri_type="cum")
             In [4]: cl = tri.base_cl()
 
 
-        Perform standard chain ladder, updating values for ``sel`` and ``tail``::
+        Perform standard chain ladder, using non-default values for ``sel`` and ``tail``::
 
             In [5]: cl = tri.base_cl(sel="medial-5", tail=1.015)
 
 
-        Provide custom sequence of loss development factors::
+        Passing a custom sequence of loss development factors::
 
             In [6]: ldfs = [5., 2.5, 1.25, 1.15, 1.10, 1.05, 1.025, 1.01, 1.005,]
             In [7]: cl = tri.base_cl(sel=ldfs, tail=1.001)
@@ -1225,9 +1217,8 @@ class CumTriangle(_BaseCumTriangle):
         using the raa dataset::
 
             In [1]: import trikit
-            In [2]: raa = trikit.load("raa")
-            In [3]: tri = trikit.totri(raa)
-            In [4]: bcl = tri.boot_cl()
+            In [2]: tri = trikit.load("raa", tri_type="cum")
+            In [3]: bcl = tri.boot_cl()
         """
         kwds =  dict(
             sims=sims, q=q, procdist=procdist, parametric=parametric, two_sided=two_sided,
@@ -1292,7 +1283,6 @@ class CumTriangle(_BaseCumTriangle):
         -------
         MackChainLadderResult
 
-
         Examples
         --------
         Generate Mack chain ladder reserve estimates. ``tri`` is first created
@@ -1300,9 +1290,8 @@ class CumTriangle(_BaseCumTriangle):
         2, and ``two_sided=True``::
 
             In [1]: import trikit
-            In [2]: raa = trikit.load("raa")
-            In [3]: tri = trikit.totri(raa)
-            In [4]: mcl = tri.mack_cl(alpha=2, two_sided=True)
+            In [2]: tri = trikit.load("raa", tri_type="cum")
+            In [3]: mcl = tri.mack_cl(alpha=2, two_sided=True)
         """
         kwds = dict(alpha=alpha, tail=tail, dist=dist, q=q, two_sided=two_sided)
         return(MackChainLadder(self).__call__(**kwds))
@@ -1373,6 +1362,15 @@ def totri(data, tri_type="cum", data_format="incr", data_shape="tabular",
     Returns
     -------
     {trikit.triangle.IncrTriangle, trikit.triangle.CumTriangle}
+
+    Examples
+    --------
+    Create incremental triangle based on RAA dataset::
+
+        In [1]: from trikit import load, totri
+        In [2]: df = load("raa")
+        In [3]: tri = totri(df, tri_type="incr")
+
     """
     if data_shape=="triangle":
 

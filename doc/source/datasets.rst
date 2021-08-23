@@ -58,9 +58,32 @@ the following are available:
 
 
 
-Sample datasets are accessed using trikit's ``load`` function. Pass any of the sample dataset names
-listed above as a string. The result will be a Pandas DataFrame of incremental losses. For
-example, to load the **awz09** dataset, run::
+
+
+
+Sample datasets are accessed using trikit's ``load`` function:
+
+
+.. function:: load(dataset, tri_type=None)
+
+   	Load the specified sample dataset. If ``tri_type`` is not None, return sample
+	dataset as specified triangle either "cum" or "incr".
+
+    :param dataset: Specifies which sample dataset to load. The complete set of sample
+    datasets can be obtained by calling ``get_datasets``.
+    :type dataset: str
+
+	:param tri_type: If ``None``, lrdb subset is returned as pd.DataFrame. Otherwise,
+    return subset as either incremental or cumulative triangle type. Default value is None.
+    :type tri_type: {None, "incr", "cum"}
+
+    :return: Either pd.DataFrame, trikit.triangle.IncrTriangle or trikit.triangle.CumTriangle.
+
+
+
+
+
+Pass any of the sample dataset names. For example, to load the **amw09** dataset as a DataFrame, run::
 
     In [1]: from trikit import load
     In [2]: df = load("amw09")
@@ -74,16 +97,26 @@ example, to load the **awz09** dataset, run::
     4       0    4   206704.0
 
 
+To return the **awz09** sample dataset as a triangle of incremental losses, run::
+
+    In [4]: tri = load("amw09", tri_type="incr")
+    In [5]: tri
+    Out[5]:
+              0         1       2       3       4       5      6      7      8      9
+    0 5,946,975 3,721,237 895,717 207,760 206,704  62,124 65,813 14,850 11,130 15,813
+    1 6,346,756 3,246,406 723,222 151,797  67,824  36,603 52,752 11,186 11,646    nan
+    2 6,269,090 2,976,233 847,053 262,768 152,703  65,444 53,545  8,924    nan    nan
+    3 5,863,015 2,683,224 722,532 190,653 132,976  88,340 43,329    nan    nan    nan
+    4 5,778,885 2,745,229 653,894 273,395 230,288 105,224    nan    nan    nan    nan
+    5 6,184,793 2,828,338 572,765 244,899 104,957     nan    nan    nan    nan    nan
+    6 5,600,184 2,893,207 563,114 225,517     nan     nan    nan    nan    nan    nan
+    7 5,288,066 2,440,103 528,043     nan     nan     nan    nan    nan    nan    nan
+    8 5,290,793 2,357,936     nan     nan     nan     nan    nan    nan    nan    nan
+    9 5,675,568       nan     nan     nan     nan     nan    nan    nan    nan    nan
+
+
 Available sample datasets can be listed by calling ``get_datasets``::
 
-    In [1]: from trikit import get_datasets
-    In [2]: get_datasets()
-    Out[1]:
-    ['raa',
-     'ta83',
-     'lrdb',
-     'amw09',
-     'autoliab',
-     'glre',
-     'singinjury',
-     'singproperty']
+    In [6]: from trikit import get_datasets
+    In [7]: get_datasets()
+    Out[7]: ['amw09', 'autoliab', 'glre', 'raa', 'singinjury', 'singproperty', 'ta83']
