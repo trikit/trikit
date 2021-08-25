@@ -3,7 +3,7 @@
 
 
 **Author:**   James D. Triveri   
-**Release:** 0.3.1
+**Release:** 0.3.2
 
 
 trikit is a collection of Loss Reserving utilities developed to
@@ -30,6 +30,9 @@ insurers that write business in the U.S. More information related to the
 the Schedule P Loss Reserving Database can be found
 [here](https://www.casact.org/research/index.cfm?fa=loss_reserves_data).
 
+## Documentation:
+
+trikit documentation is available [here](trikit.readthedocs.io).
 
 
 ## Installation
