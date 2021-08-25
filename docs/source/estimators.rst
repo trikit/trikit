@@ -9,7 +9,6 @@ Reserve Estimators
 
 
 
-
 .. autoclass:: trikit.estimators.base.BaseChainLadder
 	:members:
 	:private-members:

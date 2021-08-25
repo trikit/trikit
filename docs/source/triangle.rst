@@ -24,29 +24,26 @@ Triangle Class Definitions
 .. autoclass:: trikit.triangle._BaseTriangle
 	:members:
 	:private-members:
-	:no-undoc-members:
-
 
 
 .. autoclass:: trikit.triangle._BaseIncrTriangle
 	:members:
 	:private-members:
-	:no-undoc-members:
+
 
 
 .. autoclass:: trikit.triangle.IncrTriangle
 	:members:
 	:private-members:
-	:no-undoc-members:
+
 
 
 .. autoclass:: trikit.triangle._BaseCumTriangle
 	:members:
 	:private-members:
-	:no-undoc-members:
+
 
 
 .. autoclass:: trikit.triangle.CumTriangle
 	:members:
 	:private-members:
-	:no-undoc-members:
