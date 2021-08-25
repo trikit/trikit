@@ -415,7 +415,7 @@ Out[6]:
 total               nan       nan 10,178,930 20,666,007 10,487,077
 ```
 
-The result is of type `chainladder.BaseChainLadderResult`. The columns of `result` can be 
+The result is of type `BaseChainLadderResult`. The columns of `result` can be 
 accessed in total or individually. The result above can be returned as a DataFrame by calling 
 `result.summary`:
 
@@ -457,12 +457,10 @@ Name: reserve, dtype: float64
 
 `base_cl` accepts two optional arguments:
 
--   `tail`: The tail factor, which defaults to 1.0.
+-  `tail`: The tail factor, which defaults to 1.0.
 
-* `sel`: Loss development factors, which defaults to \"all-weighted\".
-`sel` can be either a string corresponding to a pre-computed pattern
-available in `tri.a2a_avgs().index`, or a custom set of loss development
-factors as a numpy array or Pandas Series.
+-  `sel`: Loss development factors, which defaults to "all-weighted". `sel` can be either a string corresponding to a pre-computed 
+pattern available in `tri.a2a_avgs().index`, or a custom set of loss development factors as a numpy array or Pandas Series.
 
 Example #2 demonstrated how to access a number of candidate loss
 development patterns by calling `tri.a2a_avgs`. Available pre-computed
@@ -529,7 +527,7 @@ Out[14]:
 total               nan       nan 10,178,930 14,391,188 4,212,258
 ```
 
-If `ldfs` is not of the correct length (length `n-1` for a triangle having `n` 
+If `ldfs` is not of the correct length (length n-1 for a triangle having n
 development periods), `ValueError` is raised:
 
 ```python

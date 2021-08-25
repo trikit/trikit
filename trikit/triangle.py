@@ -10,39 +10,36 @@ import itertools
 import numpy as np
 import pandas as pd
 from scipy import stats
-import warnings
 from .estimators.base import BaseChainLadder
 from .estimators.bootstrap import BootstrapChainLadder
 from .estimators.mack import MackChainLadder
 from .estimators.glm import GLMEstimator
 
 
-
-
 class _BaseTriangle(pd.DataFrame):
+    """
+    Transforms ``data`` into a triangle instance.
 
+    Parameters
+    ----------
+    data: pd.DataFrame
+        The dataset to be transformed into a ``_BaseTriangle`` instance.
+        ``data`` must be tabular loss data with at minimum columns
+        representing the origin/acident year, the development
+        period and the actual loss amount, given by ``origin``, ``dev``
+        and ``value`` arguments.
+
+    origin: str
+        The fieldname in ``data`` representing origin period.
+
+    dev: str
+        The fieldname in ``data`` representing development period.
+
+    value: str
+        The fieldname in ``data`` representing loss amounts.
+    """
     def __init__(self, data, origin=None, dev=None, value=None):
-        """
-        Transforms ``data`` into a triangle instance.
 
-        Parameters
-        ----------
-        data: pd.DataFrame
-            The dataset to be transformed into a ``_BaseTriangle`` instance.
-            ``data`` must be tabular loss data with at minimum columns
-            representing the origin/acident year, the development
-            period and the actual loss amount, given by ``origin``, ``dev``
-            and ``value`` arguments.
-
-        origin: str
-            The fieldname in ``data`` representing origin period.
-
-        dev: str
-            The fieldname in ``data`` representing development period.
-
-        value: str
-            The fieldname in ``data`` representing loss amounts.
-        """
         self._validate(data, origin=origin, dev=dev, value=value)
         origin_ = "origin" if origin is None else origin
         dev_ = "dev" if dev is None else dev
@@ -57,7 +54,7 @@ class _BaseTriangle(pd.DataFrame):
         tri.columns = tri.columns.droplevel(0)
 
         # Force all triangle cells to be of type np.float.
-        tri = tri.astype({kk:np.float for kk in tri.columns})
+        tri = tri.astype({kk: np.float for kk in tri.columns})
         tri.columns.name = None
 
         super().__init__(tri)
@@ -78,8 +75,6 @@ class _BaseTriangle(pd.DataFrame):
         self._rlvi = None
         self._clvi = None
         self._dof = None
-
-
 
 
     @staticmethod
@@ -123,7 +118,8 @@ class _BaseTriangle(pd.DataFrame):
         Convert any first development period negative values to 1.0.
         """
         min_devp = data[dev].min()
-        data[value] = data.apply(lambda rec: 1 if rec[dev]==min_devp and rec[value]<=0 else rec[value], axis=1)
+        data[value] = data.apply(lambda rec: 1 if
+            rec[dev] == min_devp and rec[value] <= 0 else rec[value], axis=1)
         return(data)
 
 
@@ -152,11 +148,11 @@ class _BaseTriangle(pd.DataFrame):
         """
         if self._triind is None:
             self._triind = pd.DataFrame(columns=self.columns, index=self.index)
-            self._triind.iloc[:,:] = 0
+            self._triind.iloc[:, :] = 0
             for devp in self.clvi.index:
-                last_actual_origin = self.clvi[self.clvi.index==devp].origin.values[0]
-                last_actual_offset = self.clvi[self.clvi.origin==last_actual_origin].row_offset.values[0]
-                self._triind.iloc[(last_actual_offset + 1):,self.columns.get_loc(devp)] = 1
+                last_actual_origin = self.clvi[self.clvi.index == devp].origin.values[0]
+                last_actual_offset = self.clvi[self.clvi.origin == last_actual_origin].row_offset.values[0]
+                self._triind.iloc[(last_actual_offset + 1):, self.columns.get_loc(devp)] = 1
         return(self._triind)
 
 
@@ -171,9 +167,9 @@ class _BaseTriangle(pd.DataFrame):
         """
         if self._rlvi is None:
             self._rlvi = pd.DataFrame({
-                "dev":self.apply(
+                "dev": self.apply(
                     lambda x: x.last_valid_index(), axis=1).values
-                },index=self.index)
+                }, index=self.index)
             self._rlvi["col_offset"] = \
                 self._rlvi["dev"].map(lambda x: self.columns.get_loc(x))
         return(self._rlvi)
@@ -190,10 +186,11 @@ class _BaseTriangle(pd.DataFrame):
         """
         if self._clvi is None:
             self._clvi = pd.DataFrame({
-                "origin":self.apply(lambda v: v.last_valid_index(), axis=0).values
-                },index=self.columns
+                "origin": self.apply(lambda v: v.last_valid_index(), axis=0).values
+                }, index=self.columns
                 )
-            self._clvi["row_offset"] = self._clvi["origin"].map(lambda v: self.index.get_loc(v))
+            self._clvi["row_offset"] = \
+                self._clvi["origin"].map(lambda v: self.index.get_loc(v))
         return(self._clvi)
 
 
@@ -213,9 +210,9 @@ class _BaseTriangle(pd.DataFrame):
         if self._latest is None:
             lindx = self.apply(lambda devp: devp.last_valid_index(), axis=1)
             dflindx = lindx.to_frame().reset_index(drop=False).rename(
-                {0:"dev", "index":self.origin}, axis=1)
+                {0: "dev", "index": self.origin}, axis=1)
             self._latest = dflindx.merge(self.to_tbl(), on=[self.origin, self.dev]).rename(
-                {self.value:"latest"}, axis=1)
+                {self.value: "latest"}, axis=1)
             self._latest = self._latest[["origin", "dev", "latest"]].sort_index()
         return(self._latest)
 
@@ -262,7 +259,7 @@ class _BaseTriangle(pd.DataFrame):
         pd.Series
         """
         if self._devp is None:
-            self._devp = pd.Series(self.columns,name="devp")
+            self._devp = pd.Series(self.columns, name="devp")
         return(self._devp.sort_index())
 
 
@@ -290,7 +287,7 @@ class _BaseTriangle(pd.DataFrame):
         ps.Series
         """
         if self._maturity is None:
-            dfind, matlist  = (1 - self.triind), list()
+            dfind, matlist = (1 - self.triind), list()
             for i in range(dfind.index.size):
                 lossyear = dfind.index[i]
                 maxindex = dfind.loc[lossyear].values.nonzero()[0].max()
@@ -318,14 +315,16 @@ class _BaseTriangle(pd.DataFrame):
         -------
         pd.Series
         """
-        if np.abs(offset)>(self.devp.size - 1):
-            raise ValueError("abs(offset) cannot exceed the number of development periods.")
+        if np.abs(offset) > (self.devp.size - 1):
+            raise ValueError(
+                "abs(offset) cannot exceed the number of development periods."
+                )
         df = self.latest.copy()
         df = df.reset_index(drop=False).rename(
-            {"index":"origin_indx"}, axis=1)[["origin_indx"]]
+            {"index": "origin_indx"}, axis=1)[["origin_indx"]]
         df["dev_indx"] = df["origin_indx"].values[::-1]
         df["dev_indx"] = df["dev_indx"] + offset
-        df = df[df.dev_indx>=0].reset_index(drop=True)
+        df = df[df.dev_indx >= 0].reset_index(drop=True)
         df = df.assign(
             origin=df["origin_indx"].map(lambda v: self.origins[v]),
             dev=df["dev_indx"].map(lambda v: self.devp[v]),
@@ -348,24 +347,23 @@ class _BaseTriangle(pd.DataFrame):
         -------
         pd.DataFrame
         """
-        tri = self.reset_index(drop=False).rename({"index":"origin"}, axis=1)
+        tri = self.reset_index(drop=False).rename({"index": "origin"}, axis=1)
         df = pd.melt(tri, id_vars=[self.origin], var_name=self.dev, value_name=self.value)
         if dropna:
             df = df[~np.isnan(df[self.value])]
-        df = df.astype({self.origin:np.int_, self.dev:np.int_, self.value:np.float_})
+        df = df.astype({self.origin: np.int_, self.dev: np.int_, self.value: np.float_})
         df = df[[self.origin, self.dev, self.value]].sort_values(by=[self.origin, self.dev])
         return(df.reset_index(drop=True))
 
 
     def __str__(self):
-        formats = {devp:"{:,.0f}".format for devp in self.columns}
+        formats = {devp: "{:,.0f}".format for devp in self.columns}
         return(self.to_string(formatters=formats))
 
 
     def __repr__(self):
-        formats = {devp:"{:,.0f}".format for devp in self.columns}
+        formats = {devp: "{:,.0f}".format for devp in self.columns}
         return(self.to_string(formatters=formats))
-
 
 
 
@@ -399,31 +397,30 @@ class _BaseIncrTriangle(_BaseTriangle):
 
 
 
-
 class IncrTriangle(_BaseIncrTriangle):
     """
     Public incremental triangle class definition.
+
+    Parameters
+    ----------
+    data: pd.DataFrame
+        The dataset to be transformed into a triangle instance.
+        ``data`` must be tabular loss data with at minimum columns
+        representing the origin/acident year, development
+        period and value of interest, given by ``origin``, ``dev``
+        and ``value`` respectively.
+
+    origin: str
+        The fieldname in ``data`` representing origin year.
+
+    dev: str
+        The fieldname in ``data`` representing development period.
+
+    value: str
+        The fieldname in ``data`` representing loss amounts.
     """
     def __init__(self, data, origin=None, dev=None, value=None):
-        """
-        Parameters
-        ----------
-        data: pd.DataFrame
-            The dataset to be transformed into a triangle instance.
-            ``data`` must be tabular loss data with at minimum columns
-            representing the origin/acident year, development
-            period and value of interest, given by ``origin``, ``dev``
-            and ``value`` respectively.
 
-        origin: str
-            The fieldname in ``data`` representing origin year.
-
-        dev: str
-            The fieldname in ``data`` representing development period.
-
-        value: str
-            The fieldname in ``data`` representing loss amounts.
-        """
         super().__init__(data, origin=origin, dev=dev, value=value)
 
 
@@ -439,40 +436,35 @@ class IncrTriangle(_BaseIncrTriangle):
 
 
 
-
-
 class _BaseCumTriangle(_BaseTriangle):
     """
-    Internal cumulative triangle class definition.
+    Internal cumulative triangle class definition. Transforms ``data`` into a
+    cumulative triangle instance.
+
+    Parameters
+    ----------
+    data: pd.DataFrame
+        The dataset to be transformed into a triangle instance.
+        ``data`` must be tabular loss data with at minimum columns
+        representing the origin/acident year, development
+        period and incremental value of interest, given by ``origin``,
+        ``dev`` and ``value`` respectively.
+
+    origin: str
+        The fieldname in ``data`` representing the origin year.
+
+    dev: str
+        The fieldname in ``data`` representing the development period.
+
+    value: str
+        The fieldname in ``data`` representing incremental loss amounts.
     """
     def __init__(self, data, origin="origin", dev="dev", value="value"):
-        """
-        Transforms ``data`` into a cumulative triangle instance.
 
-        Parameters
-        ----------
-         data: pd.DataFrame
-            The dataset to be transformed into a triangle instance.
-            ``data`` must be tabular loss data with at minimum columns
-            representing the origin/acident year, development
-            period and incremental value of interest, given by ``origin``,
-            ``dev`` and ``value`` respectively.
-
-        origin: str
-            The fieldname in ``data`` representing the origin year.
-
-        dev: str
-            The fieldname in ``data`` representing the development period.
-
-        value: str
-            The fieldname in ``data`` representing incremental loss amounts.
-        """
         # Replace NaN values with 1.0 in value column.
-        data2 = data.copy(deep=True)
-        # data2[value] = data2[value].map(lambda v: 1 if np.isnan(v) else v)
         data["cumval"] = data.groupby([origin], as_index=False)[value].cumsum()
         data = data.drop(value, axis=1)
-        data = data.rename(columns={"cumval":value})
+        data = data.rename(columns={"cumval": value})
         super().__init__(data=data, origin=origin, dev=dev, value=value)
 
         # Properties.
@@ -503,7 +495,7 @@ class _BaseCumTriangle(_BaseTriangle):
         float
         """
         arr = np.asarray(vals, dtype=np.float)
-        return(np.NaN if arr.size==0 else stats.gmean(arr))
+        return(np.NaN if arr.size == 0 else stats.gmean(arr))
 
 
     @staticmethod
@@ -525,7 +517,7 @@ class _BaseCumTriangle(_BaseTriangle):
         float
         """
         arr = np.asarray(vals, dtype=np.float)
-        return(np.NaN if arr.size==0 else arr.mean())
+        return(np.NaN if arr.size == 0 else arr.mean())
 
 
     @staticmethod
@@ -534,14 +526,17 @@ class _BaseCumTriangle(_BaseTriangle):
         Compute the medial average of elements in ``vals``. Medial average
         eliminates the min and max values, then returns the arithmetic
         average of the remaining items.
+
         Parameters
         ----------
         vals: np.ndarray
             An array of values, typically representing link ratios from a
             single development period.
+
         weights: np.ndarray
             Weights to assign specific values in the average computation.
             If None, each value is assigned equal weight.
+
         Returns
         -------
         float
@@ -550,26 +545,28 @@ class _BaseCumTriangle(_BaseTriangle):
             w = np.ones(len(vals))
         else:
             w = weights
-            if len(w)!=len(vals):
+            if len(w) != len(vals):
                 raise ValueError("`vals` and `weights` must have same size")
 
         # Return first element of arr_all if all array elements are the same.
         arr_all = np.sort(np.asarray(vals, dtype=np.float))
-        if np.all(arr_all==arr_all[0]):
+        if np.all(arr_all == arr_all[0]):
             avg = arr_all[0]
 
-        elif arr_all.shape[0]==1:
+        elif arr_all.shape[0] == 1:
             avg = arr_all[0]
 
-        elif arr_all.shape[0]==2:
+        elif arr_all.shape[0] == 2:
             avg = (w * arr_all).sum() / w.sum()
 
         else:
-            medial_indicies = np.where(np.logical_and(arr_all!=arr_all.min(), arr_all!=arr_all.max()))
+            medial_indicies = np.where(
+                np.logical_and(arr_all != arr_all.min(), arr_all != arr_all.max())
+                )
             arr = arr_all[medial_indicies]
             w = w[medial_indicies]
 
-            if arr.shape[0]==0:
+            if arr.shape[0] == 0:
                 avg = np.NaN
             else:
                 avg = (w * arr).sum() / w.sum()
@@ -712,8 +709,8 @@ class _BaseCumTriangle(_BaseTriangle):
         # Bind reference to last valid index by column for self.tri.a2a.
         if self._a2a_lvi is None:
             self._a2a_lvi = pd.DataFrame({
-                "origin":self.a2a.apply(lambda v: v.last_valid_index(), axis=0).values
-            },index=self.a2a.columns
+                "origin": self.a2a.apply(lambda v: v.last_valid_index(), axis=0).values
+            }, index=self.a2a.columns
             )
             self._a2a_lvi["row_offset"] = self._a2a_lvi["origin"].map(lambda v: self.index.get_loc(v))
         return(self._a2a_lvi)
@@ -733,12 +730,11 @@ class _BaseCumTriangle(_BaseTriangle):
             a2a_lvi = self.a2a_lvi
             rank_list = []
             for devp_indx, devp in enumerate(a2a_lvi.index[:-1]):
-                last_valid_origin = a2a_lvi[a2a_lvi.index==devp].origin.item()
-                last_valid_index = a2a_lvi[a2a_lvi.index==devp].row_offset.item()
-                a2a_ii = self.a2a.loc[:,devp]
-                r_ii = a2a_ii.rank().to_frame().rename({devp:"r_{}".format(devp_indx + 1)}, axis=1)
-                s_ii = a2a_ii[a2a_ii.index<last_valid_origin].rank().to_frame().rename(
-                    {devp:"s_{}".format(devp_indx + 2)}, axis=1
+                last_valid_origin = a2a_lvi[a2a_lvi.index == devp].origin.item()
+                a2a_ii = self.a2a.loc[:, devp]
+                r_ii = a2a_ii.rank().to_frame().rename({devp: "r_{}".format(devp_indx + 1)}, axis=1)
+                s_ii = a2a_ii[a2a_ii.index < last_valid_origin].rank().to_frame().rename(
+                    {devp: "s_{}".format(devp_indx + 2)}, axis=1
                     )
                 rank_list.append(r_ii)
                 rank_list.append(s_ii)
@@ -792,22 +788,17 @@ class _BaseCumTriangle(_BaseTriangle):
         indxstrs = list()
 
         # Create lookup table for average functions.
-        avgfuncs = {
-            'simple'   :self._simple,
-            'geometric':self._geometric,
-            'medial'   :self._medial,
-            'weighted' :None
-            }
+        avgfuncs = {"simple": self._simple, "geometric": self._geometric,
+                    "medial": self._medial, "weighted": None}
 
         # Remove `0` entry, and add as last element of list.
         ldf_avg_lst = list(itertools.product(avgfuncs.keys(), _nbr_periods))
 
         indxstrs = [
-            "all-" + str(ii[0]) if ii[1]==0 else "{}-{}".format(ii[0], ii[1])
+            "all-" + str(ii[0]) if ii[1] == 0 else "{}-{}".format(ii[0], ii[1])
                 for ii in ldf_avg_lst
             ]
 
-        indx = sorted(ldf_avg_lst, key=lambda v: v[1])
         _a2a_avgs = pd.DataFrame(index=indxstrs, columns=self.a2a.columns)
         a2a_adj = self.a2a * self.a2aind
 
@@ -818,22 +809,20 @@ class _BaseCumTriangle(_BaseTriangle):
             for col in range(a2a_adj.shape[1]):
                 itercol, colstr = a2a_adj.iloc[:, col], a2a_adj.columns[col]
 
-                if avgtype=='weighted':
+                if avgtype == 'weighted':
 
                     t_ic_1, t_ic_2 = self.iloc[:, col], self.iloc[:, (col + 1)]
                     # Find first NaN value in t_ic_2.
                     first_nan_year = t_ic_2.index[t_ic_2.count():][0]
                     first_nan_indx = t_ic_2.index.searchsorted(first_nan_year)
                     final_cell_indx = first_nan_indx
-                    if duration==0:
+                    if duration == 0:
                         first_cell_indx = 0
                     else:
-                        first_cell_indx = (final_cell_indx-duration) if \
-                                          (final_cell_indx-duration)>=0 else 0
+                        first_cell_indx = (final_cell_indx - duration) if \
+                            (final_cell_indx - duration) >= 0 else 0
 
                     # Divide sum of t_ic_2 by t_ic_1.
-                    ic_2 = t_ic_2[first_cell_indx:final_cell_indx]
-                    ic_1 = t_ic_1[first_cell_indx:final_cell_indx]
                     sum_ic_2 = t_ic_2[first_cell_indx:final_cell_indx].sum()
                     sum_ic_1 = t_ic_1[first_cell_indx:final_cell_indx].sum()
 
@@ -842,32 +831,28 @@ class _BaseCumTriangle(_BaseTriangle):
                     except ZeroDivisionError:
                         iteravg = np.NaN
 
-                else: # avgtype in ('simple', 'geometric', 'medial')
+                else:
                     # Find index of first row with NaN.
                     if any(itercol.map(lambda x: np.isnan(x))):
                         first_nan_year = itercol.index[itercol.apply(lambda x: np.isnan(x))][0]
                         first_nan_indx = itercol.index.searchsorted(first_nan_year)
                         final_cell_indx = first_nan_indx
-                        if duration==0:
+                        if duration == 0:
                             first_cell_indx = 0
                         else:
                             first_cell_indx = (final_cell_indx - duration) if \
-                                              (final_cell_indx - duration)>=0 else 0
+                                              (final_cell_indx - duration) >= 0 else 0
 
-                    else: # itercol has 0 NaN's
+                    else:
+                        # itercol has 0 NaN's.
                         final_cell_indx = len(itercol)
-                        first_cell_indx = 0 if duration==0 else (final_cell_indx-duration)
+                        first_cell_indx = 0 if duration == 0 else (final_cell_indx - duration)
                     try:
                         link_ratios = itercol[first_cell_indx:final_cell_indx]
-                        iteravg = iterfunc(link_ratios[link_ratios>0])
+                        iteravg = iterfunc(link_ratios[link_ratios > 0])
                     except ZeroDivisionError:
                         iteravg = np.NaN
-
                 _a2a_avgs.loc[indxstr, colstr] = iteravg
-
-        # Remove medial averages for the time being.
-        #_a2a_avgs = _a2a_avgs[~_a2a_avgs.index.str.contains("medial")]
-
         return(_a2a_avgs)
 
 
@@ -879,6 +864,7 @@ class CumTriangle(_BaseCumTriangle):
     def __init__(self, data, origin=None, dev=None, value=None):
 
         super().__init__(data, origin=origin, dev=dev, value=value)
+
 
     def to_incr(self):
         """
@@ -897,16 +883,15 @@ class CumTriangle(_BaseCumTriangle):
             In [2]: cumtri = totri(load("raa"))
             In [3]: incrtri = cumtri.to_incr()
             In [4]: type(incrtri)
-            Out[1]: triangle.IncrTriangle
+            Out[4]: triangle.IncrTriangle
         """
         incrtri = self.diff(axis=1)
-        incrtri.iloc[:,0] = self.iloc[:, 0]
-        incrtri = incrtri.reset_index(drop=False).rename({"index":"origin"}, axis=1)
+        incrtri.iloc[:, 0] = self.iloc[:, 0]
+        incrtri = incrtri.reset_index(drop=False).rename({"index": "origin"}, axis=1)
         df = pd.melt(incrtri, id_vars=["origin"], var_name="dev", value_name="value")
-        df = df[~np.isnan(df["value"])].astype({"origin":np.int, "dev":np.int, "value":np.float})
+        df = df[~np.isnan(df["value"])].astype({"origin": int, "dev": int, "value": float})
         df = df.sort_values(by=["origin", "dev"]).reset_index(drop=True)
         return(IncrTriangle(df, origin="origin", dev="dev", value="value"))
-
 
 
     def plot(self, display="combined", **kwargs):
@@ -955,7 +940,6 @@ class CumTriangle(_BaseCumTriangle):
             self._combined_view(**kwds)
 
 
-
     def _combined_view(self, **kwargs):
         """
         Visualize triangle loss development using a combined view.
@@ -1000,8 +984,8 @@ class CumTriangle(_BaseCumTriangle):
             xx = dforg["dev"].values
             yy = dforg["value"].values
             marker = markers[ii % len(markers)]
-            yy_divisor = 1 # 1000 if np.all(yy>1000) else 1
-            yy_axis_label = "(000's)" if yy_divisor==1000 else ""
+            yy_divisor = 1  # 1000 if np.all(yy>1000) else 1
+            yy_axis_label = "(000's)" if yy_divisor == 1000 else ""
             ax.plot(
                 xx, yy / yy_divisor, color=hex_color,
                 linewidth=pltkwargs["linewidth"], linestyle=pltkwargs["linestyle"],
@@ -1010,7 +994,7 @@ class CumTriangle(_BaseCumTriangle):
                 )
 
         # Reduce thickness of plot outline.
-        for axis in ["top","bottom","left","right"]:
+        for axis in ["top", "bottom", "left", "right"]:
             ax.spines[axis].set_linewidth(0.5)
 
         ax.get_yaxis().set_major_formatter(mpl.ticker.FuncFormatter(lambda v, p: format(int(v), ",")))
@@ -1052,7 +1036,6 @@ class CumTriangle(_BaseCumTriangle):
         kwargs: dict
             Additional plot styling options.
         """
-        import matplotlib as mpl
         import matplotlib.pyplot as plt
         import seaborn as sns
 
@@ -1095,9 +1078,9 @@ class CumTriangle(_BaseCumTriangle):
 
                 ylabelss = [jj.get_text() for jj in list(ax_.get_yticklabels())]
                 ylabelsn = [float(jj.replace(u"\u2212", "-")) for jj in ylabelss]
-                ylabelsn = [jj for jj in ylabelsn if jj>=0]
+                ylabelsn = [jj for jj in ylabelsn if jj >= 0]
                 ylabels = ["{:,.0f}".format(jj) for jj in ylabelsn]
-                if (len(ylabels)>0):
+                if (len(ylabels) > 0):
                     ax_.set(yticks=ylabelsn)
                     ax_.set_yticklabels(ylabels, size=7)
                 ax_.tick_params(
@@ -1189,16 +1172,10 @@ class CumTriangle(_BaseCumTriangle):
             and sample from the resulting distribution. Otherwise, values are sampled with
             replacement from the collection of standardized residuals. Defaults to False.
 
-        interpolation: {'linear', 'lower', 'higher', 'midpoint', 'nearest'}
-            This optional parameter specifies the interpolation method to use
-            when the desired quantile lies between two data points i < j:
-
-                - linear: i + (j - i) * fraction, where fraction is the fractional
-                part of the index surrounded by i and j.
-                - lower: i.
-                - higher: j.
-                - nearest: i or j, whichever is nearest.
-                - midpoint: (i + j) / 2.
+        interpolation: {"linear", "lower", "higher", "midpoint", "nearest"}
+            Optional parameter which specifies the interpolation method to use
+            when the desired quantile lies between two data points i < j. See
+            ``numpy.quantile`` for more information. Default value is "linear".
 
         random_state: np.random.RandomState
             If int, random_state is the seed used by the random number
@@ -1220,7 +1197,7 @@ class CumTriangle(_BaseCumTriangle):
             In [2]: tri = trikit.load("raa", tri_type="cum")
             In [3]: bcl = tri.boot_cl()
         """
-        kwds =  dict(
+        kwds = dict(
             sims=sims, q=q, procdist=procdist, parametric=parametric, two_sided=two_sided,
             interpolation=interpolation, random_state=random_state
             )
@@ -1242,9 +1219,9 @@ class CumTriangle(_BaseCumTriangle):
         Parameters
         ----------
         alpha: {0, 1, 2}
-            * ``0``: Straight average of observed individual link ratios.
-            * ``1``: Historical Chain Ladder age-to-age factors.
-            * ``2``: Regression of $C_{k+1}$ on $C_{k}$ with 0 intercept.
+            * 0: Straight average of observed individual link ratios.
+            * 1: Historical Chain Ladder age-to-age factors.
+            * 2: Regression of :math:`C_{k+1}` on :math:`C_{k}` with 0 intercept.
 
         tail: float
             Tail factor. Currently not implemented. Will be available in
@@ -1256,14 +1233,15 @@ class CumTriangle(_BaseCumTriangle):
             volume of outstanding claims is large enough, due to the central
             limit theorem, we can assume that the distribution function is
             Normal with expected value equal to the point estimate given by
-            $R_{i}$ and standard deviation equal to the standard error of
-            $R_{i}$, $s.e.(R_{i})$. It is also noted that if the true
+            :math:`R_{i}` and standard deviation equal to the standard error of
+            :math:`R_{i}`, :math:`s.e.(R_{i})`. It is also noted that if the true
             distribution of reserves is skewed, the Normal may not serve as a
             good approximation, and it may be preferrable to opt for
             the Log-normal distribution.
 
             * If ``dist="norm"``, the Normal distribution will be used to
             estimate reserve quantiles.
+
             * If ``dist="lognorm"``, the Log-normal distribution will be used
             to estimate reserve quantiles.
 
@@ -1372,34 +1350,34 @@ def totri(data, tri_type="cum", data_format="incr", data_shape="tabular",
         In [3]: tri = totri(df, tri_type="incr")
 
     """
-    if data_shape=="triangle":
+    if data_shape == "triangle":
 
         if data_format.lower().strip().startswith("i"):
             # data is in incremental triangle format (but not typed as such).
-            incrtri = data.reset_index(drop=False).rename({"index":"origin"}, axis=1)
+            incrtri = data.reset_index(drop=False).rename({"index": "origin"}, axis=1)
             df = pd.melt(incrtri, id_vars=["origin"], var_name="dev", value_name="value")
 
         elif data_format.lower().strip().startswith("c"):
             # data is in cumulative triangle format (but not typed as such).
             incrtri = data.diff(axis=1)
-            incrtri.iloc[:,0] = data.iloc[:, 0]
-            incrtri = incrtri.reset_index(drop=False).rename({"index":"origin"}, axis=1)
+            incrtri.iloc[:, 0] = data.iloc[:, 0]
+            incrtri = incrtri.reset_index(drop=False).rename({"index": "origin"}, axis=1)
             df = pd.melt(incrtri, id_vars=["origin"], var_name="dev", value_name="value")
-            df = df[~pd.isnull(df["value"])].astype({"origin":np.int, "dev":np.int, "value":np.float})
+            df = df[~pd.isnull(df["value"])].astype({"origin": int, "dev": int, "value": float})
 
         else:
             raise NameError("Invalid data_format argument: `{}`.".format(tri_type))
 
-        df = df[~pd.isnull(df["value"])].astype({"origin":int, "dev":int, "value":float})
+        df = df[~pd.isnull(df["value"])].astype({"origin": int, "dev": int, "value": float})
         df = df.sort_values(by=["origin", "dev"]).reset_index(drop=True)
 
-    elif data_shape=="tabular":
+    elif data_shape == "tabular":
 
         if data_format.lower().strip().startswith("c"):
-            df = data.rename({value:"cum"}, axis=1)
+            df = data.rename({value: "cum"}, axis=1)
             df["incr"] = df.groupby([origin])["cum"].diff(periods=1)
             df["incr"] = np.where(np.isnan(df["incr"]), df["cum"], df["incr"])
-            df = df.drop("cum", axis=1).rename({"incr":value}, axis=1)
+            df = df.drop("cum", axis=1).rename({"incr": value}, axis=1)
         else:
             df = data
     else:
@@ -1423,9 +1401,7 @@ def totri(data, tri_type="cum", data_format="incr", data_shape="tabular",
 
             for devp_indx, devp_ in enumerate(tri.columns[1:], start=1):
                 triind_val = tri.triind.iat[origin_indx, devp_indx]
-                if triind_val==0:
+                if triind_val == 0:
                     if np.isnan(tri.iat[origin_indx, devp_indx]):
                         tri.iat[origin_indx, devp_indx] = tri.iat[origin_indx, (devp_indx - 1)]
     return(tri)
-
-

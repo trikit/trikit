@@ -17,10 +17,6 @@ assertNotIsInstance(a, b)
 import unittest
 import pandas as pd
 import numpy as np
-import os
-import os.path
-import logging
-import timeit
 import trikit
 
 
@@ -91,6 +87,11 @@ class DatasetsTestCase(unittest.TestCase):
 
     def test_lrdb(self):
         self.assertEqual(
-            trikit.load("lrdb").value.sum(), self.dactual["lrdb"],
+            trikit.load_lrdb().value.sum(), self.dactual["lrdb"],
             "Issue detected with lrdb sample dataset."
             )
+
+
+if __name__ == "__main__":
+
+    unittest.main()

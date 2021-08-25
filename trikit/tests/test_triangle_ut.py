@@ -1,19 +1,14 @@
 """
 trikit.triangle tests.
 """
-import sys
 import unittest
 import pandas as pd
 import numpy as np
-import os
-import os.path
-import logging
-import timeit
 import trikit
 
 
 
-# IncrTriangle unit tests -----------------------------------------------------
+# IncrTriangle unit tests.
 
 class IncrTriangleTestCase(unittest.TestCase):
     def setUp(self):
@@ -121,12 +116,7 @@ class IncrTriangleTestCase(unittest.TestCase):
 
 
 
-
-
-
-
-
-# CumTriangle unit tests ------------------------------------------------------
+# CumTriangle unit tests.
 
 class CumTriangleTestCase(unittest.TestCase):
 
@@ -212,10 +202,6 @@ class CumTriangleTestCase(unittest.TestCase):
 
     def test_a2a_assignment(self):
         self.assertTrue(self.tri.a2a_assignment.sum().sum()==0)
-
-
-
-
 
 
 

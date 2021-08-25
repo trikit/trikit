@@ -1,43 +1,32 @@
 
+===============================================================================
 trikit: A Pythonic Approach to Actuarial Reserving
-================================================================================
+===============================================================================
 
+:Author: James D. Triveri
 :Release: |release|
-:Date: |today|
 
-
-A Pythonic approach to actuarial reserving
 
 
 .. toctree::
-   :maxdepth: 1
-   :titlesonly:
+    :maxdepth: 1
+    :titlesonly:
    
-   Project Overview <overview>
-   Quickstart <quickstart>
-   Triangles <triangle>
-   Estimators <trikit.estimators>
-   Sample Datasets <datasets>
-   CAS Loss Reserving Database <lrdb>  
-   Frequently Asked Questions <questions>
-   
-   
-   
+    Project Overview <overview>
+    Quickstart <quickstart>
+    Triangles <triangle>
+    Estimators <estimators>
+    Sample Datasets <datasets>
+    CAS Loss Reserving Database <lrdb>
 
-Tutorial
---------
+
+
+Examples
+----------
 
 .. toctree::
-   :maxdepth: 1
-   :titlesonly:
+    :maxdepth: 1
+    :titlesonly:
    
-   tutorial/correlated
-   tutorial/smoothing
-   
-   
-   
-   
-   
-   
-   
-
+    Correlated Reserve Indications <tutorial/correlated>
+    Smoothing Loss Development Patterns <tutorial/smoothing>

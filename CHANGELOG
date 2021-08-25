@@ -1,15 +1,12 @@
 ## Version 0.3.2
 
-* Removed instances using Pandas lookup function. 
+* Removed instances using Pandas lookup method. 
 
 * Added `load_lrdb` function dedicated to CAS Loss Reserving Database data.
 
-* Added amz09 loss triangle.
+* Added amz09 loss triangle.  
 
-* Added get_quantiles method to BootstrapChainLadderResult and MackChainLadderResult.
-
-* Added `tri_type` parameter to load and load_lrdb functions to convert sample datasets
-to triangles directly.
+* Added `get_quantiles` method to MackChainLadderResult and BootstrapChainLadderResult.
 
 
 

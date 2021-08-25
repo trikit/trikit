@@ -2,7 +2,7 @@
 .. _triangle:
 
 ================================================================================
-:mod: triangle --- Incremental and Cumulative Triangle Objects
+Incremental and Cumulative Triangle Objects
 ================================================================================
 
 
@@ -13,7 +13,6 @@ Triangle Functions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Within trikit, datasets are transformed into triangle objects by calling ``totri``.
-
 
 
 .. autofunction:: trikit.totri
@@ -28,10 +27,12 @@ Triangle Class Definitions
 	:no-undoc-members:
 
 
+
 .. autoclass:: trikit.triangle._BaseIncrTriangle
 	:members:
 	:private-members:
 	:no-undoc-members:
+
 
 .. autoclass:: trikit.triangle.IncrTriangle
 	:members:
@@ -43,6 +44,7 @@ Triangle Class Definitions
 	:members:
 	:private-members:
 	:no-undoc-members:
+
 
 .. autoclass:: trikit.triangle.CumTriangle
 	:members:

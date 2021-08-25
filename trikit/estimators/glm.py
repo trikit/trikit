@@ -19,8 +19,3 @@ class GLMEstimatorResult:
 	def __init__(self, **kwargs):
 		
 		pass
-		
-
-
-
-

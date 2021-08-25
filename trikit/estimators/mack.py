@@ -7,10 +7,7 @@ import pandas as pd
 from scipy import special
 from scipy.stats import norm, lognorm
 from scipy.optimize import root
-from .base import (
-    BaseChainLadder, BaseChainLadderResult, BaseRangeEstimator,
-    BaseRangeEstimatorResult
-    )
+from .base import BaseRangeEstimator, BaseRangeEstimatorResult
 
 
 
@@ -24,10 +21,15 @@ class MackChainLadder(BaseRangeEstimator):
     will occur at a given time. The predicition error is defined as the
     standard deviation of the forecast.
 
+    Parameters
+    ----------
+    cumtri: triangle._CumTriangle
+        A cumulative.CumTriangle instance
+
     References
     ----------
     1. Mack, Thomas (1993) *Measuring the Variability of Chain Ladder Reserve
-       Estimates*, 1993 CAS Prize Paper Competition on 'Variability of Loss Reserves'.
+       Estimates*, 1993 CAS Prize Paper Competition on Variability of Loss Reserves.
 
     2. Mack, Thomas, (1993), *Distribution-Free Calculation of the Standard Error
        of Chain Ladder Reserve Estimates*, ASTIN Bulletin 23, no. 2:213-225.
@@ -36,23 +38,16 @@ class MackChainLadder(BaseRangeEstimator):
        Recursive Calculation and Inclusion of a Tail Factor*, ASTIN Bulletin 29,
        no. 2:361-366.
 
-    4. England, P., and R. Verrall, (2002), *Stochastic Claims Reserving in General
-      Insurance*, British Actuarial Journal 8(3): 443-518.
+    4. England, P., and R. Verrall, (2002), *Stochastic Claims Reserving in General Insurance*, British Actuarial Journal 8(3): 443-518.
 
-    5. Murphy, Daniel, (2007), *Chain Ladder Reserve Risk Estimators*, CAS E-Forum,
-       Summer 2007.
+    5. Murphy, Daniel, (2007), *Chain Ladder Reserve Risk Estimators*, CAS E-Forum, Summer 2007.
 
     6. Carrato, A., McGuire, G. and Scarth, R. 2016. *A Practitioner's
        Introduction to Stochastic Reserving*, The Institute and Faculty of
        Actuaries. 2016.
     """
     def __init__(self, cumtri):
-        """
-        Parameters
-        ----------
-        cumtri: triangle._CumTriangle
-            A cumulative.CumTriangle instance
-        """
+
         super().__init__(cumtri)
 
         # Properties.
@@ -126,11 +121,11 @@ class MackChainLadder(BaseRangeEstimator):
         devpvar = self._devp_variance(ldfs=ldfs, alpha=alpha)
         ldfvar = self._ldf_variance(devpvar=devpvar, alpha=alpha)
         proc_error = pd.Series(
-            self._process_error(ldfs=ldfs, devpvar=devpvar).iloc[:,-1].replace(np.NaN, 0),
+            self._process_error(ldfs=ldfs, devpvar=devpvar).iloc[:, -1].replace(np.NaN, 0),
             name="process_error", dtype=np.float
             )
         param_error = pd.Series(
-            self._parameter_error(ldfs=ldfs, ldfvar=ldfvar).iloc[:,-1].replace(np.NaN, 0),
+            self._parameter_error(ldfs=ldfs, ldfvar=ldfvar).iloc[:, -1].replace(np.NaN, 0),
             name="parameter_error", dtype=np.float
             )
         mse = self._mean_squared_error(
@@ -140,13 +135,13 @@ class MackChainLadder(BaseRangeEstimator):
         cv = pd.Series(std_error / reserves, name="cv")
         trisqrd = self._trisqrd(ldfs=ldfs)
 
-        dfmatur = maturity.to_frame().reset_index(drop=False).rename({"index":"origin"}, axis=1)
-        dfcldfs = cldfs.to_frame().reset_index(drop=False).rename({"index":"maturity"}, axis=1)
+        dfmatur = maturity.to_frame().reset_index(drop=False).rename({"index": "origin"}, axis=1)
+        dfcldfs = cldfs.to_frame().reset_index(drop=False).rename({"index": "maturity"}, axis=1)
         dfcldfs["maturity"] = dfcldfs["maturity"].astype(str)
         dfcldfs["emergence"] = 1 / dfcldfs["cldf"]
         dfsumm = dfmatur.merge(dfcldfs, on=["maturity"], how="left").set_index("origin")
         dfsumm.index.name = None
-        dflatest = latest.to_frame().rename({"latest_by_origin":"latest"}, axis=1)
+        dflatest = latest.to_frame().rename({"latest_by_origin": "latest"}, axis=1)
         dfsumm = functools.reduce(
             lambda df1, df2: df1.join(df2),
             (dflatest, ultimates.to_frame(), reserves.to_frame(), std_error.to_frame(), cv.to_frame()),
@@ -172,8 +167,8 @@ class MackChainLadder(BaseRangeEstimator):
         quotient = pd.Series(devpvar / ldfs**2, dtype=np.float).reset_index(drop=True)
         quotient.index = quotient.index + 1
         for indx, ii in enumerate(mse_total.index[1:], start=2):
-            mse_ii, ult_ii = mse[ii],  ultimates[ii]
-            ults_sum = ultimates[ultimates.index>ii].dropna().sum()
+            mse_ii, ult_ii = mse[ii], ultimates[ii]
+            ults_sum = ultimates[ultimates.index > ii].dropna().sum()
             rh_sum = sum(
                 quotient[jj] / sum(trisqrd.loc[mm, jj]
                     for mm in range(1, (n - jj) + 1)) for jj in range(n + 1 - indx, n)
@@ -185,18 +180,18 @@ class MackChainLadder(BaseRangeEstimator):
         dfsumm.loc["total", "std_error"] = np.sqrt(mse_total.dropna().sum())
         dfsumm.loc["total", "cv"] = dfsumm.loc["total", "std_error"] / dfsumm.loc["total", "reserve"]
 
-        if dist=="norm":
+        if dist == "norm":
             std_params, mean_params = dfsumm["std_error"], dfsumm["reserve"]
-            rv_list = [norm(loc=ii, scale=jj) for ii,jj in zip(mean_params, std_params)]
+            rv_list = [norm(loc=ii, scale=jj) for ii, jj in zip(mean_params, std_params)]
 
-        elif dist=="lognorm":
+        elif dist == "lognorm":
             with np.errstate(divide="ignore"):
                 std_params = np.sqrt(np.log(1 + (dfsumm["std_error"] / dfsumm["reserve"])**2)).replace(np.NaN, 0)
                 mean_params = np.clip(np.log(dfsumm["reserve"]), a_min=0, a_max=None) - .50 * std_params**2
-                rv_list = [lognorm(scale=np.exp(ii), s=jj) for ii,jj in zip(mean_params, std_params)]
+                rv_list = [lognorm(scale=np.exp(ii), s=jj) for ii, jj in zip(mean_params, std_params)]
         else:
             raise ValueError(
-                "dist must be one of {'norm', 'lognorm'}, not `{}`.".format(dist)
+                "dist must be one of {{'norm', 'lognorm'}}, not `{}`.".format(dist)
                 )
 
         rvs = pd.Series(rv_list, index=dfsumm.index)
@@ -222,7 +217,7 @@ class MackChainLadder(BaseRangeEstimator):
     @property
     def mod_tri(self):
         """
-        Return modified triangle-shaped DataFrame with same indices as self.tri.a2a.
+        Return modified triangle-shaped DataFrame with same indices as ``self.tri.a2a``.
 
         Returns
         -------
@@ -259,13 +254,12 @@ class MackChainLadder(BaseRangeEstimator):
         Parameters
         ----------
         alpha: {0, 1, 2}
-            * ``0``: Straight average of observed individual link ratios.
-            * ``1``: Historical Chain Ladder age-to-age factors.
-            * ``2``: Regression of $C_{k+1}$ on $C_{k}$ with 0 intercept.
+            * 0: Straight average of observed individual link ratios.
+            * 1: Historical Chain Ladder age-to-age factors.
+            * 2: Regression of :math:`C_{k+1}` on :math:`C_{k}` with 0 intercept.
 
         tail: float
-            Tail factor. At present, must be 1.0. This may change in a
-            future release.
+            Tail factor. At present, must be 1.0. This may change in a future release.
 
         Returns
         -------
@@ -285,13 +279,13 @@ class MackChainLadder(BaseRangeEstimator):
 
         devpvar: pd.Series
             The development period variance, usually represented as
-            $\hat{\sigma}^{2}_{k}$ in the literature. For a triangle with
-            ``n`` development periods, devpvar will contain ``n-1`` elements.
+            :math:`\\hat{\\sigma}^{2}_{k}` in the literature. For a triangle with
+            n development periods, devpvar will contain n-1 elements.
 
         alpha: {0, 1, 2}
-            * ``0``: Straight average of observed individual link ratios.
-            * ``1``: Historical Chain Ladder age-to-age factors.
-            * ``2``: Regression of $C_{k+1}$ on $C_{k}$ with 0 intercept.
+            * 0: Straight average of observed individual link ratios.
+            * 1: Historical Chain Ladder age-to-age factors.
+            * 2: Regression of :math`C_{k+1}` on :math: `C_{k}` with 0 intercept.
 
         Returns
         -------
@@ -300,26 +294,26 @@ class MackChainLadder(BaseRangeEstimator):
         ldfvar = pd.Series(index=devpvar.index, dtype=np.float, name="ldfvar")
         C, w = self.mod_tri, self.mod_a2aind
         for devp in w.columns:
-            ldfvar[devp] = devpvar[devp] / (w.loc[:,devp] * C.loc[:, devp]**alpha).sum()
+            ldfvar[devp] = devpvar[devp] / (w.loc[:, devp] * C.loc[:, devp]**alpha).sum()
         return(ldfvar)
 
 
     def _devp_variance(self, ldfs, alpha=1):
         """
         Compute the development period variance, usually represented as
-        $\hat{\sigma}^{2}_{k}$ in the literature. For a triangle with
-        ``k`` development periods, result will contain ``k-1`` elements.
+        :math:`\\hat{\\sigma}^{2}_{k}` in the literature. For a triangle with
+        n development periods, result will contain n-1 elements.
 
         Parameters
         ----------
         ldfs: pd.Series
-            Selected ldfs, typically the output of calling ``self._ldfs``,
-            or a series of values indexed by development period.
+            Selected ldfs, typically the output of calling ``self._ldfs``, or a series
+            of values indexed by development period.
 
          alpha: {0, 1, 2}
-            * ``0``: Straight average of observed individual link ratios.
-            * ``1``: Historical Chain Ladder age-to-age factors.
-            * ``2``: Regression of $C_{k+1}$ on $C_{k}$ with 0 intercept.
+            * 0: Straight average of observed individual link ratios.
+            * 1: Historical Chain Ladder age-to-age factors.
+            * 2: Regression of :math:`C_{k+1}` on :math:`C_{k}` with 0 intercept.
 
         Returns
         -------
@@ -354,8 +348,8 @@ class MackChainLadder(BaseRangeEstimator):
 
         devpvar: pd.Series
             The development period variance, usually represented as
-            $\hat{\sigma}^{2}_{k}$ in the literature. For a triangle with
-            ``n`` development periods, devpvar will contain ``n-1`` elements.
+            :math:`\\hat{\\sigma}^{2}_{k}` in the literature. For a triangle with
+            n development periods, devpvar will contain n-1 elements.
 
         Returns
         -------
@@ -379,7 +373,7 @@ class MackChainLadder(BaseRangeEstimator):
 
         # `ii` iterates by origin, `kk` by development period.
         for ii in dfpe.index[1:]:
-            latest_devp = latest[latest["origin"]==ii]["dev"].item()
+            latest_devp = latest[latest["origin"] == ii]["dev"].item()
             latest_cum = trisqrd.at[ii, latest_devp]
             kk0 = n + 2 - ii
             dfpe.at[ii, kk0] = latest_cum * devpvar.iloc[kk0 - 2]
@@ -406,8 +400,8 @@ class MackChainLadder(BaseRangeEstimator):
             or a series of values indexed by development period.
 
         ldfvar: pd.Series
-            Link ratio variance. For a triangle with ``n`` development
-            periods, ldfvar will contain ``n-1`` elements.
+            Link ratio variance. For a triangle with n development
+            periods, ldfvar will contain n-1 elements.
 
         Returns
         -------
@@ -431,7 +425,7 @@ class MackChainLadder(BaseRangeEstimator):
 
         # `ii` iterates by origin, `kk` by development period.
         for ii in dfpe.index[1:]:
-            latest_devp = latest[latest["origin"]==ii]["dev"].item()
+            latest_devp = latest[latest["origin"] == ii]["dev"].item()
             latest_cum = trisqrd.at[ii, latest_devp]
             kk0 = n + 2 - ii
             dfpe.at[ii, kk0] = latest_cum**2 * ldfvar.iloc[kk0 - 2]
@@ -458,7 +452,7 @@ class MackChainLadder(BaseRangeEstimator):
         process_error: pd.Series
             Reserve estimate process error indexed by origin. Represents the
             risk associated with the projection of future contingencies that
-            are inherently variable, even if/when the parameters are known
+            are inherently variable, even if the parameters are known
             with certainty.
 
         parameter_error: pd.Series
@@ -476,68 +470,64 @@ class MackChainLadder(BaseRangeEstimator):
 
 class MackChainLadderResult(BaseRangeEstimatorResult):
     """
-    Container class for MackChainLadder output.
+    Container class for ``MackChainLadder`` output.
+
+    Parameters
+    ----------
+    summary: pd.DataFrame
+        ``MackChainLadder`` summary.
+
+    tri: trikit.triangle.CumTriangle
+        A cumulative triangle instance.
+
+    alpha: int
+        MackChainLadder alpha parameter.
+
+    tail: float
+        Tail factor.
+
+    ldfs: pd.Series
+        Loss development factors.
+
+    trisqrd: pd.DataFrame
+        Projected claims growth for each future development period.
+
+    dist: str
+        The distribution function chosen to approximate the true distribution of
+        reserves by origin period. Wither "norm" or "lognorm".
+
+    process_error: pd.Series
+        Reserve estimate process error indexed by origin. Represents the
+        risk associated with the projection of future contingencies that
+        are inherently variable, even if parameters are known with certainty.
+
+    parameter_error: pd.Series
+        Reserve estimate parameter error indexed by origin. Represents
+        the risk that the parameters used in the methods or models are not
+        representative of future outcomes.
+
+    devpvar: pd.Series
+        The development period variance, usually represented as
+        :math:`\\hat{\\sigma}^{2}_{k}` in the literature. For a triangle having
+        n development periods, ``devpvar`` will contain n-1
+        elements.
+
+    ldfvar: pd.Series
+        Variance of age-to-age factors. Required for Murphy's recursive
+        estimator of parameter risk. For a triangle having n
+        development periods, ``ldfvar`` will contain n-1 elements.
+
+    rvs: pd.Series
+        Series indexed by origin containing Scipy frozen random variable
+        with parameters mu and sigma having distribution specified by
+        ``dist``.
+
+    kwargs: dict
+        Additional parameters originally passed into ``MackChainLadder``'s
+        ``__call__`` method.
     """
     def __init__(self, summary, tri, alpha, tail, ldfs, trisqrd, dist, process_error,
                  parameter_error, devpvar, ldfvar, rvs, **kwargs):
-        """
-        Container class for ``MackChainLadder`` output.
-
-        Parameters
-        ----------
-        summary: pd.DataFrame
-            ``MackChainLadder`` summary.
-
-        tri: trikit.triangle.CumTriangle
-            A cumulative triangle instance.
-
-        alpha: int
-            MackChainLadder alpha parameter.
-
-        tail: float
-            Tail factor.
-
-        ldfs: pd.Series
-            Loss development factors.
-
-        trisqrd: pd.DataFrame
-            Projected claims growth for each future development period.
-
-        dist: str
-            The distribution function chosen to approximate the true distribution of
-            reserves by origin period. Wither "norm" or "lognorm".
-
-        process_error: pd.Series
-            Reserve estimate process error indexed by origin. Represents the
-            risk associated with the projection of future contingencies that
-            are inherently variable, even if/when the parameters are known
-            with certainty.
-
-        parameter_error: pd.Series
-            Reserve estimate parameter error indexed by origin. Represents
-            the risk that the parameters used in the methods or models are not
-            representative of future outcomes.
-
-        devpvar: pd.Series
-            The development period variance, usually represented as
-            $\hat{\sigma}^{2}_{k}$ in the literature. For a triangle having
-            ``n`` development periods, ``devpvar`` will contain ``n-1``
-            elements.
-
-        ldfvar: pd.Series
-            Variance of age-to-age factors. Required for Murphy's recursive
-            estimator of parameter risk. For a triangle having ``n``
-            development periods, ``ldfvar`` will contain ``n-1`` elements.
-
-        rvs: pd.Series
-            Series indexed by origin containing Scipy frozen random variable
-            with parameters mu and sigma having distribution specified by
-            ``dist``.
-
-        kwargs: dict
-            Additional parameters originally passed into ``MackChainLadder``'s
-            ``__call__`` method.
-        """
 
         super().__init__(summary=summary, tri=tri, ldfs=ldfs, tail=tail, trisqrd=trisqrd,
                          process_error=process_error, parameter_error=parameter_error)
@@ -553,8 +543,7 @@ class MackChainLadderResult(BaseRangeEstimatorResult):
                 setattr(self, kk, kwargs[kk])
 
         # Add formats for method-specific columns.
-        mack_summ_hdrs = {ii:"{:,.0f}".format for ii in self.summary.columns if ii.endswith("%")}
-        mack_summ_hdrs.update({"std_error":"{:,.0f}".format, "cv":"{:.5f}".format})
+        mack_summ_hdrs = {ii: "{:,.0f}".format for ii in self.summary.columns if ii.endswith("%")}
         self._summspecs.update(mack_summ_hdrs)
 
 
@@ -578,7 +567,7 @@ class MackChainLadderResult(BaseRangeEstimatorResult):
             comp_indices = yact_init[~pd.isnull(yact_init)].index
             n = comp_indices.size
             yact = yact_init[comp_indices]
-            yhat = self.tri.loc[comp_indices,x] * self.ldfs.get(x)
+            yhat = self.tri.loc[comp_indices, x] * self.ldfs.get(x)
             dfresid = pd.Series(yhat - yact, name="residuals").to_frame()
             dfresid["sigma"] = np.sqrt((dfresid["residuals"]**2).sum() / n - 1)
             dfresid["std_residuals"] = dfresid["residuals"] / (dfresid["sigma"] * np.sqrt((n - 1) / n))
@@ -597,7 +586,7 @@ class MackChainLadderResult(BaseRangeEstimatorResult):
         """
         resids_list = []
         for origin in self.tri.origins[:-1]:
-            dfresid = self.tri.loc[origin].to_frame().rename({origin:"yact"}, axis=1)
+            dfresid = self.tri.loc[origin].to_frame().rename({origin: "yact"}, axis=1)
             dfresid["yhat"] = (dfresid["yact"] * self.ldfs).shift(1)
             dfresid = dfresid.dropna(how="any")
             dfresid["residuals"] = dfresid["yhat"] - dfresid["yact"]
@@ -612,26 +601,26 @@ class MackChainLadderResult(BaseRangeEstimatorResult):
     def _spearman_corr_coeffs(self):
         """
         Compute the Spearman correlation coefficients for each pair of equal
-        sized columns from ``_ranked_a2a``.
+        sized columns from ``self.tri._ranked_a2a``.
 
         For adjacent columns, a Spearman coefficient close to 0 indicates that
-        the development factors between development years $k-1$ and $k$ and
-        those between developmenr years $k$ and $k+1$ are uncorrelated. Any
-        other value of $T_{k}$ indicates that the factors are positively or
+        the development factors between development years k - 1 and k and
+        those between developmenr years k and k+1 are uncorrelated. Any
+        other value of :math:`T_{k}` indicates that the factors are positively or
         negatively correlated.
 
         In the resulting DataFrame, columns are defined as:
 
             - k:
                 An enumeration of the target development period.
+
             - w:
                 Quanity used to weight the Spearman coefficient, specified
-                as ``n - k - 1``, where ``n`` is the number of origin periods
+                as n - k - 1, where n is the number of origin periods
                 in the triangle.
-            - T_k:
-                Spearman correlation coefficient. Defined as
 
-                $T_{k} = 1 - 6 \sum_{i=1}^{n-k}
+            - T_k:
+                Spearman correlation coefficient. Defined as :math:`T_{k} = 1 - 6 \\sum_{i=1}^{n-k}`.
 
         Returns
         -------
@@ -640,28 +629,28 @@ class MackChainLadderResult(BaseRangeEstimatorResult):
         References
         ----------
         1. Mack, Thomas (1993) *Measuring the Variability of Chain Ladder Reserve
-        Estimates*, 1993 CAS Prize Paper Competition on 'Variability of Loss Reserves'.
+        Estimates*, 1993 CAS Prize Paper Competition on Variability of Loss Reserves.
         """
         dfranks = self.tri.ranked_a2a
         coeffs_list = []
-        s_indices = [2*ii for ii in range(dfranks.columns.size // 2)]
+        s_indices = [2 * ii for ii in range(dfranks.columns.size // 2)]
         r_indices = [1 + ii for ii in s_indices]
         n = self.tri.devp.size
         for s_indx, r_indx in zip(s_indices, r_indices):
             # s_indx, r_indx = 0, 1
-            k = int(dfranks.iloc[:,s_indx].name.replace("s_", ""))
+            k = int(dfranks.iloc[:, s_indx].name.replace("s_", ""))
             w = n - k - 1
-            s_ii = dfranks.iloc[:,s_indx]
-            r_ii = dfranks.iloc[:,r_indx]
+            s_ii = dfranks.iloc[:, s_indx]
+            r_ii = dfranks.iloc[:, r_indx]
             T_k = 1 - 6 * np.sum((r_ii - s_ii)**2 / ((n - k)**3 - n + k))
-            coeffs_list.append({"k":k, "w":w, "T_k":T_k,})
+            coeffs_list.append({"k": k, "w": w, "T_k": T_k})
         return(pd.DataFrame().from_dict(coeffs_list, orient="columns"))
 
 
     def _spearman_corr_total(self):
         """
         Weighted average of each adjacent column's Spearman coefficient
-        from ``_spearman_corr_coeffs``. Correlation coefficients are weighted
+        from ``self._spearman_corr_coeffs``. Correlation coefficients are weighted
         by
 
         """
@@ -735,20 +724,20 @@ class MackChainLadderResult(BaseRangeEstimatorResult):
             than the median for a given development period.
 
         - Z:
-            For a given j, $Z = min(S, L)$.
+            For a given j, :math:`Z = min(S, L)`.
 
         - n:
-            For a given j, is defined as $S + L$.
+            For a given j, is defined as :math:`S + L`.
 
         - m:
-            For a given j, is defined as $floor([n - 1] / 2)$.
+            For a given j, is defined as :math:`floor([n - 1] / 2)`.
 
         - E_Z:
-            For a given j, is defined as $\frac{n}{2} - \binom{n-1}{m} \times \frac{n}{2^{n}}$.
+            For a given j, is defined as :math:`\\frac{n}{2} - \\binom{n-1}{m} \\times \\frac{n}{2^{n}}`.
 
         - V_Z:
             For a given j, is defined as
-            $\frac{n(n-1)}{4} - \binom{n-1}{m} \times \frac{n(n-1)}{2^{n}} + \mu - \mu^{2}$.
+            :math:`\\frac{n(n-1)}{4} - \\binom{n-1}{m} \\times \\frac{n(n-1)}{2^{n}} + \\mu - \\mu^{2}`.
 
         Returns
         -------
@@ -757,17 +746,17 @@ class MackChainLadderResult(BaseRangeEstimatorResult):
         summ_list = []
         dflvi = self.tri.a2a_lvi
         dfhl = self.tri.a2a_assignment
-        dflvi = dflvi.reset_index(drop=False).rename({"index":"dev"}, axis=1)
+        dflvi = dflvi.reset_index(drop=False).rename({"index": "dev"}, axis=1)
         devpinc = dflvi["dev"].diff(1).dropna().unique().item()
         origininc = dflvi["origin"].diff(-1).dropna().unique().item()
         diag_indx = sorted(list(enumerate(dflvi["dev"].values[::-1], start=1)), key=lambda v: v[-1])
-        dfhl2 = dfhl.reset_index(drop=False).rename({"index":"origin"}, axis=1).melt(
+        dfhl2 = dfhl.reset_index(drop=False).rename({"index": "origin"}, axis=1).melt(
             id_vars=["origin"], var_name=["dev"]).dropna(subset=["value"])
 
         # Begin with latest diagonal. Work backwards.
         for jj, devp in diag_indx[:-1]:
             dcounts = dflvi.merge(dfhl2, on=["origin", "dev"])["value"].value_counts()
-            dsumm = {"j":jj, "S":dcounts.get(-1, 0), "L":dcounts.get(1, 0)}
+            dsumm = {"j": jj, "S": dcounts.get(-1, 0), "L": dcounts.get(1, 0)}
             summ_list.append(dsumm)
             # Adjust dflvi by shifting origin period back a single period
             # relative to devp. Drop record in which origin is missing.
@@ -802,9 +791,9 @@ class MackChainLadderResult(BaseRangeEstimatorResult):
     def cy_effects_test(self, p=.05):
         """
         We reject the hypothesis, with an error probability of p, of having no
-        significant calendar year effects only if not:
+        significant calendar year effects only if not::
 
-            E_Z - 1.96 * sqrt(V_Z)  <=  Z  <=  E_Z + 1.96 * sqrt(V_Z) (if p = .05).
+            E_Z - 1.96 * sqrt(V_Z)  <=  Z  <=  E_Z + 1.96 * sqrt(V_Z) (if p = .05)
 
         Parameters
         ----------
@@ -836,8 +825,8 @@ class MackChainLadderResult(BaseRangeEstimatorResult):
         """
         df = pd.concat([
             pd.DataFrame({
-                "origin":ii, "x":np.linspace(self.rvs[ii].ppf(.001), self.rvs[ii].ppf(.999), 100),
-                "y":self.rvs[ii].pdf(np.linspace(self.rvs[ii].ppf(.001), self.rvs[ii].ppf(.999), 100))
+                "origin": ii, "x": np.linspace(self.rvs[ii].ppf(.001), self.rvs[ii].ppf(.999), 100),
+                "y": self.rvs[ii].pdf(np.linspace(self.rvs[ii].ppf(.001), self.rvs[ii].ppf(.999), 100))
                 })
             for ii in self.rvs.index
             ])
@@ -867,7 +856,7 @@ class MackChainLadderResult(BaseRangeEstimatorResult):
             qtls, qtlhdrs = self._qtls_formatter(q=q)
             qtl_pairs = [(qtlhdrs[ii], qtls[ii]) for ii in range(len(qtls))]
             dqq = {
-                str(ii[0]):[self.rvs[origin].ppf(ii[-1]) for origin in self.rvs.index]
+                str(ii[0]): [self.rvs[origin].ppf(ii[-1]) for origin in self.rvs.index]
                     for ii in qtl_pairs
                 }
         return(pd.DataFrame().from_dict(dqq).set_index(self.summary.index))
@@ -884,10 +873,7 @@ class MackChainLadderResult(BaseRangeEstimatorResult):
         Parameters
         ----------
         q: float in range of [0,1]
-            Two-sided percentile interval to highlight, which must be between
-            0 and 1 inclusive. For example, when ``q=.90``, the 5th and
-            95th percentile of the reserve distribution will is highlighted
-            in each facet $(\frac{1 - q}{2}, \frac(1 + q}{2})$.
+            The quantile to highlight, which must be between 0 and 1 inclusive.
 
         dist_color: str
             Color or hexidecimal color code of estimated reserve distribution.
@@ -899,11 +885,11 @@ class MackChainLadderResult(BaseRangeEstimatorResult):
         axes_style: {"darkgrid", "whitegrid", "dark", "white", "ticks"}
             Aesthetic style of seaborn plots. Default values is "darkgrid".
 
-        context: {"paper", "talk", "poster"}.
+        context: {"notebook", "paper", "talk", "poster"}.
             Set the plotting context parameters. According to the seaborn
             documentation, This affects things like the size of the labels,
             lines, and other elements of the plot, but not the overall style.
-            Default value is ``"notebook"``.
+            Default value is "notebook".
 
         col_wrap: int
             The maximum number of origin period axes to have on a single row
@@ -914,7 +900,6 @@ class MackChainLadderResult(BaseRangeEstimatorResult):
             rendered via ``plt.show()``.
 
         """
-        import matplotlib
         import matplotlib.pyplot as plt
         import seaborn as sns
         sns.set_context(context)
@@ -938,7 +923,7 @@ class MackChainLadderResult(BaseRangeEstimatorResult):
                     qq_ii = [rv_ii.ppf(jj) for jj in qtls]
                 vline_pos, vline_str = [rv_ii.mean()] + qq_ii, ["mean"] + qtlhdrs
 
-                for ii,jj in zip(vline_pos, vline_str):
+                for ii, jj in zip(vline_pos, vline_str):
                     # Draw vertical line and annotation.
                     ax_ii.axvline(
                         x=ii, linewidth=1., linestyle="--", color=q_color
@@ -952,8 +937,11 @@ class MackChainLadderResult(BaseRangeEstimatorResult):
                         origin, xy=(.85, .925), xytext=(.85, .925), xycoords='axes fraction',
                         textcoords='axes fraction', fontsize=9, rotation=0, color="#000000",
                         )
-                    ax_ii.set_xticklabels([]); ax_ii.set_yticklabels([])
-                    ax_ii.set_title(""); ax_ii.set_xlabel(""); ax_ii.set_ylabel("")
+                    ax_ii.set_xticklabels([])
+                    ax_ii.set_yticklabels([])
+                    ax_ii.set_title("")
+                    ax_ii.set_xlabel("")
+                    ax_ii.set_ylabel("")
                     ax_ii.grid(True)
 
                 # Draw border around each facet.
@@ -985,11 +973,11 @@ class MackChainLadderResult(BaseRangeEstimatorResult):
             pltkwargs.update(kwargs)
 
         dfdens_all = self._mack_data_transform()
-        dfdens = dfdens_all[(dfdens_all.origin=="total")]
+        dfdens = dfdens_all[(dfdens_all.origin == "total")]
         dfresid0 = self._residuals_by_devp()
         dfresid1 = self._residuals_by_origin()
         cl_data = pd.melt(self.trisqrd, var_name="dev", ignore_index=False).reset_index(
-            drop=False).rename({"index":"origin"}, axis=1)
+            drop=False).rename({"index": "origin"}, axis=1)
         grps = cl_data.groupby("origin", as_index=False)
         data_list = [grps.get_group(ii) for ii in self.tri.origins]
 
@@ -1002,28 +990,28 @@ class MackChainLadderResult(BaseRangeEstimatorResult):
 
         # Upper left facet represents aggregate reserve distribution.
         mean_agg_reserve = self.summary.at["total", "reserve"]
-        ax[0,0].set_title("Aggregate Reserve Distribution", fontsize=8, loc="left", weight="bold")
-        ax[0,0].plot(dfdens.x.values, dfdens.y.values, color="#000000", linewidth=1.)
-        ax[0,0].axvline(mean_agg_reserve,  linestyle="--", color="red", linewidth=1.)
-        ax[0,0].get_xaxis().set_major_formatter(mpl.ticker.FuncFormatter(lambda v, p: format(int(v), ",")))
-        ax[0,0].set_ylim(bottom=0)
-        ax[0,0].set_xlim(left=0)
-        ax[0,0].set_xlabel("")
-        ax[0,0].set_ylabel("")
-        ax[0,0].tick_params(axis="x", which="major", direction="in", labelsize=6)
-        ax[0,0].set_yticks([])
-        ax[0,0].set_yticklabels([])
-        ax[0,0].xaxis.set_ticks_position("none")
-        ax[0,0].yaxis.set_ticks_position("none")
-        ax[0,0].grid(False)
-        ax[0,0].annotate(
+        ax[0, 0].set_title("Aggregate Reserve Distribution", fontsize=8, loc="left", weight="bold")
+        ax[0, 0].plot(dfdens.x.values, dfdens.y.values, color="#000000", linewidth=1.)
+        ax[0, 0].axvline(mean_agg_reserve, linestyle="--", color="red", linewidth=1.)
+        ax[0, 0].get_xaxis().set_major_formatter(mpl.ticker.FuncFormatter(lambda v, p: format(int(v), ",")))
+        ax[0, 0].set_ylim(bottom=0)
+        ax[0, 0].set_xlim(left=0)
+        ax[0, 0].set_xlabel("")
+        ax[0, 0].set_ylabel("")
+        ax[0, 0].tick_params(axis="x", which="major", direction="in", labelsize=6)
+        ax[0, 0].set_yticks([])
+        ax[0, 0].set_yticklabels([])
+        ax[0, 0].xaxis.set_ticks_position("none")
+        ax[0, 0].yaxis.set_ticks_position("none")
+        ax[0, 0].grid(False)
+        ax[0, 0].annotate(
             "mean total reserve = {:,.0f}".format(mean_agg_reserve),
             xy=(mean_agg_reserve, self.rvs.total.pdf(mean_agg_reserve) * .50),
             xytext=(-9, 0), textcoords="offset points", fontsize=8, rotation=90,
             color="#000000",
             )
         for axis in ["top", "bottom", "left", "right"]:
-            ax[0,0].spines[axis].set_linewidth(0.5)
+            ax[0, 0].spines[axis].set_linewidth(0.5)
 
 
         # Upper right facet represents Chain Ladder development paths (trisqrd).
@@ -1031,68 +1019,68 @@ class MackChainLadderResult(BaseRangeEstimatorResult):
             xx = dforg["devp"].values
             yy = dforg["value"].values
             marker = self._markers[ii % len(self._markers)]
-            yy_divisor = 1 # 1000 if np.all(yy>1000) else 1
-            yy_axis_label = "(000's)" if yy_divisor==1000 else ""
-            ax[0,1].plot(
+            yy_divisor = 1  # 1000 if np.all(yy>1000) else 1
+            yy_axis_label = "(000's)" if yy_divisor == 1000 else ""
+            ax[0, 1].plot(
                 xx, yy / yy_divisor, color=hex_color,
                 linewidth=pltkwargs["linewidth"], linestyle=pltkwargs["linestyle"],
                 label=dforg.origin.values[0], marker=marker,
                 markersize=pltkwargs["markersize"]
                 )
         for axis in ["top", "bottom", "left", "right"]:
-            ax[0,1].spines[axis].set_linewidth(0.5)
+            ax[0, 1].spines[axis].set_linewidth(0.5)
 
-        ax[0,1].set_title("Development by Origin", fontsize=8, loc="left", weight="bold")
-        ax[0,1].get_yaxis().set_major_formatter(mpl.ticker.FuncFormatter(lambda v, p: format(int(v), ",")))
-        ax[0,1].set_xlabel("dev", fontsize=8)
-        ax[0,1].set_ylabel(yy_axis_label, fontsize=7)
-        ax[0,1].set_ylim(bottom=0)
-        ax[0,1].set_xlim(left=cl_data["devp"].min())
-        ax[0,1].set_xticks(np.sort(cl_data["devp"].unique()))
-        ax[0,1].tick_params(axis="x", which="major", direction="in", labelsize=6)
-        ax[0,1].tick_params(axis="y", which="major", direction="in", labelsize=6)
-        ax[0,1].xaxis.set_ticks_position("none")
-        ax[0,1].yaxis.set_ticks_position("none")
-        ax[0,1].grid(False)
-        ax[0,1].legend(loc="lower right", fancybox=True, framealpha=1, fontsize="x-small")
+        ax[0, 1].set_title("Development by Origin", fontsize=8, loc="left", weight="bold")
+        ax[0, 1].get_yaxis().set_major_formatter(mpl.ticker.FuncFormatter(lambda v, p: format(int(v), ",")))
+        ax[0, 1].set_xlabel("dev", fontsize=8)
+        ax[0, 1].set_ylabel(yy_axis_label, fontsize=7)
+        ax[0, 1].set_ylim(bottom=0)
+        ax[0, 1].set_xlim(left=cl_data["devp"].min())
+        ax[0, 1].set_xticks(np.sort(cl_data["devp"].unique()))
+        ax[0, 1].tick_params(axis="x", which="major", direction="in", labelsize=6)
+        ax[0, 1].tick_params(axis="y", which="major", direction="in", labelsize=6)
+        ax[0, 1].xaxis.set_ticks_position("none")
+        ax[0, 1].yaxis.set_ticks_position("none")
+        ax[0, 1].grid(False)
+        ax[0, 1].legend(loc="lower right", fancybox=True, framealpha=1, fontsize="x-small")
 
 
         # Lower left facet represents residuals by development period.
-        ax[1,0].set_title("std. residuals by devp", fontsize=8, loc="left", weight="bold")
-        ax[1,0].scatter(
+        ax[1, 0].set_title("std. residuals by devp", fontsize=8, loc="left", weight="bold")
+        ax[1, 0].scatter(
             dfresid0["t"].values, dfresid0["std_residuals"].values,
             marker="o", edgecolor="#000000", color="#FFFFFF", s=15,
             linewidths=.75
             )
-        ax[1,0].axhline(0, linestyle="dashed", linewidth=1.)
-        ax[1,0].set_xlabel("dev", fontsize=7)
-        ax[1,0].set_ylabel("std. residuals", fontsize=7)
-        ax[1,0].set_xticks(np.sort(dfresid0.t.unique()))
-        ax[1,0].tick_params(axis="x", which="major", direction="in", labelsize=6)
-        ax[1,0].tick_params(axis="y", which="major", direction="in", labelsize=6)
-        ax[1,0].xaxis.set_ticks_position("none")
-        ax[1,0].yaxis.set_ticks_position("none")
-        ax[1,0].grid(False)
+        ax[1, 0].axhline(0, linestyle="dashed", linewidth=1.)
+        ax[1, 0].set_xlabel("dev", fontsize=7)
+        ax[1, 0].set_ylabel("std. residuals", fontsize=7)
+        ax[1, 0].set_xticks(np.sort(dfresid0.t.unique()))
+        ax[1, 0].tick_params(axis="x", which="major", direction="in", labelsize=6)
+        ax[1, 0].tick_params(axis="y", which="major", direction="in", labelsize=6)
+        ax[1, 0].xaxis.set_ticks_position("none")
+        ax[1, 0].yaxis.set_ticks_position("none")
+        ax[1, 0].grid(False)
         for axis in ["top", "bottom", "left", "right"]:
-            ax[1,0].spines[axis].set_linewidth(0.5)
+            ax[1, 0].spines[axis].set_linewidth(0.5)
 
         # Lower right facet represents residuals by origin period.
-        ax[1,1].set_title("std. residuals by origin", fontsize=8, loc="left", weight="bold")
-        ax[1,1].scatter(
+        ax[1, 1].set_title("std. residuals by origin", fontsize=8, loc="left", weight="bold")
+        ax[1, 1].scatter(
             dfresid1["t"].values, dfresid1["std_residuals"].values,
             marker="o", edgecolor="#000000", color="#FFFFFF", s=15,
             linewidths=.75
             )
-        ax[1,1].axhline(0, linestyle="dashed", linewidth=1.)
-        ax[1,1].set_xlabel("origin", fontsize=8)
-        ax[1,1].set_ylabel("std. residuals", fontsize=8)
-        ax[1,1].set_xticks(np.sort(dfresid1.t.unique()))
-        ax[1,1].tick_params(axis="x", which="major", direction="in", labelsize=6)
-        ax[1,1].tick_params(axis="y", which="major", direction="in", labelsize=6)
-        ax[1,1].xaxis.set_ticks_position("none")
-        ax[1,1].yaxis.set_ticks_position("none")
-        ax[1,1].grid(False)
+        ax[1, 1].axhline(0, linestyle="dashed", linewidth=1.)
+        ax[1, 1].set_xlabel("origin", fontsize=8)
+        ax[1, 1].set_ylabel("std. residuals", fontsize=8)
+        ax[1, 1].set_xticks(np.sort(dfresid1.t.unique()))
+        ax[1, 1].tick_params(axis="x", which="major", direction="in", labelsize=6)
+        ax[1, 1].tick_params(axis="y", which="major", direction="in", labelsize=6)
+        ax[1, 1].xaxis.set_ticks_position("none")
+        ax[1, 1].yaxis.set_ticks_position("none")
+        ax[1, 1].grid(False)
         for axis in ["top", "bottom", "left", "right"]:
-            ax[1,1].spines[axis].set_linewidth(0.5)
+            ax[1, 1].spines[axis].set_linewidth(0.5)
 
         plt.show()

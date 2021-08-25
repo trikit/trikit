@@ -4,14 +4,6 @@ trikit.tests package
 Submodules
 ----------
 
-trikit.tests.test\_chainladder\_ut module
------------------------------------------
-
-.. automodule:: trikit.tests.test_chainladder_ut
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 trikit.tests.test\_datasets\_ut module
 --------------------------------------
 
@@ -20,10 +12,26 @@ trikit.tests.test\_datasets\_ut module
    :undoc-members:
    :show-inheritance:
 
+trikit.tests.test\_estimators\_ut module
+----------------------------------------
+
+.. automodule:: trikit.tests.test_estimators_ut
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 trikit.tests.test\_triangle\_ut module
 --------------------------------------
 
 .. automodule:: trikit.tests.test_triangle_ut
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+trikit.tests.test\_utils\_ut module
+-----------------------------------
+
+.. automodule:: trikit.tests.test_utils_ut
    :members:
    :undoc-members:
    :show-inheritance:

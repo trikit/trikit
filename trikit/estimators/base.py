@@ -11,8 +11,8 @@ import numpy as np
 
 class BaseChainLadder:
     """
-    From the Casualty Actuarial Society's "Estimating Unpaid Claims Using
-    Basic Techniques" Version 3 (Friedland, Jacqueline - 2010), the
+    From the Casualty Actuarial Society's *Estimating Unpaid Claims Using
+    Basic Techniques* Version 3 (Friedland, Jacqueline - 2010), the
     development method ('Chain Ladder') consists of seven basic steps:
 
     1. Compile claims data in a development triangle.
@@ -23,9 +23,12 @@ class BaseChainLadder:
     6. Calculate cumulative claims.
     7. Project ultimate claims.
 
-    The ``BaseChainLadder`` class encapsulates logic to perform steps 1-7.
-    Other classes, including ``MackChainLadder and ``BoostrapChainLadder``
-    inherit from ``BaseChainLadder``.
+    The BaseChainLadder class encapsulates logic to perform steps 1-7.
+
+    Parameters
+    ----------
+    cumtri: trikit.triangle.CumTriangle
+        A cumulative triangle instance.
 
     References
     ----------
@@ -36,7 +39,7 @@ class BaseChainLadder:
         """
         Generate point estimates for outstanding claim liabilities at
         ultimate for each origin year and in aggregate. The
-        ``BaseChainLadder`` class exposes no functionality to estimate
+        BaseChainLadder class exposes no functionality to estimate
         variability around the point estimates at ultimate.
 
         Parameters
@@ -93,7 +96,7 @@ class BaseChainLadder:
         else:
             if isinstance(sel, pd.Series):
                 # Check whether sel has the appropriate length.
-                if sel.index.size!=(self.tri.devp.size - 1):
+                if sel.index.size != (self.tri.devp.size - 1):
                     raise ValueError(
                         "sel has {} values, LDF overrides require {}.".format(
                             sel.size, self.tri.devp.size - 1
@@ -106,8 +109,8 @@ class BaseChainLadder:
 
             elif isinstance(sel, (Sequence, np.ndarray)):
                 sel = np.asarray(sel, dtype=np.float)
-                if len(sel)!=len(self.tri.devp) - 1:
-                    if sel.size==(self.tri.devp.size-1):
+                if len(sel) != len(self.tri.devp) - 1:
+                    if sel.size == (self.tri.devp.size - 1):
                         raise ValueError(
                             "sel has {} values, LDF overrides require at least {}.".format(
                                 sel.size, self.tri.devp.size - 1
@@ -127,13 +130,13 @@ class BaseChainLadder:
         trisqrd = self._trisqrd(ldfs=ldfs)
 
         # Compile chain ladder point estimate summary.
-        dfmatur = maturity.to_frame().reset_index(drop=False).rename({"index":"origin"}, axis=1)
-        dfcldfs = cldfs.to_frame().reset_index(drop=False).rename({"index":"maturity"}, axis=1)
+        dfmatur = maturity.to_frame().reset_index(drop=False).rename({"index": "origin"}, axis=1)
+        dfcldfs = cldfs.to_frame().reset_index(drop=False).rename({"index": "maturity"}, axis=1)
         dfcldfs["maturity"] = dfcldfs["maturity"].astype(np.str)
         dfcldfs["emergence"] = 1 / dfcldfs["cldf"]
         dfsumm = dfmatur.merge(dfcldfs, on=["maturity"], how="left").set_index("origin")
         dfsumm.index.name = None
-        dflatest = latest.to_frame().rename({"latest_by_origin":"latest"}, axis=1)
+        dflatest = latest.to_frame().rename({"latest_by_origin": "latest"}, axis=1)
         dfsumm = functools.reduce(
             lambda df1, df2: df1.join(df2),
             (dflatest, ultimates.to_frame(), reserves.to_frame()), dfsumm
@@ -192,7 +195,6 @@ class BaseChainLadder:
         -------
         pd.Series
         """
-        cldfs_indx = ldfs.index.values
         cldfs = np.cumprod(ldfs.values[::-1])[::-1]
         cldfs = pd.Series(data=cldfs, index=ldfs.index.values, name="cldf")
         return(cldfs.astype(np.float).sort_index())
@@ -270,46 +272,43 @@ class BaseChainLadder:
         rposf = self.tri.index.size
         clvi = self.tri.clvi["row_offset"]
         for i in enumerate(trisqrd.columns[1:], start=1):
-            ii  , devp  = i[0], i[1]
+            ii, devp = i[0], i[1]
             ildf, rposi = ldfs.values[ii - 1], clvi[devp] + 1
             trisqrd.iloc[rposi:rposf, ii] = trisqrd.iloc[rposi:rposf, ii - 1] * ildf
         # Multiply right-most column by tail factor.
         max_devp = trisqrd.columns[-1]
-        trisqrd["ultimate"] = trisqrd.loc[:,max_devp].values * ldfs.values[-1]
+        trisqrd["ultimate"] = trisqrd.loc[:, max_devp].values * ldfs.values[-1]
         return(trisqrd.astype(np.float).sort_index())
 
 
 
 class BaseChainLadderResult:
     """
-    Summary class consisting of output resulting from invocation of
-    ``BaseChainLadder``'s ``__call__`` method.
-    """
+    Container object for BaseChainLadder output.
+
+    Parameters
+    ----------
+    summary: pd.DataFrame
+        Chain Ladder summary compilation.
+
+    tri: trikit.triangle._CumTriangle
+        A cumulative triangle instance.
+
+    sel: str or array_like
+        Reference to loss development selection. If ldf overrides are
+        utilized, ``sel`` will be identical to ``ldfs``.
+
+    ldfs: pd.Series
+        Loss development factors.
+
+    tail: float
+        Tail factor. Defaults to 1.0.
+
+    trisqrd: pd.DataFrame
+        Projected claims growth for each future development period.
+   """
     def __init__(self, summary, tri, sel, ldfs, tail, trisqrd):
-        """
-        Container object for ``BaseChainLadder`` output.
 
-        Parameters
-        ----------
-        summary: pd.DataFrame
-            Chain Ladder summary compilation.
-
-        tri: trikit.triangle._CumTriangle
-            A cumulative triangle instance.
-
-        sel: str or array_like
-            Reference to loss development selection. If ldf overrides are
-            utilized, ``sel`` will be identical to ``ldfs``.
-
-        ldfs: pd.Series
-            Loss development factors.
-
-        tail: float
-            Tail factor. Defaults to 1.0.
-
-        trisqrd: pd.DataFrame
-            Projected claims growth for each future development period.
-        """
         self.emergence = summary["emergence"]
         self.ultimate = summary["ultimate"]
         self.maturity = summary["maturity"]
@@ -326,9 +325,9 @@ class BaseChainLadderResult:
         self._markers = ["o", "v", "^", "s", "8", "p", "D", "d", "h"]
 
         self._summspecs = {
-            "ultimate":"{:,.0f}".format, "reserve":"{:,.0f}".format,
-            "latest":"{:,.0f}".format, "cldf":"{:.5f}".format,
-            "emergence":"{:.5f}".format,
+            "ultimate": "{:,.0f}".format, "reserve": "{:,.0f}".format,
+            "latest": "{:,.0f}".format, "cldf": "{:.5f}".format,
+            "emergence": "{:.5f}".format,
             }
 
 
@@ -354,7 +353,7 @@ class BaseChainLadderResult:
         # Find upper limit for y-axis given origin_max_val.
         yuls_seq = x_div * np.arange(1, 11)
         x_yuls = yuls_seq - x
-        yul = yuls_seq[np.where(x_yuls>0)[0].min()]
+        yul = yuls_seq[np.where(x_yuls > 0)[0].min()]
         y_ticks = np.linspace(0, yul, num=5)
         y_ticklabels = np.asarray(["{:,.0f}".format(ii) for ii in y_ticks])
         return(y_ticks, y_ticklabels)
@@ -369,51 +368,51 @@ class BaseChainLadderResult:
         -------
         pd.DataFrame
         """
-        trisqrd = self.trisqrd.reset_index(drop=False).rename({"index":"origin" }, axis=1)
+        trisqrd = self.trisqrd.reset_index(drop=False).rename({"index": "origin"}, axis=1)
         df0 = pd.melt(trisqrd, id_vars=["origin"], var_name="dev", value_name="value")
 
         # Combine df0 with latest cumulative loss by origin period.
         df0 = df0.merge(
-            self.latest.reset_index(drop=False).rename({"index":"origin"}, axis=1),
+            self.latest.reset_index(drop=False).rename({"index": "origin"}, axis=1),
             on="origin", how="left"
             )
 
-        dfult = df0[df0["dev"]=="ultimate"].copy()
+        dfult = df0[df0["dev"] == "ultimate"].copy()
         dev_increment = np.unique(self.ldfs.index[1:] - self.ldfs.index[:-1])[0]
-        dfult["dev"] =  self.ldfs.index.max() + dev_increment
+        dfult["dev"] = self.ldfs.index.max() + dev_increment
         dfult["rectype"] = "forecast"
-        df0 = df0[df0["dev"]!="ultimate"].reset_index(drop=True)
+        df0 = df0[df0["dev"] != "ultimate"].reset_index(drop=True)
 
         # Create tabular dataset based on tri.triind. Rows wiith 0s represent
         # actuals, rows with 1 represent forecasts.
-        df1 = self.tri.triind.reset_index(drop=False).rename({"index":"origin"}, axis=1)
+        df1 = self.tri.triind.reset_index(drop=False).rename({"index": "origin"}, axis=1)
         df1 = pd.melt(df1, id_vars=["origin"], var_name="dev", value_name="value")
-        df1["value"] = df1["value"].map(lambda v: 1 if v==0 else 0)
+        df1["value"] = df1["value"].map(lambda v: 1 if v == 0 else 0)
         df1 = df1[~np.isnan(df1["value"])].rename(
-            {"value":"actual_ind"}, axis=1).reset_index(drop=True)
+            {"value": "actual_ind"}, axis=1).reset_index(drop=True)
 
         # Combine df0 and df1 into a single DataFrame, then perform cleanup
         # actions for cases in which df0 has more records than df1.
         df = pd.merge(df0, df1, on=["origin", "dev"], how="left", sort=False)
 
         # Bind reference to maximum dev period for each origin.
-        dfma = df[df["actual_ind"]==1].groupby(
+        dfma = df[df["actual_ind"] == 1].groupby(
             ["origin"])["dev"].max().to_frame().reset_index(drop=False).rename(
-            {"index":"origin", "dev":"max_actual"}, axis=1
+            {"index": "origin", "dev": "max_actual"}, axis=1
             )
         df = pd.merge(df, dfma, on="origin", how="left", sort=False)
-        df["incl_actual"] = df["actual_ind"].map(lambda v: 1 if v==1 else 0)
+        df["incl_actual"] = df["actual_ind"].map(lambda v: 1 if v == 1 else 0)
         df["incl_pred"] = df.apply(
-            lambda rec: 1 if (rec.actual_ind==0 or rec.dev==rec.max_actual) else 0,
+            lambda rec: 1 if (rec.actual_ind == 0 or rec.dev == rec.max_actual) else 0,
             axis=1
             )
 
         # Split data into actual and pred cohorts, then recombine. Note that
         # the latest cumulative loss by origin intentionally appears in both
         # datasets.
-        dfact = df[df["incl_actual"]==1][["origin", "dev", "value", "latest"]]
+        dfact = df[df["incl_actual"] == 1][["origin", "dev", "value", "latest"]]
         dfact["rectype"] = "actual"
-        dfpred = df[df["incl_pred"]==1][["origin", "dev", "value", "latest"]]
+        dfpred = df[df["incl_pred"] == 1][["origin", "dev", "value", "latest"]]
         dfpred["rectype"] = "forecast"
 
         # Create total DataFrame, representing losses across all origin periods
@@ -426,25 +425,25 @@ class BaseChainLadderResult:
         # Combine dfact, dfpred, dfult and dftotal.
         dftotal["origin"] = "total"
         dfall = pd.concat([dfact, dfpred, dfult, dftotal]).reset_index(drop=True).rename(
-            {"value":"loss"}, axis=1
+            {"value": "loss"}, axis=1
             )
 
 
         # Add origin index column sort origin columns, which is of type object
         # # since adding "total".
-        dfall["dev"] = dfall["dev"].astype(np.int)
-        origin_vals = sorted([int(ii) for ii in dfall["origin"].unique() if ii!="total"])
-        dindex = {jj:ii for ii,jj in enumerate(origin_vals)}
-        dindex.update({"total":max(dindex.values())+1})
+        dfall["dev"] = dfall["dev"].astype(int)
+        origin_vals = sorted([int(ii) for ii in dfall["origin"].unique() if ii != "total"])
+        dindex = {jj: ii for ii, jj in enumerate(origin_vals)}
+        dindex.update({"total": max(dindex.values()) + 1})
         dfall["origin_index"] = dfall["origin"].map(dindex)
 
         # Add reserve column, defined as value - latest when rectype=="forecast",
         # otherwise 0.
         dfall["reserve"] = dfall.apply(
-            lambda rec: rec.loss - rec.latest if rec.rectype=="forecast" else 0,
+            lambda rec: rec.loss - rec.latest if rec.rectype == "forecast" else 0,
             axis=1
             )
-        column_order = ["origin_index", "origin", "dev", "loss", "reserve", "rectype",]
+        column_order = ["origin_index", "origin", "dev", "loss", "reserve", "rectype"]
         return(dfall[column_order].reset_index(drop=True))
 
 
@@ -471,8 +470,8 @@ class BaseChainLadderResult:
             Set the plotting context parameters. According to the seaborn
             documentation, This affects things like the size of the labels,
             lines, and other elements of the plot, but not the overall style.
-            Defaults to ``"notebook"``. Additional options include
-            {paper, talk, poster}.
+            Defaults to "notebook". Additional options include
+            {"paper", "talk", "poster"}.
 
         col_wrap: int
             The maximum number of origin period axes to have on a single row
@@ -495,22 +494,18 @@ class BaseChainLadderResult:
             default values for ``plt.plot`` objects. For a demonstration,
             See the Examples section.
 
+
         Examples
         --------
-        Demonstration of how to pass a dictionary of plot properties in order
-        to update the scatter size and marker:
+        Demonstration of passing a dictionary of plot properties in order
+        to update the scatter size and marker::
 
             In [1]: import trikit
-            In [2]: raa = trikit.load(dataset="raa")
-            In [3]: tri = trikit.totri(data=raa)
-            In [4]: cl = tri.cl(sel="all-weighted", tail=1.005)
+            In [2]: tri = trikit.load(dataset="raa", tri_type="cum")
+            In [3]: cl = tri.base_cl(sel="all-weighted", tail=1.005)
+            In [4]: kwds = dict(marker="s", markersize=6)
+            In [5]: cl.plot(**kwds)
 
-        ``cl`` represents an instance of ``BaseChainLadderResult``, which
-        exposes the ``plot`` method. First, we compile the dictionary of
-        attributes to override:
-
-            In [6]: kwds = dict(marker="s", markersize=6)
-            In [7]: cl.plot(**kwds)
         """
         import matplotlib.pyplot as plt
         import seaborn as sns
@@ -521,17 +516,17 @@ class BaseChainLadderResult:
         with sns.axes_style(axes_style):
 
             huekwargs = dict(
-                marker=["o", "o",], markersize=[6, 6,],
-                color=["#000000", "#000000",], fillstyle=["full", "full",],
-                markerfacecolor=[forecasts_color, actuals_color,],
-                markeredgecolor=["#000000", "#000000",],
-                markeredgewidth=[.50, .50,], linestyle=["-", "-",],
-                linewidth=[.475, .475,],
+                marker=["o", "o"], markersize=[6, 6],
+                color=["#000000", "#000000"], fillstyle=["full", "full"],
+                markerfacecolor=[forecasts_color, actuals_color],
+                markeredgecolor=["#000000", "#000000"],
+                markeredgewidth=[.50, .50], linestyle=["-", "-"],
+                linewidth=[.475, .475],
                 )
 
             if hue_kws is not None:
                 # Determine whether the length of each element of hue_kws is 4.
-                if all(len(hue_kws[i])==4 for i in hue_kws):
+                if all(len(hue_kws[i]) == 4 for i in hue_kws):
                     huekwargs.update(hue_kws)
                 else:
                     warnings.warn("hue_kws overrides not correct length - Ignoring.")
@@ -539,15 +534,15 @@ class BaseChainLadderResult:
             grid = sns.FacetGrid(
                 data, col="origin", hue="rectype", hue_kws=huekwargs,
                 col_wrap=col_wrap, margin_titles=False, despine=True, sharex=False,
-                sharey=False, hue_order=["forecast", "actual",]
+                sharey=False, hue_order=["forecast", "actual"]
                 )
 
-            ult_vals = grid.map(plt.plot, "dev", "loss",)
             devp_xticks = np.sort(data.dev.unique())
             devp_xticks_str = [
-                str(ii) if ii!=devp_xticks.max() else "ult" for ii in devp_xticks
+                str(ii) if ii != devp_xticks.max() else "ult" for ii in devp_xticks
                 ]
-            grid.set(xticks=devp_xticks);  grid.set_xticklabels(devp_xticks_str, size=7)
+            grid.set(xticks=devp_xticks)
+            grid.set_xticklabels(devp_xticks_str, size=7)
             origin_order = data[["origin_index", "origin"]].drop_duplicates().sort_values(
                 "origin_index").origin.values
 
@@ -565,7 +560,7 @@ class BaseChainLadderResult:
                     legend.get_frame().set_facecolor("#FFFFFF")
 
                     # For given origin, determine optimal 5-point tick labels.
-                    origin_max_val = data[data.origin==origin].loss.max()
+                    origin_max_val = data[data.origin == origin].loss.max()
                     y_ticks, y_ticklabels = self._get_yticks(origin_max_val)
                     ax_ii.set_yticks(y_ticks)
                     ax_ii.set_yticklabels(y_ticklabels, size=7)
@@ -573,7 +568,9 @@ class BaseChainLadderResult:
                         origin, xy=(.075, .90), xytext=(.075, .90), xycoords='axes fraction',
                         textcoords='axes fraction', fontsize=9, rotation=0, color="#000000",
                         )
-                    ax_ii.set_title(""); ax_ii.set_xlabel(""); ax_ii.set_ylabel("")
+                    ax_ii.set_title("")
+                    ax_ii.set_xlabel("")
+                    ax_ii.set_ylabel("")
 
                     # Draw border around each facet.
                     for _, spine in ax_ii.spines.items():
@@ -652,11 +649,11 @@ class BaseRangeEstimatorResult(BaseChainLadderResult):
 
         # Quantile suffix for plot method annotations.
         self.dsuffix = {
-            "0":"th", "1":"st", "2":"nd", "3":"rd", "4":"th", "5":"th", "6":"th",
-            "7":"th", "8":"th", "9":"th",
+            "0": "th", "1": "st", "2": "nd", "3": "rd", "4": "th", "5": "th", "6": "th",
+            "7": "th", "8": "th", "9": "th",
             }
 
-        self._summspecs.update({"std_error":"{:,.0f}".format, "cv":"{:.3f}".format})
+        self._summspecs.update({"std_error": "{:,.0f}".format, "cv": "{:.3f}".format})
 
 
 
@@ -689,4 +686,8 @@ class BaseRangeEstimatorResult(BaseChainLadderResult):
         return(qtls.tolist(), qtlhdrs)
 
 
-
+    def get_quantiles(self):
+        """
+        Estimator specific routine to produce quantiles of estimated reserve distribution.
+        """
+        pass

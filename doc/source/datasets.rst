@@ -9,7 +9,7 @@ Sample Datasets
 
 .. note::
 
-    For information on accessing the CAS Loss Reserving Database from trikit, see `here <lrdb>`_.
+    For information on accessing the CAS Loss Reserving Database, see `here <lrdb>`_.
 
 
 
@@ -40,6 +40,7 @@ the following are available:
     Source: Mack, Thomas (1993) *Measuring the Variability of Chain Ladder Reserve Estimates*, 1993 CAS Prize Paper Competition on
     Variability of Loss Reserves.
 
+
 **singinjury**
     Payments from a portfolio of automobile policies for a Singapore property and casualty insurer.
     Source: Source: Frees, E., `Regression Modeling with Actuarial and Financial Applications <rmafa>`_.
@@ -58,25 +59,16 @@ the following are available:
 
 
 
-
-
-
 Sample datasets are accessed using trikit's ``load`` function:
 
 
 .. function:: load(dataset, tri_type=None)
 
-   	Load the specified sample dataset. If ``tri_type`` is not None, return sample
-	dataset as specified triangle either "cum" or "incr".
+    Load the specified sample dataset. If ``tri_type`` is not None, return sample
+    dataset as specified triangle either "cum" or "incr".
 
-    :param dataset: Specifies which sample dataset to load. The complete set of sample
-    datasets can be obtained by calling ``get_datasets``.
-    :type dataset: str
-
-	:param tri_type: If ``None``, lrdb subset is returned as pd.DataFrame. Otherwise,
-    return subset as either incremental or cumulative triangle type. Default value is None.
-    :type tri_type: {None, "incr", "cum"}
-
+    :param str dataset: Specifies which sample dataset to load. The complete set of sample datasets can be obtained by calling ``get_datasets``.
+    :param str tri_type: If ``None``, lrdb subset is returned as pd.DataFrame. Otherwise, return subset as either incremental or cumulative triangle type. Default value is None.
     :return: Either pd.DataFrame, trikit.triangle.IncrTriangle or trikit.triangle.CumTriangle.
 
 

@@ -17,10 +17,6 @@ assertNotIsInstance(a, b)
 import unittest
 import pandas as pd
 import numpy as np
-import os
-import os.path
-import logging
-import timeit
 import trikit
 from trikit.estimators import base, mack, bootstrap
 
@@ -93,7 +89,7 @@ class BaseChainLadderTestCase(unittest.TestCase):
     def test_custom_ldfs(self):
         cl = self.tri.base_cl(sel=self.custom_ldfs)
         self.assertTrue(
-            np.abs(self.custom_ldfs_reserves_total - cl.reserves.sum()) < 1.,
+            np.abs(self.custom_ldfs_reserves_total - cl.reserve.sum()) < 1.,
             "Non-equality of reserves using cutstom ldfs."
             )
 
@@ -125,7 +121,6 @@ class MackChainLadderTestCase(unittest.TestCase):
             "mse_sum"            :4156154300629.1504,
             "std_error_sum"      :4771773.155719111,
             "cv_sum"             :2.80203003051732,
-            "mse_total_sum"      :5989366778717.765,
             "process_error_sum"  :3527957849338.302,
             "parameter_error_sum":628196451290.8485,
             "ldfs_sum"           :14.207460332760107,
@@ -149,10 +144,9 @@ class MackChainLadderTestCase(unittest.TestCase):
                 r_lognorm.rvs[ii].ppf(.95) for ii in r_lognorm.tri.index
                 ]).dropna().sum()
 
-        self.mse_sum = r_lognorm.mse.dropna().sum()
+        self.mse_sum = r_lognorm.mse.drop("total").dropna().sum()
         self.std_error_sum = r_lognorm.std_error.drop("total").dropna().sum()
         self.cv_sum = r_lognorm.cv.drop("total").dropna().sum()
-        # self.mse_total_sum = r_lognorm.mse_total.dropna().sum()
         self.process_error_sum = r_lognorm.process_error.dropna().sum()
         self.parameter_error_sum = r_lognorm.parameter_error.dropna().sum()
         self.ldfs_sum = r_lognorm.ldfs.dropna().sum()
@@ -248,13 +242,6 @@ class MackChainLadderTestCase(unittest.TestCase):
             "Non-equality between computed vs. reference cv."
             )
 
-    def test_mse_total(self):
-        # Test computed vs. reference aggregate mse_total.
-        self.assertTrue(
-            np.abs(self.mse_total_sum - self.dactual_ta83["mse_total_sum"]) < 1.,
-            "Non-equality between computed vs. reference mse_total."
-            )
-
     def test_process_error(self):
         # Test computed vs. reference aggregate process error.
         self.assertTrue(
@@ -302,14 +289,15 @@ class BootstrapChainLadderTestCase(unittest.TestCase):
     def setUp(self):
         tri = trikit.load(dataset="raa", tri_type="cum")
         bcl = bootstrap.BootstrapChainLadder(tri)
-        r_bcl = bcl()
+        r_bcl = bcl(random_state=516)
 
         dactual_raa = {
             "ldfs_sum"            :13.28018030198903,
             "cldfs_sum"           :21.59861048771567,
             "latest_sum"          :321974.0,
-            "ultimates_sum"       :213122.22826121017,
-            "reserves_sum"        :52135.228261210155,
+            "ultimates_sum"       :214989.29310411066,
+            "reserves_sum"        :54002.29310411069,
+            "se_sum"              :44279.591512336876,
             "dof"                 :56,
             "scale_param"         :632.3368030912758,
             "fitted_cum_sum"      :707622.0,
@@ -326,6 +314,7 @@ class BootstrapChainLadderTestCase(unittest.TestCase):
 
         self.ultimates_sum = r_bcl.ultimate.drop("total").dropna().sum()
         self.reserves_sum = r_bcl.reserve.drop("total").dropna().sum()
+        self.se_sum = r_bcl.std_error.dropna().sum()
         self.latest_sum = r_bcl.latest.dropna().sum()
         self.cldfs_sum = r_bcl.cldfs.dropna().sum()
         self.ldfs_sum = r_bcl.ldfs.dropna().sum()
@@ -385,6 +374,12 @@ class BootstrapChainLadderTestCase(unittest.TestCase):
             "Non-equality between computed vs. reference reserves."
             )
 
+    def test_se(self):
+        # Test computed vs. reference std_error.
+        self.assertTrue(
+            np.abs(self.se_sum - self.dactual_raa["se_sum"]) < 1.,
+            "Non-equality between computed vs. reference std_error."
+            )
 
     def test_dof(self):
         # Test triangle degrees of freedom.
