@@ -41,6 +41,7 @@ GTAGS
 *.o
 *.o.d
 *.py[ocd]
+*.py[ocd]
 *.so
 
 # Packages #
@@ -68,7 +69,6 @@ build
 _build
 # setup.py dist directory
 dist
-doc/cdoc/build
 # Egg metadata
 *.egg-info
 # The shelf plugin uses this dir
