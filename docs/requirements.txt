@@ -1,4 +1,4 @@
-sphinx==3.4.3
+sphinx==3.2.1
 sphinx_rtd_theme==0.5.1
 sphinxcontrib.napoleon==0.7
 sphinxcontrib.jsmath==1.0.1
