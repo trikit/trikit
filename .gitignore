@@ -68,7 +68,6 @@ build
 _build
 # setup.py dist directory
 dist
-doc/build
 doc/cdoc/build
 # Egg metadata
 *.egg-info
