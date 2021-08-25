@@ -32,7 +32,7 @@ the Schedule P Loss Reserving Database can be found
 
 ## Documentation:
 
-trikit documentation is available [here](trikit.readthedocs.io).
+trikit documentation is available [here](https://trikit.readthedocs.io/en/latest/).
 
 
 ## Installation
