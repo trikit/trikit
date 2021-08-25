@@ -114,7 +114,7 @@ class MackChainLadder(BaseRangeEstimator):
         """
         ldfs = self._ldfs(alpha=alpha, tail=1.0)
         cldfs = self._cldfs(ldfs=ldfs)
-        maturity = self.tri.maturity.astype(np.str)
+        maturity = self.tri.maturity.astype(str)
         latest = self.tri.latest_by_origin
         ultimates = self._ultimates(cldfs=cldfs)
         reserves = self._reserves(ultimates=ultimates)
@@ -122,11 +122,11 @@ class MackChainLadder(BaseRangeEstimator):
         ldfvar = self._ldf_variance(devpvar=devpvar, alpha=alpha)
         proc_error = pd.Series(
             self._process_error(ldfs=ldfs, devpvar=devpvar).iloc[:, -1].replace(np.NaN, 0),
-            name="process_error", dtype=np.float
+            name="process_error", dtype=float
             )
         param_error = pd.Series(
             self._parameter_error(ldfs=ldfs, ldfvar=ldfvar).iloc[:, -1].replace(np.NaN, 0),
-            name="parameter_error", dtype=np.float
+            name="parameter_error", dtype=float
             )
         mse = self._mean_squared_error(
             process_error=proc_error, parameter_error=param_error
@@ -163,8 +163,8 @@ class MackChainLadder(BaseRangeEstimator):
 
         # Compute mse for aggregate reserve.
         n = self.tri.devp.size
-        mse_total = pd.Series(index=dfsumm.index[:-1], dtype=np.float)
-        quotient = pd.Series(devpvar / ldfs**2, dtype=np.float).reset_index(drop=True)
+        mse_total = pd.Series(index=dfsumm.index[:-1], dtype=float)
+        quotient = pd.Series(devpvar / ldfs**2, dtype=float).reset_index(drop=True)
         quotient.index = quotient.index + 1
         for indx, ii in enumerate(mse_total.index[1:], start=2):
             mse_ii, ult_ii = mse[ii], ultimates[ii]
@@ -291,7 +291,7 @@ class MackChainLadder(BaseRangeEstimator):
         -------
         pd.Series
         """
-        ldfvar = pd.Series(index=devpvar.index, dtype=np.float, name="ldfvar")
+        ldfvar = pd.Series(index=devpvar.index, dtype=float, name="ldfvar")
         C, w = self.mod_tri, self.mod_a2aind
         for devp in w.columns:
             ldfvar[devp] = devpvar[devp] / (w.loc[:, devp] * C.loc[:, devp]**alpha).sum()
@@ -319,7 +319,7 @@ class MackChainLadder(BaseRangeEstimator):
         -------
         pd.Series
         """
-        devpvar = pd.Series(index=ldfs.index[:-1], dtype=np.float, name="devpvar")
+        devpvar = pd.Series(index=ldfs.index[:-1], dtype=float, name="devpvar")
         C, w, F = self.mod_tri, self.mod_a2aind, self.tri.a2a
         n = self.tri.origins.size
         for indx, jj in enumerate(self.tri.devp[:-2]):
@@ -849,7 +849,7 @@ class MackChainLadderResult(BaseRangeEstimatorResult):
         -------
         pd.DataFrame
         """
-        qarr = np.asarray(q, dtype=np.float)
+        qarr = np.asarray(q, dtype=float)
         if np.any(np.logical_and(qarr > 1, qarr < 0)):
             raise ValueError("q values must fall within [0, 1].")
         else:

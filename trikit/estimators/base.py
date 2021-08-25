@@ -108,7 +108,7 @@ class BaseChainLadder:
                 sel.loc[sel.index.max() + increment] = tail
 
             elif isinstance(sel, (Sequence, np.ndarray)):
-                sel = np.asarray(sel, dtype=np.float)
+                sel = np.asarray(sel, dtype=float)
                 if len(sel) != len(self.tri.devp) - 1:
                     if sel.size == (self.tri.devp.size - 1):
                         raise ValueError(
@@ -120,19 +120,19 @@ class BaseChainLadder:
                 sel = np.append(sel, tail)
 
             # Coerce sel to pd.Series.
-            ldfs = pd.Series(sel, index=self.tri.devp, dtype=np.float)
+            ldfs = pd.Series(sel, index=self.tri.devp, dtype=float)
 
         cldfs = self._cldfs(ldfs=ldfs)
         ultimates = self._ultimates(cldfs=cldfs)
         reserves = self._reserves(ultimates=ultimates)
-        maturity = self.tri.maturity.astype(np.str)
+        maturity = self.tri.maturity.astype(str)
         latest = self.tri.latest_by_origin
         trisqrd = self._trisqrd(ldfs=ldfs)
 
         # Compile chain ladder point estimate summary.
         dfmatur = maturity.to_frame().reset_index(drop=False).rename({"index": "origin"}, axis=1)
         dfcldfs = cldfs.to_frame().reset_index(drop=False).rename({"index": "maturity"}, axis=1)
-        dfcldfs["maturity"] = dfcldfs["maturity"].astype(np.str)
+        dfcldfs["maturity"] = dfcldfs["maturity"].astype(str)
         dfcldfs["emergence"] = 1 / dfcldfs["cldf"]
         dfsumm = dfmatur.merge(dfcldfs, on=["maturity"], how="left").set_index("origin")
         dfsumm.index.name = None
@@ -197,7 +197,7 @@ class BaseChainLadder:
         """
         cldfs = np.cumprod(ldfs.values[::-1])[::-1]
         cldfs = pd.Series(data=cldfs, index=ldfs.index.values, name="cldf")
-        return(cldfs.astype(np.float).sort_index())
+        return(cldfs.astype(float).sort_index())
 
 
     def _ultimates(self, cldfs):
@@ -222,7 +222,7 @@ class BaseChainLadder:
             data=self.tri.latest_by_origin.values * cldfs.values[::-1],
             index=self.tri.index, name="ultimate"
             )
-        return(ultimates.astype(np.float).sort_index())
+        return(ultimates.astype(float).sort_index())
 
 
     def _reserves(self, ultimates):
@@ -249,7 +249,7 @@ class BaseChainLadder:
         reserves = pd.Series(
             data=ultimates - self.tri.latest_by_origin,
             index=self.tri.index, name='reserve')
-        return(reserves.astype(np.float).sort_index())
+        return(reserves.astype(float).sort_index())
 
 
     def _trisqrd(self, ldfs):
@@ -278,7 +278,7 @@ class BaseChainLadder:
         # Multiply right-most column by tail factor.
         max_devp = trisqrd.columns[-1]
         trisqrd["ultimate"] = trisqrd.loc[:, max_devp].values * ldfs.values[-1]
-        return(trisqrd.astype(np.float).sort_index())
+        return(trisqrd.astype(float).sort_index())
 
 
 

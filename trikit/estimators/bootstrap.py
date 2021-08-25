@@ -155,7 +155,7 @@ class BootstrapChainLadder(BaseRangeEstimator):
         """
         ldfs = self._ldfs(sel="all-weighted")
         cldfs = self._cldfs(ldfs=ldfs)
-        maturity = self.tri.maturity.astype(np.str)
+        maturity = self.tri.maturity.astype(str)
         latest = self.tri.latest_by_origin
         trisqrd = self._trisqrd(ldfs=ldfs)
 
@@ -189,7 +189,7 @@ class BootstrapChainLadder(BaseRangeEstimator):
         # Compile Chain Ladder point estimate summary.
         dfmatur = maturity.to_frame().reset_index(drop=False).rename({"index": "origin"}, axis=1)
         dfcldfs = cldfs.to_frame().reset_index(drop=False).rename({"index": "maturity"}, axis=1)
-        dfcldfs["maturity"] = dfcldfs["maturity"].astype(np.str)
+        dfcldfs["maturity"] = dfcldfs["maturity"].astype(str)
         dfcldfs["emergence"] = 1 / dfcldfs["cldf"]
         dfsumm = dfmatur.merge(dfcldfs, on=["maturity"], how="left").set_index("origin")
         dfsumm.index.name = None
@@ -540,7 +540,7 @@ class BootstrapChainLadder(BaseRangeEstimator):
         df2["_aggdev2"] = df2["_aggdev2"].shift(periods=1)
         df2["dev"] = df2["dev"].shift(periods=1)
         dfldfs = df2[df2["_aggdev2"] != 0].dropna(how="any")
-        dfldfs["dev"] = dfldfs["dev"].astype(np.int)
+        dfldfs["dev"] = dfldfs["dev"].astype(int)
         dfldfs["ldf"] = dfldfs["_aggdev1"] / dfldfs["_aggdev2"]
         return(dfldfs[["sim", "dev", "ldf"]].reset_index(drop=True))
 
@@ -1111,7 +1111,7 @@ class BootstrapChainLadderResult(BaseRangeEstimatorResult):
         -------
         pd.DataFrame
         """
-        qarr = np.asarray(q, dtype=np.float)
+        qarr = np.asarray(q, dtype=float)
         if np.any(np.logical_and(qarr > 1, qarr < 0)):
             raise ValueError("q values must fall within [0, 1].")
         else:

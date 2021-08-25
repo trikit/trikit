@@ -53,8 +53,8 @@ class _BaseTriangle(pd.DataFrame):
         tri = data2.pivot(index=origin_, columns=dev_).rename_axis(None)
         tri.columns = tri.columns.droplevel(0)
 
-        # Force all triangle cells to be of type np.float.
-        tri = tri.astype({kk: np.float for kk in tri.columns})
+        # Force all triangle cells to be of type np.floa
+        tri = tri.astype({kk: float for kk in tri.columns})
         tri.columns.name = None
 
         super().__init__(tri)
@@ -351,7 +351,7 @@ class _BaseTriangle(pd.DataFrame):
         df = pd.melt(tri, id_vars=[self.origin], var_name=self.dev, value_name=self.value)
         if dropna:
             df = df[~np.isnan(df[self.value])]
-        df = df.astype({self.origin: np.int_, self.dev: np.int_, self.value: np.float_})
+        df = df.astype({self.origin: int, self.dev: int, self.value: float})
         df = df[[self.origin, self.dev, self.value]].sort_values(by=[self.origin, self.dev])
         return(df.reset_index(drop=True))
 
@@ -494,7 +494,7 @@ class _BaseCumTriangle(_BaseTriangle):
         -------
         float
         """
-        arr = np.asarray(vals, dtype=np.float)
+        arr = np.asarray(vals, dtype=float)
         return(np.NaN if arr.size == 0 else stats.gmean(arr))
 
 
@@ -516,7 +516,7 @@ class _BaseCumTriangle(_BaseTriangle):
         -------
         float
         """
-        arr = np.asarray(vals, dtype=np.float)
+        arr = np.asarray(vals, dtype=float)
         return(np.NaN if arr.size == 0 else arr.mean())
 
 
@@ -549,7 +549,7 @@ class _BaseCumTriangle(_BaseTriangle):
                 raise ValueError("`vals` and `weights` must have same size")
 
         # Return first element of arr_all if all array elements are the same.
-        arr_all = np.sort(np.asarray(vals, dtype=np.float))
+        arr_all = np.sort(np.asarray(vals, dtype=float))
         if np.all(arr_all == arr_all[0]):
             avg = arr_all[0]
 
@@ -885,7 +885,7 @@ class CumTriangle(_BaseCumTriangle):
             In [4]: type(incrtri)
             Out[4]: triangle.IncrTriangle
         """
-        incrtri = self.diff(axis=1)
+        incrtri = pd.DataFrame(self).diff(axis=1)
         incrtri.iloc[:, 0] = self.iloc[:, 0]
         incrtri = incrtri.reset_index(drop=False).rename({"index": "origin"}, axis=1)
         df = pd.melt(incrtri, id_vars=["origin"], var_name="dev", value_name="value")
