@@ -1,0 +1,1617 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>trikit.triangle &mdash; trikit 0.3.2 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> trikit
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.html">Project Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../triangle.html">Triangles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../estimators.html">Estimators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../datasets.html">Sample Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../lrdb.html">CAS Loss Reserving Database</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial/correlated.html">Correlated Reserve Indications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial/smoothing.html">Smoothing Loss Development Patterns</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">trikit</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>trikit.triangle</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for trikit.triangle</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module contains the definitions of both the ``IncrTriangle`` and</span>
+<span class="sd">``CumTriangle`` classes. Users should avoid instantiating ``IncrTriangle``</span>
+<span class="sd">or ``CumTriangle`` instances directly; rather the dataset and triangle</span>
+<span class="sd">arguments should be passed to ``totri``, which will return either an</span>
+<span class="sd">instance of ``CumTriangle`` or ``IncrTriangle``, depending on the argument</span>
+<span class="sd">specified for ``type_``.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+<span class="kn">from</span> <span class="nn">.estimators.base</span> <span class="kn">import</span> <span class="n">BaseChainLadder</span>
+<span class="kn">from</span> <span class="nn">.estimators.bootstrap</span> <span class="kn">import</span> <span class="n">BootstrapChainLadder</span>
+<span class="kn">from</span> <span class="nn">.estimators.mack</span> <span class="kn">import</span> <span class="n">MackChainLadder</span>
+<span class="kn">from</span> <span class="nn">.estimators.glm</span> <span class="kn">import</span> <span class="n">GLMEstimator</span>
+
+
+<div class="viewcode-block" id="_BaseTriangle"><a class="viewcode-back" href="../../triangle.html#trikit._BaseTriangle">[docs]</a><span class="k">class</span> <span class="nc">_BaseTriangle</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Transforms ``data`` into a triangle instance.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data: pd.DataFrame</span>
+<span class="sd">        The dataset to be transformed into a ``_BaseTriangle`` instance.</span>
+<span class="sd">        ``data`` must be tabular loss data with at minimum columns</span>
+<span class="sd">        representing the origin/acident year, the development</span>
+<span class="sd">        period and the actual loss amount, given by ``origin``, ``dev``</span>
+<span class="sd">        and ``value`` arguments.</span>
+
+<span class="sd">    origin: str</span>
+<span class="sd">        The fieldname in ``data`` representing origin period.</span>
+
+<span class="sd">    dev: str</span>
+<span class="sd">        The fieldname in ``data`` representing development period.</span>
+
+<span class="sd">    value: str</span>
+<span class="sd">        The fieldname in ``data`` representing loss amounts.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_validate</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="n">origin</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="n">dev</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+        <span class="n">origin_</span> <span class="o">=</span> <span class="s2">&quot;origin&quot;</span> <span class="k">if</span> <span class="n">origin</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">origin</span>
+        <span class="n">dev_</span> <span class="o">=</span> <span class="s2">&quot;dev&quot;</span> <span class="k">if</span> <span class="n">dev</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">dev</span>
+        <span class="n">value_</span> <span class="o">=</span> <span class="s2">&quot;value&quot;</span> <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">value</span>
+
+        <span class="c1"># data2 = data.copy(deep=True)</span>
+        <span class="n">data2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_neg_handler</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">dev_</span><span class="p">,</span> <span class="n">value_</span><span class="p">)</span>
+        <span class="n">data2</span> <span class="o">=</span> <span class="n">data2</span><span class="p">[[</span><span class="n">origin_</span><span class="p">,</span> <span class="n">dev_</span><span class="p">,</span> <span class="n">value_</span><span class="p">]]</span>
+        <span class="n">data2</span> <span class="o">=</span> <span class="n">data2</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">origin_</span><span class="p">,</span> <span class="n">dev_</span><span class="p">],</span> <span class="n">as_index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">data2</span> <span class="o">=</span> <span class="n">data2</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="p">[</span><span class="n">origin_</span><span class="p">,</span> <span class="n">dev_</span><span class="p">])</span>
+        <span class="n">tri</span> <span class="o">=</span> <span class="n">data2</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">origin_</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">dev_</span><span class="p">)</span><span class="o">.</span><span class="n">rename_axis</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+        <span class="n">tri</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">droplevel</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Force all triangle cells to be of type np.float.</span>
+        <span class="n">tri</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">astype</span><span class="p">({</span><span class="n">kk</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">float</span> <span class="k">for</span> <span class="n">kk</span> <span class="ow">in</span> <span class="n">tri</span><span class="o">.</span><span class="n">columns</span><span class="p">})</span>
+        <span class="n">tri</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">tri</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">origin</span> <span class="o">=</span> <span class="n">origin_</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value_</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dev</span> <span class="o">=</span> <span class="n">dev_</span>
+
+        <span class="c1"># Properties.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_latest_by_origin</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_latest_by_devp</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_nbr_cells</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_maturity</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_triind</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_devp</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_latest</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_origins</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rlvi</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clvi</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dof</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="_BaseTriangle._validate"><a class="viewcode-back" href="../../triangle.html#trikit._BaseTriangle._validate">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_validate</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Ensure data has requisite columns.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        data: pd.DataFrame</span>
+<span class="sd">            Initial dataset to be coerced to triangle.</span>
+
+<span class="sd">        origin: str</span>
+<span class="sd">            The fieldname in ``data`` representing origin period.</span>
+
+<span class="sd">        dev: str</span>
+<span class="sd">            The fieldname in ``data`` representing development period.</span>
+
+<span class="sd">        value: str</span>
+<span class="sd">            The fieldname in ``data`` representing loss amounts.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;`data` must be an instance of pd.DataFrame.&quot;</span><span class="p">)</span>
+
+        <span class="n">origin_</span> <span class="o">=</span> <span class="s2">&quot;origin&quot;</span> <span class="k">if</span> <span class="n">origin</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">origin</span>
+        <span class="k">if</span> <span class="n">origin_</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;`</span><span class="si">{}</span><span class="s2">` not present in data.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">origin_</span><span class="p">))</span>
+
+        <span class="n">dev_</span> <span class="o">=</span> <span class="s2">&quot;dev&quot;</span> <span class="k">if</span> <span class="n">dev</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">dev</span>
+        <span class="k">if</span> <span class="n">dev_</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;`</span><span class="si">{}</span><span class="s2">` not present in data.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dev_</span><span class="p">))</span>
+
+        <span class="n">value_</span> <span class="o">=</span> <span class="s2">&quot;value&quot;</span> <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">value</span>
+        <span class="k">if</span> <span class="n">value_</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;`</span><span class="si">{}</span><span class="s2">` not present in data.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">value_</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="_BaseTriangle._neg_handler"><a class="viewcode-back" href="../../triangle.html#trikit._BaseTriangle._neg_handler">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_neg_handler</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">dev</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert any first development period negative values to 1.0.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">min_devp</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">dev</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+        <span class="n">data</span><span class="p">[</span><span class="n">value</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">rec</span><span class="p">:</span> <span class="mi">1</span> <span class="k">if</span>
+            <span class="n">rec</span><span class="p">[</span><span class="n">dev</span><span class="p">]</span> <span class="o">==</span> <span class="n">min_devp</span> <span class="ow">and</span> <span class="n">rec</span><span class="p">[</span><span class="n">value</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">rec</span><span class="p">[</span><span class="n">value</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">nbr_cells</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the number of non-NaN cells.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nbr_cells</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_nbr_cells</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">count</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_nbr_cells</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">triind</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Table indicating forecast cells with 1, actual data with 0.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_triind</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_triind</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_triind</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">devp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">clvi</span><span class="o">.</span><span class="n">index</span><span class="p">:</span>
+                <span class="n">last_actual_origin</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clvi</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">clvi</span><span class="o">.</span><span class="n">index</span> <span class="o">==</span> <span class="n">devp</span><span class="p">]</span><span class="o">.</span><span class="n">origin</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">last_actual_offset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clvi</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">clvi</span><span class="o">.</span><span class="n">origin</span> <span class="o">==</span> <span class="n">last_actual_origin</span><span class="p">]</span><span class="o">.</span><span class="n">row_offset</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_triind</span><span class="o">.</span><span class="n">iloc</span><span class="p">[(</span><span class="n">last_actual_offset</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):,</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">get_loc</span><span class="p">(</span><span class="n">devp</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_triind</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">rlvi</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Determine the last valid index by origin.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rlvi</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_rlvi</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+                <span class="s2">&quot;dev&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+                    <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">last_valid_index</span><span class="p">(),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">values</span>
+                <span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_rlvi</span><span class="p">[</span><span class="s2">&quot;col_offset&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">_rlvi</span><span class="p">[</span><span class="s2">&quot;dev&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">get_loc</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_rlvi</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">clvi</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Determine the last valid index by development period.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_clvi</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_clvi</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+                <span class="s2">&quot;origin&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">v</span><span class="o">.</span><span class="n">last_valid_index</span><span class="p">(),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">values</span>
+                <span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span>
+                <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_clvi</span><span class="p">[</span><span class="s2">&quot;row_offset&quot;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">_clvi</span><span class="p">[</span><span class="s2">&quot;origin&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">get_loc</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_clvi</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">latest</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the values on the triangle&#39;s latest diagonal. Loss amounts</span>
+<span class="sd">        are given, along with the associated origin year and development</span>
+<span class="sd">        period. The latest loss amount by origin year alone can be  obtained</span>
+<span class="sd">        by calling ``self.latest_by_origin``, or by development period by</span>
+<span class="sd">        calling by ``self.latest_by_devp``.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latest</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">lindx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">devp</span><span class="p">:</span> <span class="n">devp</span><span class="o">.</span><span class="n">last_valid_index</span><span class="p">(),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">dflindx</span> <span class="o">=</span> <span class="n">lindx</span><span class="o">.</span><span class="n">to_frame</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+                <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="s2">&quot;index&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">origin</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_latest</span> <span class="o">=</span> <span class="n">dflindx</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">to_tbl</span><span class="p">(),</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">origin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dev</span><span class="p">])</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+                <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="s2">&quot;latest&quot;</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_latest</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latest</span><span class="p">[[</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="s2">&quot;latest&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">sort_index</span><span class="p">()</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_latest</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">latest_by_origin</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the latest loss amounts by origin year.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.Series</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latest_by_origin</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_latest_by_origin</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span>
+                <span class="n">data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">latest</span><span class="p">[</span><span class="s2">&quot;latest&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">latest</span><span class="p">[</span><span class="s2">&quot;origin&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;latest_by_origin&quot;</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_latest_by_origin</span><span class="o">.</span><span class="n">sort_index</span><span class="p">())</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">latest_by_devp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the latest loss amounts by development period.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.Series</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latest_by_devp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_latest_by_devp</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span>
+                <span class="n">data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">latest</span><span class="p">[</span><span class="s2">&quot;latest&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">latest</span><span class="p">[</span><span class="s2">&quot;dev&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;latest_by_devp&quot;</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_latest_by_devp</span><span class="o">.</span><span class="n">sort_index</span><span class="p">())</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">devp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return triangle&#39;s development periods.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.Series</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_devp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_devp</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;devp&quot;</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_devp</span><span class="o">.</span><span class="n">sort_index</span><span class="p">())</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">origins</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return triangle&#39;s origin periods.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.Series</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_origins</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_origins</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;origin&quot;</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_origins</span><span class="o">.</span><span class="n">sort_index</span><span class="p">())</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">maturity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the maturity for each origin period.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        ps.Series</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_maturity</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">dfind</span><span class="p">,</span> <span class="n">matlist</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">triind</span><span class="p">),</span> <span class="nb">list</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">dfind</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+                <span class="n">lossyear</span> <span class="o">=</span> <span class="n">dfind</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">maxindex</span> <span class="o">=</span> <span class="n">dfind</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">lossyear</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">nonzero</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+                <span class="n">itermatur</span> <span class="o">=</span> <span class="n">dfind</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="n">maxindex</span><span class="p">]</span>
+                <span class="n">matlist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">itermatur</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_maturity</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">matlist</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;maturity&quot;</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_maturity</span><span class="o">.</span><span class="n">sort_index</span><span class="p">())</span>
+
+
+
+<div class="viewcode-block" id="_BaseTriangle.diagonal"><a class="viewcode-back" href="../../triangle.html#trikit._BaseTriangle.diagonal">[docs]</a>    <span class="k">def</span> <span class="nf">diagonal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return triangle values at given offset. When ``offset=0``, returns</span>
+<span class="sd">        latest diagonal.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        offset: int</span>
+<span class="sd">            Negative integer value (or 0) representing the diagonal to return.</span>
+<span class="sd">            To return the second diagonal, set ``offset=-1``. If abs(offset)</span>
+<span class="sd">            exceeds (number of development periods - 1), ``ValueError`` is raised.</span>
+<span class="sd">            Default value is 0 (represents latest diagonal).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.Series</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">offset</span><span class="p">)</span> <span class="o">&gt;</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">devp</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;abs(offset) cannot exceed the number of development periods.&quot;</span>
+                <span class="p">)</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">latest</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+            <span class="p">{</span><span class="s2">&quot;index&quot;</span><span class="p">:</span> <span class="s2">&quot;origin_indx&quot;</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)[[</span><span class="s2">&quot;origin_indx&quot;</span><span class="p">]]</span>
+        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;dev_indx&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;origin_indx&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;dev_indx&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;dev_indx&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">offset</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">dev_indx</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span>
+            <span class="n">origin</span><span class="o">=</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;origin_indx&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">origins</span><span class="p">[</span><span class="n">v</span><span class="p">]),</span>
+            <span class="n">dev</span><span class="o">=</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;dev_indx&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">devp</span><span class="p">[</span><span class="n">v</span><span class="p">]),</span>
+            <span class="n">value</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">rec</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">iat</span><span class="p">[</span><span class="n">rec</span><span class="o">.</span><span class="n">origin_indx</span><span class="p">,</span> <span class="n">rec</span><span class="o">.</span><span class="n">dev_indx</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">df</span><span class="p">[[</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">]])</span></div>
+
+
+
+<div class="viewcode-block" id="_BaseTriangle.to_tbl"><a class="viewcode-back" href="../../triangle.html#trikit._BaseTriangle.to_tbl">[docs]</a>    <span class="k">def</span> <span class="nf">to_tbl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Transform triangle instance into a tabular representation.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        dropna: bool</span>
+<span class="sd">            Should records with NA values be dropped? Default value is True.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tri</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="s2">&quot;index&quot;</span><span class="p">:</span> <span class="s2">&quot;origin&quot;</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">melt</span><span class="p">(</span><span class="n">tri</span><span class="p">,</span> <span class="n">id_vars</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">origin</span><span class="p">],</span> <span class="n">var_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dev</span><span class="p">,</span> <span class="n">value_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">dropna</span><span class="p">:</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">])]</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">astype</span><span class="p">({</span><span class="bp">self</span><span class="o">.</span><span class="n">origin</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dev</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">float_</span><span class="p">})</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="bp">self</span><span class="o">.</span><span class="n">origin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dev</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">]]</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">origin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dev</span><span class="p">])</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span></div>
+
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">formats</span> <span class="o">=</span> <span class="p">{</span><span class="n">devp</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">{:,.0f}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span> <span class="k">for</span> <span class="n">devp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">}</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">(</span><span class="n">formatters</span><span class="o">=</span><span class="n">formats</span><span class="p">))</span>
+
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">formats</span> <span class="o">=</span> <span class="p">{</span><span class="n">devp</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">{:,.0f}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span> <span class="k">for</span> <span class="n">devp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">}</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">(</span><span class="n">formatters</span><span class="o">=</span><span class="n">formats</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="_BaseIncrTriangle"><a class="viewcode-back" href="../../triangle.html#trikit._BaseIncrTriangle">[docs]</a><span class="k">class</span> <span class="nc">_BaseIncrTriangle</span><span class="p">(</span><span class="n">_BaseTriangle</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Internal incremental triangle class definition.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        data: pd.DataFrame</span>
+<span class="sd">            The dataset to be transformed into a triangle instance.</span>
+<span class="sd">            ``data`` must be tabular loss data with at minimum columns</span>
+<span class="sd">            representing the origin/acident year, development</span>
+<span class="sd">            period and value of interest, given by ``origin``, ``dev``</span>
+<span class="sd">            and ``value`` respectively.</span>
+
+<span class="sd">        origin: str</span>
+<span class="sd">            The fieldname in ``data`` representing origin year.</span>
+
+<span class="sd">        dev: str</span>
+<span class="sd">            The fieldname in ``data`` representing development period.</span>
+
+<span class="sd">        value: str</span>
+<span class="sd">            The fieldname in ``data`` representing loss amounts.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Replace NaN values with 1.0 in value column.</span>
+        <span class="c1"># data.loc[np.where(np.isnan(data.value.values))[0], &quot;value&quot;] = 1.</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="n">origin</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="n">dev</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="IncrTriangle"><a class="viewcode-back" href="../../triangle.html#trikit.IncrTriangle">[docs]</a><span class="k">class</span> <span class="nc">IncrTriangle</span><span class="p">(</span><span class="n">_BaseIncrTriangle</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Public incremental triangle class definition.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data: pd.DataFrame</span>
+<span class="sd">        The dataset to be transformed into a triangle instance.</span>
+<span class="sd">        ``data`` must be tabular loss data with at minimum columns</span>
+<span class="sd">        representing the origin/acident year, development</span>
+<span class="sd">        period and value of interest, given by ``origin``, ``dev``</span>
+<span class="sd">        and ``value`` respectively.</span>
+
+<span class="sd">    origin: str</span>
+<span class="sd">        The fieldname in ``data`` representing origin year.</span>
+
+<span class="sd">    dev: str</span>
+<span class="sd">        The fieldname in ``data`` representing development period.</span>
+
+<span class="sd">    value: str</span>
+<span class="sd">        The fieldname in ``data`` representing loss amounts.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="n">origin</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="n">dev</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="IncrTriangle.to_cum"><a class="viewcode-back" href="../../triangle.html#trikit.IncrTriangle.to_cum">[docs]</a>    <span class="k">def</span> <span class="nf">to_cum</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Transform triangle instance into cumulative representation.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        trikit.triangle.CumTriangle</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">CumTriangle</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">to_tbl</span><span class="p">(),</span> <span class="n">origin</span><span class="o">=</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;value&quot;</span><span class="p">))</span></div></div>
+
+
+
+<div class="viewcode-block" id="_BaseCumTriangle"><a class="viewcode-back" href="../../triangle.html#trikit._BaseCumTriangle">[docs]</a><span class="k">class</span> <span class="nc">_BaseCumTriangle</span><span class="p">(</span><span class="n">_BaseTriangle</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Internal cumulative triangle class definition. Transforms ``data`` into a</span>
+<span class="sd">    cumulative triangle instance.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data: pd.DataFrame</span>
+<span class="sd">        The dataset to be transformed into a triangle instance.</span>
+<span class="sd">        ``data`` must be tabular loss data with at minimum columns</span>
+<span class="sd">        representing the origin/acident year, development</span>
+<span class="sd">        period and incremental value of interest, given by ``origin``,</span>
+<span class="sd">        ``dev`` and ``value`` respectively.</span>
+
+<span class="sd">    origin: str</span>
+<span class="sd">        The fieldname in ``data`` representing the origin year.</span>
+
+<span class="sd">    dev: str</span>
+<span class="sd">        The fieldname in ``data`` representing the development period.</span>
+
+<span class="sd">    value: str</span>
+<span class="sd">        The fieldname in ``data`` representing incremental loss amounts.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;value&quot;</span><span class="p">):</span>
+
+        <span class="c1"># Replace NaN values with 1.0 in value column.</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;cumval&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">origin</span><span class="p">],</span> <span class="n">as_index</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span><span class="n">value</span><span class="p">]</span><span class="o">.</span><span class="n">cumsum</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;cumval&quot;</span><span class="p">:</span> <span class="n">value</span><span class="p">})</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="n">origin</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="n">dev</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+
+        <span class="c1"># Properties.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_a2a_assignment</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ranked_a2a</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_a2a_lvi</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_weights</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_a2aind</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_a2a</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="_BaseCumTriangle._geometric"><a class="viewcode-back" href="../../triangle.html#trikit._BaseCumTriangle._geometric">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_geometric</span><span class="p">(</span><span class="n">vals</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the geometric average of the elements of ``vals``.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        vals: np.ndarray</span>
+<span class="sd">            An array of values, typically representing link ratios from a</span>
+<span class="sd">            single development period.</span>
+
+<span class="sd">        weights: np.ndarray</span>
+<span class="sd">            Not yet implemented.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">vals</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">NaN</span> <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">stats</span><span class="o">.</span><span class="n">gmean</span><span class="p">(</span><span class="n">arr</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="_BaseCumTriangle._simple"><a class="viewcode-back" href="../../triangle.html#trikit._BaseCumTriangle._simple">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_simple</span><span class="p">(</span><span class="n">vals</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the simple average of elements of ``vals``.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        vals: np.ndarray</span>
+<span class="sd">            An array of values, typically representing link ratios from a</span>
+<span class="sd">            single development period.</span>
+
+<span class="sd">        weights: np.ndarray</span>
+<span class="sd">            Not yet implemented.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">vals</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">NaN</span> <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">arr</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="_BaseCumTriangle._medial"><a class="viewcode-back" href="../../triangle.html#trikit._BaseCumTriangle._medial">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_medial</span><span class="p">(</span><span class="n">vals</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the medial average of elements in ``vals``. Medial average</span>
+<span class="sd">        eliminates the min and max values, then returns the arithmetic</span>
+<span class="sd">        average of the remaining items.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        vals: np.ndarray</span>
+<span class="sd">            An array of values, typically representing link ratios from a</span>
+<span class="sd">            single development period.</span>
+
+<span class="sd">        weights: np.ndarray</span>
+<span class="sd">            Weights to assign specific values in the average computation.</span>
+<span class="sd">            If None, each value is assigned equal weight.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">weights</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">vals</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="n">weights</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">vals</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`vals` and `weights` must have same size&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Return first element of arr_all if all array elements are the same.</span>
+        <span class="n">arr_all</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">vals</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">arr_all</span> <span class="o">==</span> <span class="n">arr_all</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">avg</span> <span class="o">=</span> <span class="n">arr_all</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">elif</span> <span class="n">arr_all</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">avg</span> <span class="o">=</span> <span class="n">arr_all</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">elif</span> <span class="n">arr_all</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">avg</span> <span class="o">=</span> <span class="p">(</span><span class="n">w</span> <span class="o">*</span> <span class="n">arr_all</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="n">w</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">medial_indicies</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">arr_all</span> <span class="o">!=</span> <span class="n">arr_all</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">arr_all</span> <span class="o">!=</span> <span class="n">arr_all</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+                <span class="p">)</span>
+            <span class="n">arr</span> <span class="o">=</span> <span class="n">arr_all</span><span class="p">[</span><span class="n">medial_indicies</span><span class="p">]</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="n">w</span><span class="p">[</span><span class="n">medial_indicies</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">avg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">avg</span> <span class="o">=</span> <span class="p">(</span><span class="n">w</span> <span class="o">*</span> <span class="n">arr</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="n">w</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+        <span class="k">return</span><span class="p">(</span><span class="n">avg</span><span class="p">)</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">a2a</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute adjacent proportions, a.k.a. link ratios.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_a2a</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_a2a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="n">periods</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_a2a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_a2a</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_a2a</span><span class="o">.</span><span class="n">sort_index</span><span class="p">())</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">a2aind</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Determine which cells should be included and which to exclude</span>
+<span class="sd">        when computing age-to-age averages. Cells populated with 1</span>
+<span class="sd">        are included, cells populated with 0 are excluded.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_a2aind</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_a2aind</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">a2a</span><span class="o">.</span><span class="n">applymap</span><span class="p">(</span><span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_a2aind</span><span class="p">)</span>
+
+
+    <span class="nd">@a2aind</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">a2aind</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">update_spec</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update ``self.a2aind`` in order to down-weight ldfs in chain ladder</span>
+<span class="sd">        calculation.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        update_spec: tuple</span>
+<span class="sd">            3-tuple consisting of ``(index, column, value)``, representing</span>
+<span class="sd">            the intersection point of the ``self.a2a`` target cell, and the</span>
+<span class="sd">            value used to update it. ``value`` must be either 0 or 1.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        Load raa sample dataset, and remove a highly-leveraged age-to-age</span>
+<span class="sd">        factor from influencing the ldf calculation::</span>
+
+<span class="sd">            In [1]: import trikit</span>
+<span class="sd">            In [2]: raa = trikit.load(dataset=&quot;raa&quot;)</span>
+<span class="sd">            In [3]: tri = trikit.totri(data=raa)</span>
+<span class="sd">            In [4]: tri.a2a.iloc[:, :1]</span>
+<span class="sd">            Out[1]:</span>
+<span class="sd">                          1</span>
+<span class="sd">            1981   1.649840</span>
+<span class="sd">            1982  40.424528</span>
+<span class="sd">            1983   2.636950</span>
+<span class="sd">            1984   2.043324</span>
+<span class="sd">            1985   8.759158</span>
+<span class="sd">            1986   4.259749</span>
+<span class="sd">            1987   7.217235</span>
+<span class="sd">            1988   5.142117</span>
+<span class="sd">            1989   1.721992</span>
+
+
+<span class="sd">        To remove the link ratio at origin year 1982 and development</span>
+<span class="sd">        period 1, run the following::</span>
+
+<span class="sd">            In [1]: tri.a2aind = (1982, 1, 0)</span>
+<span class="sd">            In [2]: tri.a2aind</span>
+<span class="sd">            Out[1]:</span>
+<span class="sd">                  1  2  3  4  5  6  7  8  9</span>
+<span class="sd">            1981  1  1  1  1  1  1  1  1  1</span>
+<span class="sd">            1982  0  1  1  1  1  1  1  1  0</span>
+<span class="sd">            1983  1  1  1  1  1  1  1  0  0</span>
+<span class="sd">            1984  1  1  1  1  1  1  0  0  0</span>
+<span class="sd">            1985  1  1  1  1  1  0  0  0  0</span>
+<span class="sd">            1986  1  1  1  1  0  0  0  0  0</span>
+<span class="sd">            1987  1  1  1  0  0  0  0  0  0</span>
+<span class="sd">            1988  1  1  0  0  0  0  0  0  0</span>
+<span class="sd">            1989  1  0  0  0  0  0  0  0  0</span>
+
+
+<span class="sd">        Notice that the value at (1982, 1) is 0. To change it back</span>
+<span class="sd">        to 1, simply run::</span>
+
+<span class="sd">            In [1]: tri.a2aind = (1982, 1, 1)</span>
+<span class="sd">            In [2]: tri.a2aind</span>
+<span class="sd">            Out[1]:</span>
+<span class="sd">                  1  2  3  4  5  6  7  8  9</span>
+<span class="sd">            1981  1  1  1  1  1  1  1  1  1</span>
+<span class="sd">            1982  1  1  1  1  1  1  1  1  0</span>
+<span class="sd">            1983  1  1  1  1  1  1  1  0  0</span>
+<span class="sd">            1984  1  1  1  1  1  1  0  0  0</span>
+<span class="sd">            1985  1  1  1  1  1  0  0  0  0</span>
+<span class="sd">            1986  1  1  1  1  0  0  0  0  0</span>
+<span class="sd">            1987  1  1  1  0  0  0  0  0  0</span>
+<span class="sd">            1988  1  1  0  0  0  0  0  0  0</span>
+<span class="sd">            1989  1  0  0  0  0  0  0  0  0</span>
+
+
+<span class="sd">        Note also that ``self.a2aind`` may be updated using DataFrame</span>
+<span class="sd">        methods directly::</span>
+
+<span class="sd">            In [1]: tri.a2aind.at[1982, 1] = 0</span>
+<span class="sd">            In [2]: tri.a2aind</span>
+<span class="sd">            Out[1]:</span>
+<span class="sd">                  1  2  3  4  5  6  7  8  9</span>
+<span class="sd">            1981  1  1  1  1  1  1  1  1  1</span>
+<span class="sd">            1982  0  1  1  1  1  1  1  1  0</span>
+<span class="sd">            1983  1  1  1  1  1  1  1  0  0</span>
+<span class="sd">            1984  1  1  1  1  1  1  0  0  0</span>
+<span class="sd">            1985  1  1  1  1  1  0  0  0  0</span>
+<span class="sd">            1986  1  1  1  1  0  0  0  0  0</span>
+<span class="sd">            1987  1  1  1  0  0  0  0  0  0</span>
+<span class="sd">            1988  1  1  0  0  0  0  0  0  0</span>
+<span class="sd">            1989  1  0  0  0  0  0  0  0  0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">indx</span><span class="p">,</span> <span class="n">column</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">update_spec</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_a2aind</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">indx</span><span class="p">,</span> <span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">a2a_lvi</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Reference to last valid index for triangle age-to-age factors.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Bind reference to last valid index by column for self.tri.a2a.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_a2a_lvi</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_a2a_lvi</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+                <span class="s2">&quot;origin&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">a2a</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">v</span><span class="o">.</span><span class="n">last_valid_index</span><span class="p">(),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">values</span>
+            <span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">a2a</span><span class="o">.</span><span class="n">columns</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_a2a_lvi</span><span class="p">[</span><span class="s2">&quot;row_offset&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_a2a_lvi</span><span class="p">[</span><span class="s2">&quot;origin&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">get_loc</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_a2a_lvi</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">ranked_a2a</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Construct triangle of ranked age-to-age factors for use in development</span>
+<span class="sd">        period correlation testing.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ranked_a2a</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">a2a_lvi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">a2a_lvi</span>
+            <span class="n">rank_list</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">devp_indx</span><span class="p">,</span> <span class="n">devp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">a2a_lvi</span><span class="o">.</span><span class="n">index</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]):</span>
+                <span class="n">last_valid_origin</span> <span class="o">=</span> <span class="n">a2a_lvi</span><span class="p">[</span><span class="n">a2a_lvi</span><span class="o">.</span><span class="n">index</span> <span class="o">==</span> <span class="n">devp</span><span class="p">]</span><span class="o">.</span><span class="n">origin</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+                <span class="n">a2a_ii</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">a2a</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">devp</span><span class="p">]</span>
+                <span class="n">r_ii</span> <span class="o">=</span> <span class="n">a2a_ii</span><span class="o">.</span><span class="n">rank</span><span class="p">()</span><span class="o">.</span><span class="n">to_frame</span><span class="p">()</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="n">devp</span><span class="p">:</span> <span class="s2">&quot;r_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">devp_indx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)},</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">s_ii</span> <span class="o">=</span> <span class="n">a2a_ii</span><span class="p">[</span><span class="n">a2a_ii</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;</span> <span class="n">last_valid_origin</span><span class="p">]</span><span class="o">.</span><span class="n">rank</span><span class="p">()</span><span class="o">.</span><span class="n">to_frame</span><span class="p">()</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+                    <span class="p">{</span><span class="n">devp</span><span class="p">:</span> <span class="s2">&quot;s_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">devp_indx</span> <span class="o">+</span> <span class="mi">2</span><span class="p">)},</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+                    <span class="p">)</span>
+                <span class="n">rank_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r_ii</span><span class="p">)</span>
+                <span class="n">rank_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s_ii</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ranked_a2a</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">rank_list</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">how</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ranked_a2a</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">a2a_assignment</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Identify triangle age-to-age factors into high and low categories based</span>
+<span class="sd">        on value relative to the median for a given development period. Factors</span>
+<span class="sd">        in excess of the median are assigned a value of +1. Age-to-age factors</span>
+<span class="sd">        with value less than the median are assigned a value of -1. For</span>
+<span class="sd">        development periods with an odd number of values, the true median is set</span>
+<span class="sd">        to 0. Returned DataFrame has same dimensionality as self.tri.a2a.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_a2a_assignment</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_a2a_assignment</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">a2a</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">a2a</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+            <span class="n">dfmedian</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">a2a</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">devp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">a2a</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">devp_median</span> <span class="o">=</span> <span class="n">dfmedian</span><span class="p">[</span><span class="n">devp</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">r_indx</span><span class="p">,</span> <span class="n">a2a</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a2a</span><span class="p">[</span><span class="n">devp</span><span class="p">]):</span>
+                    <span class="n">origin</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">a2a</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">r_indx</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">a2a</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">a2a</span><span class="p">,</span> <span class="n">devp_median</span><span class="p">):</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_a2a_assignment</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">origin</span><span class="p">,</span> <span class="n">devp</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                        <span class="k">elif</span> <span class="n">a2a</span> <span class="o">&gt;</span> <span class="n">devp_median</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_a2a_assignment</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">origin</span><span class="p">,</span> <span class="n">devp</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_a2a_assignment</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">origin</span><span class="p">,</span> <span class="n">devp</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_a2a_assignment</span><span class="p">)</span>
+
+
+
+<div class="viewcode-block" id="_BaseCumTriangle.a2a_avgs"><a class="viewcode-back" href="../../triangle.html#trikit._BaseCumTriangle.a2a_avgs">[docs]</a>    <span class="k">def</span> <span class="nf">a2a_avgs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute age-to-age factors based on ``self.a2a`` table of adjacent</span>
+<span class="sd">        proportions. Averages computed include &quot;simple&quot;, &quot;geometric&quot;, &quot;medial&quot;</span>
+<span class="sd">        and &quot;weighted&quot;.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">_nbr_periods</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">a2a</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span> <span class="o">+</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">indxstrs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+
+        <span class="c1"># Create lookup table for average functions.</span>
+        <span class="n">avgfuncs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;simple&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_simple</span><span class="p">,</span> <span class="s2">&quot;geometric&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_geometric</span><span class="p">,</span>
+                    <span class="s2">&quot;medial&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_medial</span><span class="p">,</span> <span class="s2">&quot;weighted&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
+
+        <span class="c1"># Remove `0` entry, and add as last element of list.</span>
+        <span class="n">ldf_avg_lst</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="n">avgfuncs</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">_nbr_periods</span><span class="p">))</span>
+
+        <span class="n">indxstrs</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;all-&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">ii</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">if</span> <span class="n">ii</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">-</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ii</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ii</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="n">ldf_avg_lst</span>
+            <span class="p">]</span>
+
+        <span class="n">_a2a_avgs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">indxstrs</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">a2a</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+        <span class="n">a2a_adj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">a2a</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">a2aind</span>
+
+        <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ldf_avg_lst</span><span class="p">):</span>
+            <span class="n">duration</span><span class="p">,</span> <span class="n">avgtype</span><span class="p">,</span> <span class="n">indxpos</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span> <span class="n">a</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">indxstr</span><span class="p">,</span> <span class="n">iterfunc</span> <span class="o">=</span> <span class="n">indxstrs</span><span class="p">[</span><span class="n">indxpos</span><span class="p">],</span> <span class="n">avgfuncs</span><span class="p">[</span><span class="n">avgtype</span><span class="p">]</span>
+
+            <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">a2a_adj</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+                <span class="n">itercol</span><span class="p">,</span> <span class="n">colstr</span> <span class="o">=</span> <span class="n">a2a_adj</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="n">col</span><span class="p">],</span> <span class="n">a2a_adj</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="n">col</span><span class="p">]</span>
+
+                <span class="k">if</span> <span class="n">avgtype</span> <span class="o">==</span> <span class="s1">&#39;weighted&#39;</span><span class="p">:</span>
+
+                    <span class="n">t_ic_1</span><span class="p">,</span> <span class="n">t_ic_2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="n">col</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="p">(</span><span class="n">col</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span>
+                    <span class="c1"># Find first NaN value in t_ic_2.</span>
+                    <span class="n">first_nan_year</span> <span class="o">=</span> <span class="n">t_ic_2</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">t_ic_2</span><span class="o">.</span><span class="n">count</span><span class="p">():][</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="n">first_nan_indx</span> <span class="o">=</span> <span class="n">t_ic_2</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">first_nan_year</span><span class="p">)</span>
+                    <span class="n">final_cell_indx</span> <span class="o">=</span> <span class="n">first_nan_indx</span>
+                    <span class="k">if</span> <span class="n">duration</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">first_cell_indx</span> <span class="o">=</span> <span class="mi">0</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">first_cell_indx</span> <span class="o">=</span> <span class="p">(</span><span class="n">final_cell_indx</span> <span class="o">-</span> <span class="n">duration</span><span class="p">)</span> <span class="k">if</span> \
+                            <span class="p">(</span><span class="n">final_cell_indx</span> <span class="o">-</span> <span class="n">duration</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+
+                    <span class="c1"># Divide sum of t_ic_2 by t_ic_1.</span>
+                    <span class="n">sum_ic_2</span> <span class="o">=</span> <span class="n">t_ic_2</span><span class="p">[</span><span class="n">first_cell_indx</span><span class="p">:</span><span class="n">final_cell_indx</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                    <span class="n">sum_ic_1</span> <span class="o">=</span> <span class="n">t_ic_1</span><span class="p">[</span><span class="n">first_cell_indx</span><span class="p">:</span><span class="n">final_cell_indx</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">iteravg</span> <span class="o">=</span> <span class="p">(</span><span class="n">sum_ic_2</span> <span class="o">/</span> <span class="n">sum_ic_1</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="ne">ZeroDivisionError</span><span class="p">:</span>
+                        <span class="n">iteravg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span>
+
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Find index of first row with NaN.</span>
+                    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">itercol</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">x</span><span class="p">))):</span>
+                        <span class="n">first_nan_year</span> <span class="o">=</span> <span class="n">itercol</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">itercol</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">x</span><span class="p">))][</span><span class="mi">0</span><span class="p">]</span>
+                        <span class="n">first_nan_indx</span> <span class="o">=</span> <span class="n">itercol</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">first_nan_year</span><span class="p">)</span>
+                        <span class="n">final_cell_indx</span> <span class="o">=</span> <span class="n">first_nan_indx</span>
+                        <span class="k">if</span> <span class="n">duration</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="n">first_cell_indx</span> <span class="o">=</span> <span class="mi">0</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">first_cell_indx</span> <span class="o">=</span> <span class="p">(</span><span class="n">final_cell_indx</span> <span class="o">-</span> <span class="n">duration</span><span class="p">)</span> <span class="k">if</span> \
+                                              <span class="p">(</span><span class="n">final_cell_indx</span> <span class="o">-</span> <span class="n">duration</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># itercol has 0 NaN&#39;s.</span>
+                        <span class="n">final_cell_indx</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">itercol</span><span class="p">)</span>
+                        <span class="n">first_cell_indx</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">duration</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="p">(</span><span class="n">final_cell_indx</span> <span class="o">-</span> <span class="n">duration</span><span class="p">)</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">link_ratios</span> <span class="o">=</span> <span class="n">itercol</span><span class="p">[</span><span class="n">first_cell_indx</span><span class="p">:</span><span class="n">final_cell_indx</span><span class="p">]</span>
+                        <span class="n">iteravg</span> <span class="o">=</span> <span class="n">iterfunc</span><span class="p">(</span><span class="n">link_ratios</span><span class="p">[</span><span class="n">link_ratios</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">])</span>
+                    <span class="k">except</span> <span class="ne">ZeroDivisionError</span><span class="p">:</span>
+                        <span class="n">iteravg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span>
+                <span class="n">_a2a_avgs</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">indxstr</span><span class="p">,</span> <span class="n">colstr</span><span class="p">]</span> <span class="o">=</span> <span class="n">iteravg</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">_a2a_avgs</span><span class="p">)</span></div></div>
+
+
+
+<div class="viewcode-block" id="CumTriangle"><a class="viewcode-back" href="../../triangle.html#trikit.CumTriangle">[docs]</a><span class="k">class</span> <span class="nc">CumTriangle</span><span class="p">(</span><span class="n">_BaseCumTriangle</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Cumulative triangle class definition.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="n">origin</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="n">dev</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CumTriangle.to_incr"><a class="viewcode-back" href="../../triangle.html#trikit.CumTriangle.to_incr">[docs]</a>    <span class="k">def</span> <span class="nf">to_incr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Obtain incremental triangle based on cumulative triangle instance.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        trikit.triangle.IncrTriangle</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        Convert existing cumulative triangle instance into an instance of</span>
+<span class="sd">        ``trikit.triangle.IncrTriangle``::</span>
+
+<span class="sd">            In [1]: from trikit import load, totri</span>
+<span class="sd">            In [2]: cumtri = totri(load(&quot;raa&quot;))</span>
+<span class="sd">            In [3]: incrtri = cumtri.to_incr()</span>
+<span class="sd">            In [4]: type(incrtri)</span>
+<span class="sd">            Out[4]: triangle.IncrTriangle</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">incrtri</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">incrtri</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">incrtri</span> <span class="o">=</span> <span class="n">incrtri</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="s2">&quot;index&quot;</span><span class="p">:</span> <span class="s2">&quot;origin&quot;</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">melt</span><span class="p">(</span><span class="n">incrtri</span><span class="p">,</span> <span class="n">id_vars</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;origin&quot;</span><span class="p">],</span> <span class="n">var_name</span><span class="o">=</span><span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="n">value_name</span><span class="o">=</span><span class="s2">&quot;value&quot;</span><span class="p">)</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">])]</span><span class="o">.</span><span class="n">astype</span><span class="p">({</span><span class="s2">&quot;origin&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="s2">&quot;dev&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">})</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="s2">&quot;dev&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">IncrTriangle</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;value&quot;</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="CumTriangle.plot"><a class="viewcode-back" href="../../triangle.html#trikit.CumTriangle.plot">[docs]</a>    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">display</span><span class="o">=</span><span class="s2">&quot;combined&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Plot cumulative loss development over a single set of axes or</span>
+<span class="sd">        as faceted-by-origin exhibit.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        view: {&quot;combined&quot;, &quot;faceted&quot;}</span>
+<span class="sd">            Whether to display cumulative loss development in a single or faceted view.</span>
+<span class="sd">            Default value is ``&quot;combined&quot;``.</span>
+
+<span class="sd">        kwargs: dict</span>
+
+<span class="sd">            Options for combined view:</span>
+
+<span class="sd">                cmap: str</span>
+<span class="sd">                    Selected matplotlib color map. For additional options, visit:</span>
+<span class="sd">                    https://matplotlib.org/tutorials/colors/colormaps.html.</span>
+
+<span class="sd">            Options for faceted view:</span>
+
+<span class="sd">                color: str</span>
+<span class="sd">                    Color to plot loss development in each facet. Default value is &quot;#334488&quot;.</span>
+
+<span class="sd">                axes_style: str</span>
+<span class="sd">                    Aesthetic style of plots. Defaults to &quot;darkgrid&quot;. Other options</span>
+<span class="sd">                    include: {whitegrid, dark, white, ticks}.</span>
+
+<span class="sd">                context: str</span>
+<span class="sd">                    Set the plotting context parameters. According to the seaborn</span>
+<span class="sd">                    documentation, This affects things like the size of the labels,</span>
+<span class="sd">                    lines, and other elements of the plot, but not the overall style.</span>
+<span class="sd">                    Defaults to ``&quot;notebook&quot;``. Additional options include</span>
+<span class="sd">                    {&quot;paper&quot;, &quot;talk&quot;, &quot;poster&quot;}.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">kwargs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">kwds</span> <span class="o">=</span> <span class="n">kwargs</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">kwds</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="n">display</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;f&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_faceted_view</span><span class="p">(</span><span class="o">**</span><span class="n">kwds</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_combined_view</span><span class="p">(</span><span class="o">**</span><span class="n">kwds</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CumTriangle._combined_view"><a class="viewcode-back" href="../../triangle.html#trikit.CumTriangle._combined_view">[docs]</a>    <span class="k">def</span> <span class="nf">_combined_view</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Visualize triangle loss development using a combined view.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cmap: str</span>
+<span class="sd">            Selected matplotlib color map. For additional options, visit:</span>
+<span class="sd">            https://matplotlib.org/tutorials/colors/colormaps.html.</span>
+
+<span class="sd">        kwargs: dict</span>
+<span class="sd">            Additional plot styling options.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span> <span class="nn">matplotlib</span> <span class="k">as</span> <span class="nn">mpl</span>
+        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+        <span class="kn">import</span> <span class="nn">matplotlib.cm</span> <span class="k">as</span> <span class="nn">cm</span>
+
+        <span class="n">pltkwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;s&quot;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span>
+            <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">9.5</span><span class="p">,</span> <span class="mf">6.5</span><span class="p">),</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gist_rainbow&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">pltkwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_tbl</span><span class="p">()</span>
+        <span class="n">grps</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="n">as_index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">data_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">grps</span><span class="o">.</span><span class="n">get_group</span><span class="p">(</span><span class="n">ii</span><span class="p">)</span> <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">origins</span><span class="p">]</span>
+        <span class="n">xticks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">dev</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+
+        <span class="c1"># Get unique hex color for each unique origin period.</span>
+        <span class="n">fcolors</span> <span class="o">=</span> <span class="n">cm</span><span class="o">.</span><span class="n">get_cmap</span><span class="p">(</span><span class="n">pltkwargs</span><span class="p">[</span><span class="s2">&quot;cmap&quot;</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">origins</span><span class="p">))</span>
+        <span class="n">colors_rgba</span> <span class="o">=</span> <span class="p">[</span><span class="n">fcolors</span><span class="p">(</span><span class="n">ii</span><span class="p">)</span> <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">origins</span><span class="p">))]</span>
+        <span class="n">colors_hex</span> <span class="o">=</span> <span class="p">[</span><span class="n">mpl</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">to_hex</span><span class="p">(</span><span class="n">ii</span><span class="p">,</span> <span class="n">keep_alpha</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="n">colors_rgba</span><span class="p">]</span>
+        <span class="n">markers</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;o&quot;</span><span class="p">,</span> <span class="s2">&quot;v&quot;</span><span class="p">,</span> <span class="s2">&quot;^&quot;</span><span class="p">,</span> <span class="s2">&quot;s&quot;</span><span class="p">,</span> <span class="s2">&quot;p&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">,</span> <span class="s2">&quot;d&quot;</span><span class="p">,</span> <span class="s2">&quot;h&quot;</span><span class="p">]</span>
+
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">pltkwargs</span><span class="p">[</span><span class="s2">&quot;figsize&quot;</span><span class="p">],</span> <span class="n">tight_layout</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Loss Development by Origin&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">ii</span><span class="p">,</span> <span class="n">hex_color</span><span class="p">,</span> <span class="n">dforg</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">colors_hex</span><span class="p">)),</span> <span class="n">colors_hex</span><span class="p">,</span> <span class="n">data_list</span><span class="p">):</span>
+            <span class="n">xx</span> <span class="o">=</span> <span class="n">dforg</span><span class="p">[</span><span class="s2">&quot;dev&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+            <span class="n">yy</span> <span class="o">=</span> <span class="n">dforg</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+            <span class="n">marker</span> <span class="o">=</span> <span class="n">markers</span><span class="p">[</span><span class="n">ii</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">markers</span><span class="p">)]</span>
+            <span class="n">yy_divisor</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># 1000 if np.all(yy&gt;1000) else 1</span>
+            <span class="n">yy_axis_label</span> <span class="o">=</span> <span class="s2">&quot;(000&#39;s)&quot;</span> <span class="k">if</span> <span class="n">yy_divisor</span> <span class="o">==</span> <span class="mi">1000</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+                <span class="n">xx</span><span class="p">,</span> <span class="n">yy</span> <span class="o">/</span> <span class="n">yy_divisor</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">hex_color</span><span class="p">,</span>
+                <span class="n">linewidth</span><span class="o">=</span><span class="n">pltkwargs</span><span class="p">[</span><span class="s2">&quot;linewidth&quot;</span><span class="p">],</span> <span class="n">linestyle</span><span class="o">=</span><span class="n">pltkwargs</span><span class="p">[</span><span class="s2">&quot;linestyle&quot;</span><span class="p">],</span>
+                <span class="n">label</span><span class="o">=</span><span class="n">dforg</span><span class="o">.</span><span class="n">origin</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">marker</span><span class="o">=</span><span class="n">marker</span><span class="p">,</span>
+                <span class="n">markersize</span><span class="o">=</span><span class="n">pltkwargs</span><span class="p">[</span><span class="s2">&quot;markersize&quot;</span><span class="p">]</span>
+                <span class="p">)</span>
+
+        <span class="c1"># Reduce thickness of plot outline.</span>
+        <span class="k">for</span> <span class="n">axis</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;top&quot;</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">,</span> <span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="s2">&quot;right&quot;</span><span class="p">]:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">spines</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span><span class="o">.</span><span class="n">set_linewidth</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+
+        <span class="n">ax</span><span class="o">.</span><span class="n">get_yaxis</span><span class="p">()</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">mpl</span><span class="o">.</span><span class="n">ticker</span><span class="o">.</span><span class="n">FuncFormatter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">v</span><span class="p">,</span> <span class="n">p</span><span class="p">:</span> <span class="nb">format</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">),</span> <span class="s2">&quot;,&quot;</span><span class="p">)))</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">yy_axis_label</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">bottom</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">left</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="n">xticks</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s2">&quot;major&quot;</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;in&quot;</span><span class="p">,</span> <span class="n">labelsize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s2">&quot;major&quot;</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;in&quot;</span><span class="p">,</span> <span class="n">labelsize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_ticks_position</span><span class="p">(</span><span class="s2">&quot;none&quot;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">set_ticks_position</span><span class="p">(</span><span class="s2">&quot;none&quot;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">&quot;lower right&quot;</span><span class="p">,</span> <span class="n">fancybox</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">framealpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="s2">&quot;x-small&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="CumTriangle._faceted_view"><a class="viewcode-back" href="../../triangle.html#trikit.CumTriangle._faceted_view">[docs]</a>    <span class="k">def</span> <span class="nf">_faceted_view</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#334488&quot;</span><span class="p">,</span> <span class="n">axes_style</span><span class="o">=</span><span class="s2">&quot;darkgrid&quot;</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="s2">&quot;notebook&quot;</span><span class="p">,</span>
+                      <span class="n">col_wrap</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Visualize triangle loss development using a faceted view.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        color: str</span>
+<span class="sd">            Color to plot loss development in each facet. Default value is &quot;#334488&quot;.</span>
+
+<span class="sd">        axes_style: str</span>
+<span class="sd">            Aesthetic style of plots. Defaults to &quot;darkgrid&quot;. Other options</span>
+<span class="sd">            include: {whitegrid, dark, white, ticks}.</span>
+
+<span class="sd">        context: str</span>
+<span class="sd">            Set the plotting context parameters. According to the seaborn</span>
+<span class="sd">            documentation, This affects things like the size of the labels,</span>
+<span class="sd">            lines, and other elements of the plot, but not the overall style.</span>
+<span class="sd">            Defaults to ``&quot;notebook&quot;``. Additional options include</span>
+<span class="sd">            {&quot;paper&quot;, &quot;talk&quot;, &quot;poster&quot;}.</span>
+
+<span class="sd">        kwargs: dict</span>
+<span class="sd">            Additional plot styling options.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+        <span class="kn">import</span> <span class="nn">seaborn</span> <span class="k">as</span> <span class="nn">sns</span>
+
+        <span class="n">pltkwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#334488&quot;</span><span class="p">,</span> <span class="n">axes_style</span><span class="o">=</span><span class="s2">&quot;darkgrid&quot;</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="s2">&quot;notebook&quot;</span><span class="p">,</span>
+            <span class="n">col_wrap</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;s&quot;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;-&quot;</span><span class="p">,</span>
+            <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;hsv&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">pltkwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="n">sns</span><span class="o">.</span><span class="n">set_context</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_tbl</span><span class="p">()</span>
+
+        <span class="k">with</span> <span class="n">sns</span><span class="o">.</span><span class="n">axes_style</span><span class="p">(</span><span class="n">axes_style</span><span class="p">):</span>
+
+            <span class="n">pltkwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;o&quot;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">markeredgecolor</span><span class="o">=</span><span class="s2">&quot;#000000&quot;</span><span class="p">,</span>
+                <span class="n">markeredgewidth</span><span class="o">=.</span><span class="mi">50</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=.</span><span class="mi">75</span><span class="p">,</span>
+                <span class="n">fillstyle</span><span class="o">=</span><span class="s2">&quot;full&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
+                <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">kwargs</span><span class="p">:</span>
+                <span class="n">pltkwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+
+            <span class="n">g</span> <span class="o">=</span> <span class="n">sns</span><span class="o">.</span><span class="n">FacetGrid</span><span class="p">(</span>
+                <span class="n">data</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="n">col_wrap</span><span class="o">=</span><span class="n">col_wrap</span><span class="p">,</span> <span class="n">margin_titles</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">despine</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sharey</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="p">)</span>
+
+            <span class="n">g</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">,</span> <span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">pltkwargs</span><span class="p">)</span>
+            <span class="n">g</span><span class="o">.</span><span class="n">set_axis_labels</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="n">g</span><span class="o">.</span><span class="n">set_titles</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{col_name}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+            <span class="n">g</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">xticks</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">dev</span><span class="o">.</span><span class="n">unique</span><span class="p">()))</span>
+            <span class="n">g</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">dev</span><span class="o">.</span><span class="n">unique</span><span class="p">()),</span> <span class="n">size</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">ii</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">axes</span><span class="p">):</span>
+                <span class="n">ax_</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">axes</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span>
+
+                <span class="n">ylabelss</span> <span class="o">=</span> <span class="p">[</span><span class="n">jj</span><span class="o">.</span><span class="n">get_text</span><span class="p">()</span> <span class="k">for</span> <span class="n">jj</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">ax_</span><span class="o">.</span><span class="n">get_yticklabels</span><span class="p">())]</span>
+                <span class="n">ylabelsn</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">jj</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;</span><span class="se">\u2212</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;-&quot;</span><span class="p">))</span> <span class="k">for</span> <span class="n">jj</span> <span class="ow">in</span> <span class="n">ylabelss</span><span class="p">]</span>
+                <span class="n">ylabelsn</span> <span class="o">=</span> <span class="p">[</span><span class="n">jj</span> <span class="k">for</span> <span class="n">jj</span> <span class="ow">in</span> <span class="n">ylabelsn</span> <span class="k">if</span> <span class="n">jj</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">]</span>
+                <span class="n">ylabels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;</span><span class="si">{:,.0f}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">jj</span><span class="p">)</span> <span class="k">for</span> <span class="n">jj</span> <span class="ow">in</span> <span class="n">ylabelsn</span><span class="p">]</span>
+                <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ylabels</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>
+                    <span class="n">ax_</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">yticks</span><span class="o">=</span><span class="n">ylabelsn</span><span class="p">)</span>
+                    <span class="n">ax_</span><span class="o">.</span><span class="n">set_yticklabels</span><span class="p">(</span><span class="n">ylabels</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
+                <span class="n">ax_</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span>
+                    <span class="n">axis</span><span class="o">=</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">bottom</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">top</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">labelbottom</span><span class="o">=</span><span class="kc">True</span>
+                    <span class="p">)</span>
+                <span class="n">ax_</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_ticks_position</span><span class="p">(</span><span class="s2">&quot;none&quot;</span><span class="p">)</span>
+                <span class="n">ax_</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">set_ticks_position</span><span class="p">(</span><span class="s2">&quot;none&quot;</span><span class="p">)</span>
+
+                <span class="c1"># Draw border around each facet.</span>
+                <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">spine</span> <span class="ow">in</span> <span class="n">ax_</span><span class="o">.</span><span class="n">spines</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="n">spine</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="n">spine</span><span class="o">.</span><span class="n">set_color</span><span class="p">(</span><span class="s2">&quot;#000000&quot;</span><span class="p">)</span>
+                    <span class="n">spine</span><span class="o">.</span><span class="n">set_linewidth</span><span class="p">(</span><span class="o">.</span><span class="mi">50</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="CumTriangle.base_cl"><a class="viewcode-back" href="../../triangle.html#trikit.CumTriangle.base_cl">[docs]</a>    <span class="k">def</span> <span class="nf">base_cl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sel</span><span class="o">=</span><span class="s2">&quot;all-weighted&quot;</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Produce chain ladder reserve estimates based on cumulative triangle instance.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        sel: str, pd.Series or array_like</span>
+<span class="sd">            If ``sel`` is a string, the specified loss development patterns will be</span>
+<span class="sd">            the associated entry from ``self.tri.a2a_avgs``.</span>
+<span class="sd">            If ``sel`` is array_like, values will be used in place of loss development</span>
+<span class="sd">            factors computed from the traingle directly. For a triangle with n development</span>
+<span class="sd">            periods, ``sel`` should be array_like with length n - 1.</span>
+<span class="sd">            Defaults to &quot;all-weighted&quot;.</span>
+
+<span class="sd">        tail: float</span>
+<span class="sd">            Chain ladder tail factor. Defaults to 1.0.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        Generate chain ladder reserve point estimates using the raa dataset.</span>
+<span class="sd">        ``tri`` is first created using the raa dataset::</span>
+
+<span class="sd">            In [1]: import trikit</span>
+<span class="sd">            In [2]: tri = trikit.load(&quot;raa&quot;, tri_type=&quot;cum&quot;)</span>
+<span class="sd">            In [4]: cl = tri.base_cl()</span>
+
+
+<span class="sd">        Perform standard chain ladder, using non-default values for ``sel`` and ``tail``::</span>
+
+<span class="sd">            In [5]: cl = tri.base_cl(sel=&quot;medial-5&quot;, tail=1.015)</span>
+
+
+<span class="sd">        Passing a custom sequence of loss development factors::</span>
+
+<span class="sd">            In [6]: ldfs = [5., 2.5, 1.25, 1.15, 1.10, 1.05, 1.025, 1.01, 1.005,]</span>
+<span class="sd">            In [7]: cl = tri.base_cl(sel=ldfs, tail=1.001)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">kwds</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">sel</span><span class="o">=</span><span class="n">sel</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="n">tail</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">BaseChainLadder</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="o">**</span><span class="n">kwds</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="CumTriangle.boot_cl"><a class="viewcode-back" href="../../triangle.html#trikit.CumTriangle.boot_cl">[docs]</a>    <span class="k">def</span> <span class="nf">boot_cl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sims</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="p">[</span><span class="o">.</span><span class="mi">75</span><span class="p">,</span> <span class="o">.</span><span class="mi">95</span><span class="p">],</span> <span class="n">procdist</span><span class="o">=</span><span class="s2">&quot;gamma&quot;</span><span class="p">,</span> <span class="n">parametric</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">two_sided</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Estimate reserves and the distribution of reserve outcomes by origin and in</span>
+<span class="sd">        total via bootstrap resampling. The estimated distribution of losses assumes</span>
+<span class="sd">        development is completen by the final development period in order to avoid the</span>
+<span class="sd">        complication of modeling a tail factor.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        sims: int</span>
+<span class="sd">            The number of bootstrap simulations to perform. Defaults to 1000.</span>
+
+<span class="sd">        q: array_like of float or float</span>
+<span class="sd">            Quantile or sequence of quantiles to compute, which must be</span>
+<span class="sd">            between 0 and 1 inclusive.</span>
+
+<span class="sd">        procdist: str</span>
+<span class="sd">            The distribution used to incorporate process variance. Currently,</span>
+<span class="sd">            this can only be set to &quot;gamma&quot;.</span>
+
+<span class="sd">        two_sided: bool</span>
+<span class="sd">            Whether to include the two_sided interval in summary output. For example,</span>
+<span class="sd">            if ``two_sided==True`` and ``q=.95``, the 2.5th and 97.5th quantiles of the</span>
+<span class="sd">            bootstrapped reserve  distribution will be returned [(1 - .95) / 2, (1 + .95) / 2].</span>
+<span class="sd">            When False, only the specified quantile(s) will be computed. Defaults</span>
+<span class="sd">            to False.</span>
+
+<span class="sd">        parametric: bool</span>
+<span class="sd">            If True, fit standardized residuals to a normal distribution via maximum likelihood,</span>
+<span class="sd">            and sample from the resulting distribution. Otherwise, values are sampled with</span>
+<span class="sd">            replacement from the collection of standardized residuals. Defaults to False.</span>
+
+<span class="sd">        interpolation: {&quot;linear&quot;, &quot;lower&quot;, &quot;higher&quot;, &quot;midpoint&quot;, &quot;nearest&quot;}</span>
+<span class="sd">            Optional parameter which specifies the interpolation method to use</span>
+<span class="sd">            when the desired quantile lies between two data points i &lt; j. See</span>
+<span class="sd">            ``numpy.quantile`` for more information. Default value is &quot;linear&quot;.</span>
+
+<span class="sd">        random_state: np.random.RandomState</span>
+<span class="sd">            If int, random_state is the seed used by the random number</span>
+<span class="sd">            generator; If RandomState instance, random_state is the random</span>
+<span class="sd">            number generator; If None, the random number generator is the</span>
+<span class="sd">            RandomState instance used by np.random.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        BootstrapChainLadderResult</span>
+
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        Generate boostrap chain ladder reserve estimates. ``tri`` is first created</span>
+<span class="sd">        using the raa dataset::</span>
+
+<span class="sd">            In [1]: import trikit</span>
+<span class="sd">            In [2]: tri = trikit.load(&quot;raa&quot;, tri_type=&quot;cum&quot;)</span>
+<span class="sd">            In [3]: bcl = tri.boot_cl()</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">kwds</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">sims</span><span class="o">=</span><span class="n">sims</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="n">q</span><span class="p">,</span> <span class="n">procdist</span><span class="o">=</span><span class="n">procdist</span><span class="p">,</span> <span class="n">parametric</span><span class="o">=</span><span class="n">parametric</span><span class="p">,</span> <span class="n">two_sided</span><span class="o">=</span><span class="n">two_sided</span><span class="p">,</span>
+            <span class="n">interpolation</span><span class="o">=</span><span class="n">interpolation</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="n">random_state</span>
+            <span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">BootstrapChainLadder</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="o">**</span><span class="n">kwds</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="CumTriangle.mack_cl"><a class="viewcode-back" href="../../triangle.html#trikit.CumTriangle.mack_cl">[docs]</a>    <span class="k">def</span> <span class="nf">mack_cl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">dist</span><span class="o">=</span><span class="s2">&quot;lognorm&quot;</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="p">[</span><span class="o">.</span><span class="mi">75</span><span class="p">,</span> <span class="o">.</span><span class="mi">95</span><span class="p">],</span> <span class="n">two_sided</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a summary of ultimate and reserve estimates resulting from</span>
+<span class="sd">        the application of the development technique over self.tri. Summary</span>
+<span class="sd">        DataFrame is comprised of origin year, maturity of origin year, loss</span>
+<span class="sd">        amount at latest evaluation, cumulative loss development factors,</span>
+<span class="sd">        projected ultimates and the reserve estimate, by origin year and in</span>
+<span class="sd">        aggregate.</span>
+
+<span class="sd">        ### TODO ###</span>
+<span class="sd">        Allow for tail factor other than 1.0.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        alpha: {0, 1, 2}</span>
+<span class="sd">            * 0: Straight average of observed individual link ratios.</span>
+<span class="sd">            * 1: Historical Chain Ladder age-to-age factors.</span>
+<span class="sd">            * 2: Regression of :math:`C_{k+1}` on :math:`C_{k}` with 0 intercept.</span>
+
+<span class="sd">        tail: float</span>
+<span class="sd">            Tail factor. Currently not implemented. Will be available in</span>
+<span class="sd">            a future release.</span>
+
+<span class="sd">        dist: {&quot;norm&quot;, &quot;lognorm&quot;}</span>
+<span class="sd">            The distribution function chosen to approximate the true</span>
+<span class="sd">            distribution of reserves by origin period. In Mack[1], if the</span>
+<span class="sd">            volume of outstanding claims is large enough, due to the central</span>
+<span class="sd">            limit theorem, we can assume that the distribution function is</span>
+<span class="sd">            Normal with expected value equal to the point estimate given by</span>
+<span class="sd">            :math:`R_{i}` and standard deviation equal to the standard error of</span>
+<span class="sd">            :math:`R_{i}`, :math:`s.e.(R_{i})`. It is also noted that if the true</span>
+<span class="sd">            distribution of reserves is skewed, the Normal may not serve as a</span>
+<span class="sd">            good approximation, and it may be preferrable to opt for</span>
+<span class="sd">            the Log-normal distribution.</span>
+
+<span class="sd">            * If ``dist=&quot;norm&quot;``, the Normal distribution will be used to</span>
+<span class="sd">            estimate reserve quantiles.</span>
+
+<span class="sd">            * If ``dist=&quot;lognorm&quot;``, the Log-normal distribution will be used</span>
+<span class="sd">            to estimate reserve quantiles.</span>
+
+<span class="sd">        q: array_like of float</span>
+<span class="sd">            Quantile or sequence of quantiles to compute, which must be</span>
+<span class="sd">            between 0 and 1 inclusive.</span>
+
+<span class="sd">        two_sided: bool</span>
+<span class="sd">            Whether the two_sided interval should be included in summary</span>
+<span class="sd">            output. For example, if ``two_sided==True`` and ``q=.95``, then</span>
+<span class="sd">            the 2.5th and 97.5th quantiles of the estimated reserve</span>
+<span class="sd">            distribution will be returned [(1 - .95) / 2, (1 + .95) / 2]. When</span>
+<span class="sd">            False, only the specified quantile(s) will be computed. Defaults</span>
+<span class="sd">            to False.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        MackChainLadderResult</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        Generate Mack chain ladder reserve estimates. ``tri`` is first created</span>
+<span class="sd">        using the raa dataset. In the call to ``mack_cl``, ``alpha`` is set to</span>
+<span class="sd">        2, and ``two_sided=True``::</span>
+
+<span class="sd">            In [1]: import trikit</span>
+<span class="sd">            In [2]: tri = trikit.load(&quot;raa&quot;, tri_type=&quot;cum&quot;)</span>
+<span class="sd">            In [3]: mcl = tri.mack_cl(alpha=2, two_sided=True)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">kwds</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="n">tail</span><span class="p">,</span> <span class="n">dist</span><span class="o">=</span><span class="n">dist</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="n">q</span><span class="p">,</span> <span class="n">two_sided</span><span class="o">=</span><span class="n">two_sided</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">MackChainLadder</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="o">**</span><span class="n">kwds</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="CumTriangle.glm"><a class="viewcode-back" href="../../triangle.html#trikit.CumTriangle.glm">[docs]</a>    <span class="k">def</span> <span class="nf">glm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var_power</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate reserve estimates via Generalized Linear Model framework.</span>
+<span class="sd">        Note that ``glm_estimator`` assumes development is complete by the final</span>
+<span class="sd">        development period. GLMs are fit using statsmodels Tweedie family</span>
+<span class="sd">        with log link.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;glm reserve estimator not yet implemented.&quot;</span><span class="p">)</span></div></div>
+
+
+
+<div class="viewcode-block" id="totri"><a class="viewcode-back" href="../../triangle.html#trikit.totri">[docs]</a><span class="k">def</span> <span class="nf">totri</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">tri_type</span><span class="o">=</span><span class="s2">&quot;cum&quot;</span><span class="p">,</span> <span class="n">data_format</span><span class="o">=</span><span class="s2">&quot;incr&quot;</span><span class="p">,</span> <span class="n">data_shape</span><span class="o">=</span><span class="s2">&quot;tabular&quot;</span><span class="p">,</span>
+          <span class="n">origin</span><span class="o">=</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;value&quot;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create a triangle object based on ``data``. ``tri_type`` can be one of</span>
+<span class="sd">    &quot;incr&quot; or &quot;cum&quot;, determining whether the resulting triangle represents</span>
+<span class="sd">    incremental or cumulative losses/counts.</span>
+<span class="sd">    If ``data_shape=&quot;triangle&quot;``, ``data`` is assumed to be structured as a</span>
+<span class="sd">    runoff triangle, indexed by origin with columns representing development</span>
+<span class="sd">    periods. If ``data_shape=&quot;tabular&quot;``, data is assumed to be tabular with at</span>
+<span class="sd">    minimum columns ``origin``, ``dev`` and ``value``, which represent origin</span>
+<span class="sd">    year, development period and metric of interest respectively.</span>
+<span class="sd">    ``data_format`` specifies whether the metric of interest are cumulative</span>
+<span class="sd">    or incremental in nature. Default value is &quot;incr&quot;.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data: pd.DataFrame</span>
+<span class="sd">        The dataset to be coerced into a triangle instance. ``data`` can be</span>
+<span class="sd">        tabular loss data, or a dataset (pandas DataFrame) formatted as a</span>
+<span class="sd">        triangle, but not typed as such. In the latter case,</span>
+<span class="sd">        ``data_shape`` should be set to &quot;triangle&quot;.</span>
+
+<span class="sd">    tri_type: {&quot;cum&quot;, &quot;incr&quot;}</span>
+<span class="sd">        Either &quot;cum&quot; or &quot;incr&quot;. Specifies how the measure of interest (losses,</span>
+<span class="sd">        counts, alae, etc.) should be represented in the returned triangle</span>
+<span class="sd">        instance.</span>
+
+<span class="sd">    data_format: {&quot;cum&quot;, &quot;incr&quot;}</span>
+<span class="sd">        Specifies the representation of the metric of interest in ``data``.</span>
+<span class="sd">        Default value is &quot;incr&quot;.</span>
+
+<span class="sd">    data_shape:{&quot;tabular&quot;, &quot;triangle&quot;}</span>
+<span class="sd">        Indicates whether ``data`` is formatted as a triangle instead of</span>
+<span class="sd">        tabular loss data. In some workflows, triangles may have already</span>
+<span class="sd">        been created and are available. In such cases, the triangle-formatted</span>
+<span class="sd">        data is read into a DataFrame, then coerced into the desired triangle</span>
+<span class="sd">        representation. Default value is &quot;tabular&quot;.</span>
+
+<span class="sd">    origin: str</span>
+<span class="sd">        The field in ``data`` representing origin year. When ``data_shape=&quot;triangle&quot;``,</span>
+<span class="sd">        ``origin`` is ignored. Default value is &quot;origin&quot;.</span>
+
+<span class="sd">    dev: str</span>
+<span class="sd">        The field in ``data`` representing development period. When</span>
+<span class="sd">        ``data_shape=&quot;triangle&quot;``,  ``dev`` is ignored. Default value is</span>
+<span class="sd">        &quot;dev&quot;.</span>
+
+<span class="sd">    value: str</span>
+<span class="sd">        The field in ``data`` representing the metric of interest (losses, counts, etc.).</span>
+<span class="sd">        When ``data_shape=&quot;triangle&quot;``, ``value`` is ignored. Default value is &quot;value&quot;.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    {trikit.triangle.IncrTriangle, trikit.triangle.CumTriangle}</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Create incremental triangle based on RAA dataset::</span>
+
+<span class="sd">        In [1]: from trikit import load, totri</span>
+<span class="sd">        In [2]: df = load(&quot;raa&quot;)</span>
+<span class="sd">        In [3]: tri = totri(df, tri_type=&quot;incr&quot;)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">data_shape</span> <span class="o">==</span> <span class="s2">&quot;triangle&quot;</span><span class="p">:</span>
+
+        <span class="k">if</span> <span class="n">data_format</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;i&quot;</span><span class="p">):</span>
+            <span class="c1"># data is in incremental triangle format (but not typed as such).</span>
+            <span class="n">incrtri</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="s2">&quot;index&quot;</span><span class="p">:</span> <span class="s2">&quot;origin&quot;</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">melt</span><span class="p">(</span><span class="n">incrtri</span><span class="p">,</span> <span class="n">id_vars</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;origin&quot;</span><span class="p">],</span> <span class="n">var_name</span><span class="o">=</span><span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="n">value_name</span><span class="o">=</span><span class="s2">&quot;value&quot;</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">data_format</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;c&quot;</span><span class="p">):</span>
+            <span class="c1"># data is in cumulative triangle format (but not typed as such).</span>
+            <span class="n">incrtri</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">incrtri</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+            <span class="n">incrtri</span> <span class="o">=</span> <span class="n">incrtri</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="s2">&quot;index&quot;</span><span class="p">:</span> <span class="s2">&quot;origin&quot;</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">melt</span><span class="p">(</span><span class="n">incrtri</span><span class="p">,</span> <span class="n">id_vars</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;origin&quot;</span><span class="p">],</span> <span class="n">var_name</span><span class="o">=</span><span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="n">value_name</span><span class="o">=</span><span class="s2">&quot;value&quot;</span><span class="p">)</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="o">~</span><span class="n">pd</span><span class="o">.</span><span class="n">isnull</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">])]</span><span class="o">.</span><span class="n">astype</span><span class="p">({</span><span class="s2">&quot;origin&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="s2">&quot;dev&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">})</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NameError</span><span class="p">(</span><span class="s2">&quot;Invalid data_format argument: `</span><span class="si">{}</span><span class="s2">`.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tri_type</span><span class="p">))</span>
+
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="o">~</span><span class="n">pd</span><span class="o">.</span><span class="n">isnull</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">])]</span><span class="o">.</span><span class="n">astype</span><span class="p">({</span><span class="s2">&quot;origin&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="s2">&quot;dev&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">})</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="s2">&quot;dev&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">data_shape</span> <span class="o">==</span> <span class="s2">&quot;tabular&quot;</span><span class="p">:</span>
+
+        <span class="k">if</span> <span class="n">data_format</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;c&quot;</span><span class="p">):</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="n">value</span><span class="p">:</span> <span class="s2">&quot;cum&quot;</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">df</span><span class="p">[</span><span class="s2">&quot;incr&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">origin</span><span class="p">])[</span><span class="s2">&quot;cum&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">periods</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">df</span><span class="p">[</span><span class="s2">&quot;incr&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;incr&quot;</span><span class="p">]),</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;cum&quot;</span><span class="p">],</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;incr&quot;</span><span class="p">])</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">&quot;cum&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="s2">&quot;incr&quot;</span><span class="p">:</span> <span class="n">value</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">data</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">NameError</span><span class="p">(</span><span class="s2">&quot;Invalid data_shape argument: `</span><span class="si">{}</span><span class="s2">`.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_shape</span><span class="p">))</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># Transform df to triangle instance.</span>
+    <span class="k">if</span> <span class="n">tri_type</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;i&quot;</span><span class="p">):</span>
+        <span class="n">tri</span> <span class="o">=</span> <span class="n">IncrTriangle</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="n">origin</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="n">dev</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">tri_type</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;c&quot;</span><span class="p">):</span>
+        <span class="n">tri</span> <span class="o">=</span> <span class="n">CumTriangle</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="n">origin</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="n">dev</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+
+        <span class="c1"># Replace missing actuals.</span>
+        <span class="k">for</span> <span class="n">origin_</span> <span class="ow">in</span> <span class="n">tri</span><span class="o">.</span><span class="n">index</span><span class="p">:</span>
+            <span class="n">origin_indx</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">get_loc</span><span class="p">(</span><span class="n">origin_</span><span class="p">)</span>
+            <span class="n">origin_init_val</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">iat</span><span class="p">[</span><span class="n">origin_indx</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">origin_init_val</span><span class="p">):</span>
+                <span class="n">tri</span><span class="o">.</span><span class="n">iat</span><span class="p">[</span><span class="n">origin_indx</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.</span>
+
+            <span class="k">for</span> <span class="n">devp_indx</span><span class="p">,</span> <span class="n">devp_</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tri</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+                <span class="n">triind_val</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">triind</span><span class="o">.</span><span class="n">iat</span><span class="p">[</span><span class="n">origin_indx</span><span class="p">,</span> <span class="n">devp_indx</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">triind_val</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">tri</span><span class="o">.</span><span class="n">iat</span><span class="p">[</span><span class="n">origin_indx</span><span class="p">,</span> <span class="n">devp_indx</span><span class="p">]):</span>
+                        <span class="n">tri</span><span class="o">.</span><span class="n">iat</span><span class="p">[</span><span class="n">origin_indx</span><span class="p">,</span> <span class="n">devp_indx</span><span class="p">]</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">iat</span><span class="p">[</span><span class="n">origin_indx</span><span class="p">,</span> <span class="p">(</span><span class="n">devp_indx</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)]</span>
+    <span class="k">return</span><span class="p">(</span><span class="n">tri</span><span class="p">)</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2018, James D. Triveri
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

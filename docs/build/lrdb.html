@@ -1,0 +1,412 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>The CAS Loss Reserving Database &mdash; trikit 0.3.2 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Calculating Correlated Reserve Indications" href="tutorial/correlated.html" />
+    <link rel="prev" title="Sample Datasets" href="datasets.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> trikit
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Project Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="triangle.html">Triangles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="estimators.html">Estimators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">Sample Datasets</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">CAS Loss Reserving Database</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial/correlated.html">Correlated Reserve Indications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial/smoothing.html">Smoothing Loss Development Patterns</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">trikit</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>The CAS Loss Reserving Database</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/lrdb.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="the-cas-loss-reserving-database">
+<span id="lrdb"></span><h1>The CAS Loss Reserving Database<a class="headerlink" href="#the-cas-loss-reserving-database" title="Permalink to this headline">¶</a></h1>
+<p>The <a class="reference external" href="https://www.casact.org/research/index.cfm?fa=loss_reserves_data">CAS Loss Reserving Database</a> is a collection of loss data originally compiled by Glenn Meyers
+intended to be used for claims reserving studies. The data includes major
+personal and commercial lines of business from U.S. property casualty insurers.
+The claims data comes from
+<em>Schedule P Analysis of Losses and Loss Expenses</em> in the National
+Association of Insurance Commissioners (NAIC) database. The final product is a
+dataset that contains run-off triangles of six lines of business for all U.S.
+property casualty insurers. The triangle data correspond to claims of accident
+year 1988-1997 with 10 years development lag. Both upper and lower triangles
+are included so that one could use the data to develop a model and then test
+its performance retrospectively <a class="footnote-reference brackets" href="#f1" id="id1">1</a>.</p>
+<div class="line-block">
+<div class="line">The CAS Loss Reserving Database contains the following fields:</div>
+</div>
+<dl class="simple">
+<dt><strong>loss_key</strong></dt><dd><p>Currently limited to <code class="docutils literal notranslate"><span class="pre">&quot;com_auto&quot;</span></code>, but will be expanded in a future release (see mapping below)</p>
+</dd>
+<dt><strong>grcode</strong></dt><dd><p>NAIC company code (including insurer groups and single insurers)</p>
+</dd>
+<dt><strong>grname</strong></dt><dd><p>NAIC company name (including insurer groups and single insurers)</p>
+</dd>
+<dt><strong>origin</strong></dt><dd><p>Accident year</p>
+</dd>
+<dt><strong>dev</strong></dt><dd><p>Development year</p>
+</dd>
+<dt><strong>incrd_loss</strong></dt><dd><p>Incurred losses and allocated expenses reported at year end</p>
+</dd>
+<dt><strong>paid_loss</strong></dt><dd><p>paid losses and allocated expenses at year end</p>
+</dd>
+<dt><strong>ep_dir</strong></dt><dd><p>Premiums earned at incurral year - direct and assumed</p>
+</dd>
+<dt><strong>ep_ceded</strong></dt><dd><p>Premiums earned at incurral year - ceded</p>
+</dd>
+<dt><strong>ep_net</strong></dt><dd><p>earned_prem_dir - earned_prem_ceded</p>
+</dd>
+<dt><strong>single</strong></dt><dd><p>1 indicates a single entity, 0 indicates a group insurer</p>
+</dd>
+<dt><strong>posted_reserve_97</strong></dt><dd><p>Posted reserves in year 1997 taken from the Underwriting and Investment
+Exhibit Part 2A, including net losses unpaid and unpaid loss adjustment
+expenses</p>
+</dd>
+<dt><strong>train_ind</strong></dt><dd><p>A 1 indicates that the value associated with a particular origin-dev combination
+would fall in the upper-left of a typical loss triangle. * indicates what would
+typically be indentified as a future observation at the time triangles are constructed.
+The lower right triangle values can be treated as a holdout set to test the adequacy
+of a reserve estimator.</p>
+</dd>
+</dl>
+<p>The following table provides a description of the type of losses associated
+with each unique combination of <code class="docutils literal notranslate"><span class="pre">loss_key</span></code> and
+<code class="docutils literal notranslate"><span class="pre">loss_type_suffix</span></code>:</p>
+<table class="docutils align-default" id="id3">
+<caption><span class="caption-text">Loss Description</span><a class="headerlink" href="#id3" title="Permalink to this table">¶</a></caption>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>loss_type_suffix</p></th>
+<th class="head"><p>loss_key</p></th>
+<th class="head"><p>description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>D</p></td>
+<td><p>wc</p></td>
+<td><p>Workers Compensation</p></td>
+</tr>
+<tr class="row-odd"><td><p>R</p></td>
+<td><p>prod_liab</p></td>
+<td><p>Products Liability - Occurance</p></td>
+</tr>
+<tr class="row-even"><td><p>B</p></td>
+<td><p>pp_auto</p></td>
+<td><p>Private Passenger Auto Liability/Medical</p></td>
+</tr>
+<tr class="row-odd"><td><p>H</p></td>
+<td><p>othr_liab</p></td>
+<td><p>Other Liability - Occurrence</p></td>
+</tr>
+<tr class="row-even"><td><p>F</p></td>
+<td><p>med_mal</p></td>
+<td><p>Medical Malpractice - Claims Made</p></td>
+</tr>
+<tr class="row-odd"><td><p>C</p></td>
+<td><p>comauto</p></td>
+<td><p>Commercial Auto Liability/Medical</p></td>
+</tr>
+</tbody>
+</table>
+<p>A copy of the CAS Loss Reserving Database is distributed along with trikit, in addition to
+a number of convenience functions intended to simplify database
+interaction. In what follows, CAS Loss Reserving Database convenience functions are detailed.</p>
+<div class="section" id="loss-reserve-database-api">
+<h2>Loss Reserve Database API<a class="headerlink" href="#loss-reserve-database-api" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="load_lrdb">
+<code class="sig-name descname">load_lrdb</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">tri_type</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">loss_type</span><span class="o">=</span><span class="default_value">'incurred'</span></em>, <em class="sig-param"><span class="n">lob</span><span class="o">=</span><span class="default_value">'comauto'</span></em>, <em class="sig-param"><span class="n">grcode</span><span class="o">=</span><span class="default_value">1767</span></em>, <em class="sig-param"><span class="n">grname</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">train_only</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#load_lrdb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load the CAS Loss Reserving Database subset of losses. Additional
+keyword arguments are used to subset the CAS Loss Reserving Database to the
+records of interest.
+Within the Loss Reserving Database, “lob” and “grcode” uniquely
+partition losses into 100 record blocks if <code class="docutils literal notranslate"><span class="pre">lower_right_ind=True</span></code>,
+otherwise losses are partitioned into 55 record blocks. All available
+combinations of “lob” and “grcode” (referred to as “specs”)
+can be obtained by calling <code class="docutils literal notranslate"><span class="pre">get_lrdb_specs</span></code>.
+Note that when <code class="docutils literal notranslate"><span class="pre">tri_type</span></code> is “cum” or “incr”, the remaining subset
+of records after applying <code class="docutils literal notranslate"><span class="pre">lob</span></code>, <code class="docutils literal notranslate"><span class="pre">grcode</span></code> and <code class="docutils literal notranslate"><span class="pre">grname</span></code> filters will
+be aggregated into a single triangle of the specified type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tri_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – If <code class="docutils literal notranslate"><span class="pre">None</span></code>, lrdb subset is returned as pd.DataFrame. Otherwise, return subset as either incremental or cumulative triangle type. Default value is None.</p></li>
+<li><p><strong>lob</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Specifies the line of business to return. Available options are <code class="docutils literal notranslate"><span class="pre">['comauto',</span> <span class="pre">'ppauto',</span> <span class="pre">'wkcomp',</span> <span class="pre">'medmal',</span> <span class="pre">'prodliab',</span> <span class="pre">'othliab']</span></code>. Default value is “comauto”.</p></li>
+<li><p><strong>grcode</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – NAIC company code including insurer groups and single insurers. For a full listing, call <code class="docutils literal notranslate"><span class="pre">get_lrdb_specs</span></code>. Default value is <code class="docutils literal notranslate"><span class="pre">1767</span></code>.</p></li>
+<li><p><strong>grname</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – NAIC company name (including insurer groups and single insurers). The complete mapping of available grcodes can be obtained by calling <code class="docutils literal notranslate"><span class="pre">get_lrdb_specs</span></code>. Default value is None.</p></li>
+<li><p><strong>loss_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Specifies which loss data to load. Can be one of “paid” or “incurred”. Defaults to “incurred”. Note that bulk losses have already been subtracted from schedule P incurred losses. Default value is “incurred”.</p></li>
+<li><p><strong>train_only</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><em>bool</em></a>) – If True, the upper-left portion of the triangle will be returned. The upper-left portion of the triangle typically consists of actual loss experience. If False, the squared triangle, consisting of 100 observations is returned. Default value is True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Either pd.DataFrame, trikit.triangle.IncrTriangle or trikit.triangle.CumTriangle.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p>CAS Loss Reserving Database datasets are loaded via <code class="docutils literal notranslate"><span class="pre">load_lrdb</span></code>. A number of additional keyword arguments can be
+passed to <code class="docutils literal notranslate"><span class="pre">load_lrdb</span></code>. For example, to retrieve the subset of commercial auto losses for
+<code class="docutils literal notranslate"><span class="pre">grcode=1767</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">from</span> <span class="nn">trikit</span> <span class="kn">import</span> <span class="n">load_lrdb</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">df</span> <span class="o">=</span> <span class="n">load_lrdb</span><span class="p">(</span><span class="n">grcode</span><span class="o">=</span><span class="mi">1767</span><span class="p">,</span> <span class="n">lob</span><span class="o">=</span><span class="s2">&quot;comauto&quot;</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">DataFrame</span>
+</pre></div>
+</div>
+<p>Alternatively, the resulting subset can be transformed to a triangle of the desired type:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="n">tri</span> <span class="o">=</span> <span class="n">load_lrdb</span><span class="p">(</span><span class="n">tri_type</span><span class="o">=</span><span class="s2">&quot;cum&quot;</span><span class="p">,</span> <span class="n">grcode</span><span class="o">=</span><span class="mi">1767</span><span class="p">,</span> <span class="n">lob</span><span class="o">=</span><span class="s2">&quot;comauto&quot;</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">5</span><span class="p">]:</span> <span class="n">tri</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">5</span><span class="p">]:</span>
+          <span class="mi">1</span>       <span class="mi">2</span>       <span class="mi">3</span>       <span class="mi">4</span>       <span class="mi">5</span>         <span class="mi">6</span>         <span class="mi">7</span>         <span class="mi">8</span>         <span class="mi">9</span>         <span class="mi">10</span>
+<span class="mi">1988</span> <span class="mi">110</span><span class="p">,</span><span class="mi">231</span> <span class="mi">263</span><span class="p">,</span><span class="mi">079</span> <span class="mi">431</span><span class="p">,</span><span class="mi">216</span> <span class="mi">611</span><span class="p">,</span><span class="mi">278</span> <span class="mi">797</span><span class="p">,</span><span class="mi">428</span>   <span class="mi">985</span><span class="p">,</span><span class="mi">570</span> <span class="mi">1</span><span class="p">,</span><span class="mi">174</span><span class="p">,</span><span class="mi">922</span> <span class="mi">1</span><span class="p">,</span><span class="mi">366</span><span class="p">,</span><span class="mi">229</span> <span class="mi">1</span><span class="p">,</span><span class="mi">558</span><span class="p">,</span><span class="mi">096</span> <span class="mi">1</span><span class="p">,</span><span class="mi">752</span><span class="p">,</span><span class="mi">096</span>
+<span class="mi">1989</span> <span class="mi">121</span><span class="p">,</span><span class="mi">678</span> <span class="mi">279</span><span class="p">,</span><span class="mi">896</span> <span class="mi">456</span><span class="p">,</span><span class="mi">640</span> <span class="mi">644</span><span class="p">,</span><span class="mi">767</span> <span class="mi">837</span><span class="p">,</span><span class="mi">733</span> <span class="mi">1</span><span class="p">,</span><span class="mi">033</span><span class="p">,</span><span class="mi">837</span> <span class="mi">1</span><span class="p">,</span><span class="mi">233</span><span class="p">,</span><span class="mi">015</span> <span class="mi">1</span><span class="p">,</span><span class="mi">432</span><span class="p">,</span><span class="mi">670</span> <span class="mi">1</span><span class="p">,</span><span class="mi">633</span><span class="p">,</span><span class="mi">619</span>       <span class="n">nan</span>
+<span class="mi">1990</span> <span class="mi">123</span><span class="p">,</span><span class="mi">376</span> <span class="mi">298</span><span class="p">,</span><span class="mi">615</span> <span class="mi">500</span><span class="p">,</span><span class="mi">570</span> <span class="mi">714</span><span class="p">,</span><span class="mi">683</span> <span class="mi">934</span><span class="p">,</span><span class="mi">671</span> <span class="mi">1</span><span class="p">,</span><span class="mi">157</span><span class="p">,</span><span class="mi">979</span> <span class="mi">1</span><span class="p">,</span><span class="mi">383</span><span class="p">,</span><span class="mi">820</span> <span class="mi">1</span><span class="p">,</span><span class="mi">610</span><span class="p">,</span><span class="mi">193</span>       <span class="n">nan</span>       <span class="n">nan</span>
+<span class="mi">1991</span> <span class="mi">117</span><span class="p">,</span><span class="mi">457</span> <span class="mi">280</span><span class="p">,</span><span class="mi">058</span> <span class="mi">463</span><span class="p">,</span><span class="mi">396</span> <span class="mi">662</span><span class="p">,</span><span class="mi">003</span> <span class="mi">865</span><span class="p">,</span><span class="mi">401</span> <span class="mi">1</span><span class="p">,</span><span class="mi">071</span><span class="p">,</span><span class="mi">271</span> <span class="mi">1</span><span class="p">,</span><span class="mi">278</span><span class="p">,</span><span class="mi">228</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>
+<span class="mi">1992</span> <span class="mi">124</span><span class="p">,</span><span class="mi">611</span> <span class="mi">291</span><span class="p">,</span><span class="mi">399</span> <span class="mi">481</span><span class="p">,</span><span class="mi">170</span> <span class="mi">682</span><span class="p">,</span><span class="mi">203</span> <span class="mi">889</span><span class="p">,</span><span class="mi">029</span> <span class="mi">1</span><span class="p">,</span><span class="mi">101</span><span class="p">,</span><span class="mi">390</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>
+<span class="mi">1993</span> <span class="mi">137</span><span class="p">,</span><span class="mi">902</span> <span class="mi">323</span><span class="p">,</span><span class="mi">854</span> <span class="mi">533</span><span class="p">,</span><span class="mi">211</span> <span class="mi">753</span><span class="p">,</span><span class="mi">639</span> <span class="mi">980</span><span class="p">,</span><span class="mi">180</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>
+<span class="mi">1994</span> <span class="mi">150</span><span class="p">,</span><span class="mi">582</span> <span class="mi">345</span><span class="p">,</span><span class="mi">110</span> <span class="mi">561</span><span class="p">,</span><span class="mi">315</span> <span class="mi">792</span><span class="p">,</span><span class="mi">392</span>     <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>
+<span class="mi">1995</span> <span class="mi">150</span><span class="p">,</span><span class="mi">511</span> <span class="mi">345</span><span class="p">,</span><span class="mi">241</span> <span class="mi">560</span><span class="p">,</span><span class="mi">278</span>     <span class="n">nan</span>     <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>
+<span class="mi">1996</span> <span class="mi">142</span><span class="p">,</span><span class="mi">301</span> <span class="mi">326</span><span class="p">,</span><span class="mi">584</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>
+<span class="mi">1997</span> <span class="mi">143</span><span class="p">,</span><span class="mi">970</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>
+</pre></div>
+</div>
+<p>Notice that with <code class="docutils literal notranslate"><span class="pre">grcode</span></code> and <code class="docutils literal notranslate"><span class="pre">lob</span></code> specified as above, the returned DataFrame contains 55 records
+as expected (recall that by default, <code class="docutils literal notranslate"><span class="pre">train_ind</span></code> is set to False, otherwise the shape of the returned
+DataFrame would be (100, 3).</p>
+<p>CAS Loss Reserving Database lines of business can be listed by calling <code class="docutils literal notranslate"><span class="pre">get_lrdb_lobs</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">from</span> <span class="nn">trikit</span> <span class="kn">import</span> <span class="n">get_lrdb_lobs</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">get_lrdb_lobs</span><span class="p">()</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="p">[</span><span class="s1">&#39;comauto&#39;</span><span class="p">,</span> <span class="s1">&#39;ppauto&#39;</span><span class="p">,</span> <span class="s1">&#39;wkcomp&#39;</span><span class="p">,</span> <span class="s1">&#39;medmal&#39;</span><span class="p">,</span> <span class="s1">&#39;prodliab&#39;</span><span class="p">,</span> <span class="s1">&#39;othliab&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Unique combinations of “loss_key”, “grname” and “grcode” can be listed by calling <code class="docutils literal notranslate"><span class="pre">get_lrdb_specs</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">from</span> <span class="nn">trikit</span> <span class="kn">import</span> <span class="n">get_lrdb_specs</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">get_lrdb_specs</span><span class="p">()</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span>
+    <span class="n">loss_key</span>  <span class="n">grcode</span>                               <span class="n">grname</span>
+<span class="mi">0</span>    <span class="n">comauto</span>     <span class="mi">266</span>              <span class="n">Public</span> <span class="n">Underwriters</span> <span class="n">Grp</span>
+<span class="mi">1</span>    <span class="n">comauto</span>     <span class="mi">337</span>                   <span class="n">California</span> <span class="n">Cas</span> <span class="n">Grp</span>
+<span class="mi">2</span>    <span class="n">comauto</span>     <span class="mi">353</span>                       <span class="n">Celina</span> <span class="n">Mut</span> <span class="n">Grp</span>
+<span class="mi">3</span>    <span class="n">comauto</span>     <span class="mi">388</span>                   <span class="n">Federal</span> <span class="n">Ins</span> <span class="n">Co</span> <span class="n">Grp</span>
+<span class="mi">4</span>    <span class="n">comauto</span>     <span class="mi">460</span>                      <span class="n">Buckeye</span> <span class="n">Ins</span> <span class="n">Grp</span>
+<span class="o">..</span>       <span class="o">...</span>     <span class="o">...</span>                                  <span class="o">...</span>
+<span class="mi">431</span>   <span class="n">wkcomp</span>   <span class="mi">41580</span>                    <span class="n">Red</span> <span class="n">Shield</span> <span class="n">Ins</span> <span class="n">Co</span>
+<span class="mi">432</span>   <span class="n">wkcomp</span>   <span class="mi">42439</span>                <span class="n">Toa</span><span class="o">-</span><span class="n">Re</span> <span class="n">Ins</span> <span class="n">Co</span> <span class="n">Of</span> <span class="n">Amer</span>
+<span class="mi">433</span>   <span class="n">wkcomp</span>   <span class="mi">43915</span>                       <span class="n">Rainier</span> <span class="n">Ins</span> <span class="n">Co</span>
+<span class="mi">434</span>   <span class="n">wkcomp</span>   <span class="mi">44091</span>  <span class="n">Dowa</span> <span class="n">Fire</span> <span class="o">&amp;</span> <span class="n">Marine</span> <span class="n">Ins</span> <span class="n">Co</span> <span class="n">Ltd</span> <span class="n">Us</span> <span class="n">Br</span>
+<span class="mi">435</span>   <span class="n">wkcomp</span>   <span class="mi">44300</span>                   <span class="n">Tower</span> <span class="n">Ins</span> <span class="n">Co</span> <span class="n">Of</span> <span class="n">NY</span>
+</pre></div>
+</div>
+<p class="rubric">Footnotes</p>
+<dl class="footnote brackets">
+<dt class="label" id="f1"><span class="brackets"><a class="fn-backref" href="#id1">1</a></span></dt>
+<dd><p><a class="reference external" href="https://www.casact.org/research/index.cfm?fa=loss_reserves_data">https://www.casact.org/research/index.cfm?fa=loss_reserves_data</a></p>
+</dd>
+</dl>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="tutorial/correlated.html" class="btn btn-neutral float-right" title="Calculating Correlated Reserve Indications" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="datasets.html" class="btn btn-neutral float-left" title="Sample Datasets" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2018, James D. Triveri
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
