@@ -1,0 +1,903 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>trikit.estimators.base &mdash; trikit 0.3.2 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+        <script src="../../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home" alt="Documentation Home"> trikit
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../overview.html">Project Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../triangle.html">Triangles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../estimators.html">Estimators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../datasets.html">Sample Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../lrdb.html">CAS Loss Reserving Database</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorial/correlated.html">Correlated Reserve Indications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorial/smoothing.html">Smoothing Loss Development Patterns</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">trikit</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+        
+      <li>trikit.estimators.base</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for trikit.estimators.base</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module contains the class definition of ``BaseChainLadder``.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">collections.abc</span> <span class="kn">import</span> <span class="n">Sequence</span>
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+
+
+<div class="viewcode-block" id="BaseChainLadder"><a class="viewcode-back" href="../../../trikit.estimators.html#trikit.estimators.base.BaseChainLadder">[docs]</a><span class="k">class</span> <span class="nc">BaseChainLadder</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    From the Casualty Actuarial Society&#39;s *Estimating Unpaid Claims Using</span>
+<span class="sd">    Basic Techniques* Version 3 (Friedland, Jacqueline - 2010), the</span>
+<span class="sd">    development method (&#39;Chain Ladder&#39;) consists of seven basic steps:</span>
+
+<span class="sd">    1. Compile claims data in a development triangle.</span>
+<span class="sd">    2. Calculate age-to-age factors.</span>
+<span class="sd">    3. Calculate averages of the age-to-age factors.</span>
+<span class="sd">    4. Select claim development factors.</span>
+<span class="sd">    5. Select tail factor.</span>
+<span class="sd">    6. Calculate cumulative claims.</span>
+<span class="sd">    7. Project ultimate claims.</span>
+
+<span class="sd">    The BaseChainLadder class encapsulates logic to perform steps 1-7.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cumtri: trikit.triangle.CumTriangle</span>
+<span class="sd">        A cumulative triangle instance.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    1. Friedland, J., *Estimating Unpaid Claims Using Basic Techniques*,</span>
+<span class="sd">       Casualty Actuarial Society, 2010.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cumtri</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate point estimates for outstanding claim liabilities at</span>
+<span class="sd">        ultimate for each origin year and in aggregate. The</span>
+<span class="sd">        BaseChainLadder class exposes no functionality to estimate</span>
+<span class="sd">        variability around the point estimates at ultimate.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cumtri: triangle._CumTriangle</span>
+<span class="sd">            A cumulative.CumTriangle instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tri</span> <span class="o">=</span> <span class="n">cumtri</span>
+
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sel</span><span class="o">=</span><span class="s2">&quot;all-weighted&quot;</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compile a summary of ultimate and reserve estimates resulting from</span>
+<span class="sd">        the application of the development technique. Returned object is an</span>
+<span class="sd">        instance of ``BaseChainLadderResult``, which exposes a ``summary``</span>
+<span class="sd">        attribute, a DataFrame with the following fields:</span>
+
+<span class="sd">            * index: Origin period.</span>
+
+<span class="sd">            * maturity: The age of the associated origin period in terms of</span>
+<span class="sd">              development period duration.</span>
+
+<span class="sd">            * cldf: Cumulative loss development factors.</span>
+
+<span class="sd">            * emergence: 1 / cldf.</span>
+
+<span class="sd">            * latest: The latest diagonal from the cumulative triangle instance.</span>
+
+<span class="sd">            * ultimate: Projected ultimates. Computed as latest * cldf.</span>
+
+<span class="sd">            * reserve: Chain ladder reserve estimates. Computed as</span>
+<span class="sd">              ultimate - latest.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">       sel: str, pd.Series or array_like</span>
+<span class="sd">            If ``sel`` is a string, the specified loss development patterns will be</span>
+<span class="sd">            the associated entry from ``self.tri.a2a_avgs``.</span>
+<span class="sd">            If ``sel`` is array_like, values will be used in place of loss development</span>
+<span class="sd">            factors computed from the traingle directly. For a triangle with n development</span>
+<span class="sd">            periods, ``sel`` should be array_like with length n - 1.</span>
+<span class="sd">            Defaults to &quot;all-weighted&quot;.</span>
+
+<span class="sd">        tail: float</span>
+<span class="sd">            Tail factor. Defaults to 1.0.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        BaseChainLadderResult</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sel</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">ldfs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ldfs</span><span class="p">(</span><span class="n">sel</span><span class="o">=</span><span class="n">sel</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="n">tail</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sel</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">):</span>
+                <span class="c1"># Check whether sel has the appropriate length.</span>
+                <span class="k">if</span> <span class="n">sel</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">size</span> <span class="o">!=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">devp</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="s2">&quot;sel has </span><span class="si">{}</span><span class="s2"> values, LDF overrides require </span><span class="si">{}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                            <span class="n">sel</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">devp</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span>
+                            <span class="p">)</span>
+                        <span class="p">)</span>
+
+                <span class="c1"># Append tail factor to sel.</span>
+                <span class="n">increment</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">sel</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">sel</span><span class="o">.</span><span class="n">index</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">sel</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">sel</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="n">increment</span><span class="p">]</span> <span class="o">=</span> <span class="n">tail</span>
+
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sel</span><span class="p">,</span> <span class="p">(</span><span class="n">Sequence</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)):</span>
+                <span class="n">sel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">sel</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sel</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">devp</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">sel</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">devp</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                            <span class="s2">&quot;sel has </span><span class="si">{}</span><span class="s2"> values, LDF overrides require at least </span><span class="si">{}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                                <span class="n">sel</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">devp</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span>
+                                <span class="p">)</span>
+                            <span class="p">)</span>
+                <span class="c1"># Append sel with tail.</span>
+                <span class="n">sel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sel</span><span class="p">,</span> <span class="n">tail</span><span class="p">)</span>
+
+            <span class="c1"># Coerce sel to pd.Series.</span>
+            <span class="n">ldfs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">sel</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">devp</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+
+        <span class="n">cldfs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cldfs</span><span class="p">(</span><span class="n">ldfs</span><span class="o">=</span><span class="n">ldfs</span><span class="p">)</span>
+        <span class="n">ultimates</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ultimates</span><span class="p">(</span><span class="n">cldfs</span><span class="o">=</span><span class="n">cldfs</span><span class="p">)</span>
+        <span class="n">reserves</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reserves</span><span class="p">(</span><span class="n">ultimates</span><span class="o">=</span><span class="n">ultimates</span><span class="p">)</span>
+        <span class="n">maturity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">maturity</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">str</span><span class="p">)</span>
+        <span class="n">latest</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">latest_by_origin</span>
+        <span class="n">trisqrd</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trisqrd</span><span class="p">(</span><span class="n">ldfs</span><span class="o">=</span><span class="n">ldfs</span><span class="p">)</span>
+
+        <span class="c1"># Compile chain ladder point estimate summary.</span>
+        <span class="n">dfmatur</span> <span class="o">=</span> <span class="n">maturity</span><span class="o">.</span><span class="n">to_frame</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="s2">&quot;index&quot;</span><span class="p">:</span> <span class="s2">&quot;origin&quot;</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">dfcldfs</span> <span class="o">=</span> <span class="n">cldfs</span><span class="o">.</span><span class="n">to_frame</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="s2">&quot;index&quot;</span><span class="p">:</span> <span class="s2">&quot;maturity&quot;</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">dfcldfs</span><span class="p">[</span><span class="s2">&quot;maturity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dfcldfs</span><span class="p">[</span><span class="s2">&quot;maturity&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">str</span><span class="p">)</span>
+        <span class="n">dfcldfs</span><span class="p">[</span><span class="s2">&quot;emergence&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">dfcldfs</span><span class="p">[</span><span class="s2">&quot;cldf&quot;</span><span class="p">]</span>
+        <span class="n">dfsumm</span> <span class="o">=</span> <span class="n">dfmatur</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">dfcldfs</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;maturity&quot;</span><span class="p">],</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;origin&quot;</span><span class="p">)</span>
+        <span class="n">dfsumm</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">dflatest</span> <span class="o">=</span> <span class="n">latest</span><span class="o">.</span><span class="n">to_frame</span><span class="p">()</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="s2">&quot;latest_by_origin&quot;</span><span class="p">:</span> <span class="s2">&quot;latest&quot;</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">dfsumm</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">df1</span><span class="p">,</span> <span class="n">df2</span><span class="p">:</span> <span class="n">df1</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">df2</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">dflatest</span><span class="p">,</span> <span class="n">ultimates</span><span class="o">.</span><span class="n">to_frame</span><span class="p">(),</span> <span class="n">reserves</span><span class="o">.</span><span class="n">to_frame</span><span class="p">()),</span> <span class="n">dfsumm</span>
+            <span class="p">)</span>
+
+        <span class="n">dfsumm</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s2">&quot;total&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dfsumm</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">dfsumm</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s2">&quot;total&quot;</span><span class="p">,</span> <span class="s2">&quot;maturity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">dfsumm</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s2">&quot;total&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;cldf&quot;</span><span class="p">,</span> <span class="s2">&quot;emergence&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span>
+
+        <span class="n">cl_result</span> <span class="o">=</span> <span class="n">BaseChainLadderResult</span><span class="p">(</span>
+            <span class="n">summary</span><span class="o">=</span><span class="n">dfsumm</span><span class="p">,</span> <span class="n">tri</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="p">,</span> <span class="n">sel</span><span class="o">=</span><span class="n">sel</span><span class="p">,</span> <span class="n">ldfs</span><span class="o">=</span><span class="n">ldfs</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="n">tail</span><span class="p">,</span> <span class="n">trisqrd</span><span class="o">=</span><span class="n">trisqrd</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span><span class="p">(</span><span class="n">cl_result</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="BaseChainLadder._ldfs"><a class="viewcode-back" href="../../../estimators.html#trikit.estimators.base.BaseChainLadder._ldfs">[docs]</a>    <span class="k">def</span> <span class="nf">_ldfs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sel</span><span class="o">=</span><span class="s2">&quot;all-weighted&quot;</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Lookup loss development factors corresponding to ``sel``.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        sel: str</span>
+<span class="sd">            The ldf average to select from ``triangle._CumTriangle.a2a_avgs``.</span>
+<span class="sd">            Defaults to &quot;all-weighted&quot;.</span>
+
+<span class="sd">        tail: float</span>
+<span class="sd">            Tail factor. Defaults to 1.0.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.Series</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Determine index for tail factor.</span>
+        <span class="n">ldfs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">a2a_avgs</span><span class="p">()</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">sel</span><span class="p">]</span>
+        <span class="n">increment</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">ldfs</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">ldfs</span><span class="o">.</span><span class="n">index</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">ldfs</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">ldfs</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="n">increment</span><span class="p">]</span> <span class="o">=</span> <span class="n">tail</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">ldfs</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;ldf&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">sort_index</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="BaseChainLadder._cldfs"><a class="viewcode-back" href="../../../estimators.html#trikit.estimators.base.BaseChainLadder._cldfs">[docs]</a>    <span class="k">def</span> <span class="nf">_cldfs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ldfs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate cumulative loss development factors by successive</span>
+<span class="sd">        multiplication beginning with the tail factor and the oldest</span>
+<span class="sd">        age-to-age factor. The cumulative claim development factor projects</span>
+<span class="sd">        the total growth over the remaining valuations. Cumulative claim</span>
+<span class="sd">        development factors are also known as &quot;Age-to-Ultimate Factors&quot;</span>
+<span class="sd">        or &quot;Claim Development Factors to Ultimate&quot;.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        ldfs: pd.Series</span>
+<span class="sd">            Selected ldfs, typically the output of calling ``self._ldfs``.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.Series</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cldfs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumprod</span><span class="p">(</span><span class="n">ldfs</span><span class="o">.</span><span class="n">values</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">cldfs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">cldfs</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">ldfs</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;cldf&quot;</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">cldfs</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span><span class="o">.</span><span class="n">sort_index</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="BaseChainLadder._ultimates"><a class="viewcode-back" href="../../../estimators.html#trikit.estimators.base.BaseChainLadder._ultimates">[docs]</a>    <span class="k">def</span> <span class="nf">_ultimates</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cldfs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Ultimate claims are equal to the product of the latest valuation of</span>
+<span class="sd">        losses (the amount along latest diagonal of any ``_CumTriangle``</span>
+<span class="sd">        instance) and the appropriate cldf/age-to-ultimate factor. We</span>
+<span class="sd">        determine the appropriate age-to-ultimate factor based on the age</span>
+<span class="sd">        of each origin year relative to the evaluation date.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cldfs: pd.Series</span>
+<span class="sd">            Cumulative loss development factors, conventionally obtained</span>
+<span class="sd">            via BaseChainLadder&#39;s ``_cldfs`` method.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.Series</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ultimates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span>
+            <span class="n">data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">latest_by_origin</span><span class="o">.</span><span class="n">values</span> <span class="o">*</span> <span class="n">cldfs</span><span class="o">.</span><span class="n">values</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+            <span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;ultimate&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">ultimates</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span><span class="o">.</span><span class="n">sort_index</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="BaseChainLadder._reserves"><a class="viewcode-back" href="../../../estimators.html#trikit.estimators.base.BaseChainLadder._reserves">[docs]</a>    <span class="k">def</span> <span class="nf">_reserves</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ultimates</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return IBNR/reserve estimates by origin and in aggregate. Represents</span>
+<span class="sd">        the difference between ultimate projections for each origin period</span>
+<span class="sd">        and the latest cumulative value.</span>
+<span class="sd">        Since outstanding claim liabilities can be referred to differently</span>
+<span class="sd">        based on the type of losses represented in the triangle (&quot;ibnr&quot; if</span>
+<span class="sd">        reported/incurred, &quot;unpaid&quot; if paid losses), we use the general term</span>
+<span class="sd">        &quot;reserve&quot; to represent the difference between ultimate projections</span>
+<span class="sd">        and latest cumulative value by origin and in total.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        ultimates: pd.Series</span>
+<span class="sd">            Estimated ultimate losses, conventionally obtained from</span>
+<span class="sd">            BaseChainLadder&#39;s ``_ultimates`` method.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.Series</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">reserves</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">ultimates</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">latest_by_origin</span><span class="p">,</span>
+            <span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;reserve&#39;</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">reserves</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span><span class="o">.</span><span class="n">sort_index</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="BaseChainLadder._trisqrd"><a class="viewcode-back" href="../../../estimators.html#trikit.estimators.base.BaseChainLadder._trisqrd">[docs]</a>    <span class="k">def</span> <span class="nf">_trisqrd</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ldfs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Project claims growth for each future development period. Returns a</span>
+<span class="sd">        DataFrame of loss projections for each subsequent development period</span>
+<span class="sd">        for each origin period. Populates the triangle&#39;s lower-right or</span>
+<span class="sd">        southeast portion (i.e., the result of &quot;squaring the triangle&quot;).</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        ldfs: pd.Series</span>
+<span class="sd">            Selected ldfs, typically the output of calling ``self._ldfs``.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">trisqrd</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">rposf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">size</span>
+        <span class="n">clvi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">clvi</span><span class="p">[</span><span class="s2">&quot;row_offset&quot;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">trisqrd</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">ii</span><span class="p">,</span> <span class="n">devp</span> <span class="o">=</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">ildf</span><span class="p">,</span> <span class="n">rposi</span> <span class="o">=</span> <span class="n">ldfs</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="n">ii</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="n">clvi</span><span class="p">[</span><span class="n">devp</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">trisqrd</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">rposi</span><span class="p">:</span><span class="n">rposf</span><span class="p">,</span> <span class="n">ii</span><span class="p">]</span> <span class="o">=</span> <span class="n">trisqrd</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">rposi</span><span class="p">:</span><span class="n">rposf</span><span class="p">,</span> <span class="n">ii</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">ildf</span>
+        <span class="c1"># Multiply right-most column by tail factor.</span>
+        <span class="n">max_devp</span> <span class="o">=</span> <span class="n">trisqrd</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">trisqrd</span><span class="p">[</span><span class="s2">&quot;ultimate&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">trisqrd</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">max_devp</span><span class="p">]</span><span class="o">.</span><span class="n">values</span> <span class="o">*</span> <span class="n">ldfs</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">trisqrd</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span><span class="o">.</span><span class="n">sort_index</span><span class="p">())</span></div></div>
+
+
+
+<div class="viewcode-block" id="BaseChainLadderResult"><a class="viewcode-back" href="../../../trikit.estimators.html#trikit.estimators.base.BaseChainLadderResult">[docs]</a><span class="k">class</span> <span class="nc">BaseChainLadderResult</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Container object for BaseChainLadder output.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    summary: pd.DataFrame</span>
+<span class="sd">        Chain Ladder summary compilation.</span>
+
+<span class="sd">    tri: trikit.triangle._CumTriangle</span>
+<span class="sd">        A cumulative triangle instance.</span>
+
+<span class="sd">    sel: str or array_like</span>
+<span class="sd">        Reference to loss development selection. If ldf overrides are</span>
+<span class="sd">        utilized, ``sel`` will be identical to ``ldfs``.</span>
+
+<span class="sd">    ldfs: pd.Series</span>
+<span class="sd">        Loss development factors.</span>
+
+<span class="sd">    tail: float</span>
+<span class="sd">        Tail factor. Defaults to 1.0.</span>
+
+<span class="sd">    trisqrd: pd.DataFrame</span>
+<span class="sd">        Projected claims growth for each future development period.</span>
+<span class="sd">   &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">summary</span><span class="p">,</span> <span class="n">tri</span><span class="p">,</span> <span class="n">sel</span><span class="p">,</span> <span class="n">ldfs</span><span class="p">,</span> <span class="n">tail</span><span class="p">,</span> <span class="n">trisqrd</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">emergence</span> <span class="o">=</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;emergence&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ultimate</span> <span class="o">=</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;ultimate&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">maturity</span> <span class="o">=</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;maturity&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reserve</span> <span class="o">=</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;reserve&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">latest</span> <span class="o">=</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;latest&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cldfs</span> <span class="o">=</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;cldf&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">summary</span> <span class="o">=</span> <span class="n">summary</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trisqrd</span> <span class="o">=</span> <span class="n">trisqrd</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ldfs</span> <span class="o">=</span> <span class="n">ldfs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tail</span> <span class="o">=</span> <span class="n">tail</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sel</span> <span class="o">=</span> <span class="n">sel</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tri</span> <span class="o">=</span> <span class="n">tri</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_markers</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;o&quot;</span><span class="p">,</span> <span class="s2">&quot;v&quot;</span><span class="p">,</span> <span class="s2">&quot;^&quot;</span><span class="p">,</span> <span class="s2">&quot;s&quot;</span><span class="p">,</span> <span class="s2">&quot;8&quot;</span><span class="p">,</span> <span class="s2">&quot;p&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">,</span> <span class="s2">&quot;d&quot;</span><span class="p">,</span> <span class="s2">&quot;h&quot;</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_summspecs</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;ultimate&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">{:,.0f}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">,</span> <span class="s2">&quot;reserve&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">{:,.0f}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">,</span>
+            <span class="s2">&quot;latest&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">{:,.0f}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">,</span> <span class="s2">&quot;cldf&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">{:.5f}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">,</span>
+            <span class="s2">&quot;emergence&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">{:.5f}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">,</span>
+            <span class="p">}</span>
+
+
+<div class="viewcode-block" id="BaseChainLadderResult._get_yticks"><a class="viewcode-back" href="../../../estimators.html#trikit.estimators.base.BaseChainLadderResult._get_yticks">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_get_yticks</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Determine y axis tick labels for a given maximum loss amount x.</span>
+<span class="sd">        Return tuple of tick values and ticklabels.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x: float</span>
+<span class="sd">            Maximum value for a given origin period.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple of ndarrays</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ref_divs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+        <span class="n">div_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">x</span> <span class="o">/</span> <span class="n">ref_divs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="n">x_div</span> <span class="o">=</span> <span class="n">ref_divs</span><span class="p">[</span><span class="n">div_index</span><span class="p">]</span>
+
+        <span class="c1"># Find upper limit for y-axis given origin_max_val.</span>
+        <span class="n">yuls_seq</span> <span class="o">=</span> <span class="n">x_div</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">11</span><span class="p">)</span>
+        <span class="n">x_yuls</span> <span class="o">=</span> <span class="n">yuls_seq</span> <span class="o">-</span> <span class="n">x</span>
+        <span class="n">yul</span> <span class="o">=</span> <span class="n">yuls_seq</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">x_yuls</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()]</span>
+        <span class="n">y_ticks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">yul</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="n">y_ticklabels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="s2">&quot;</span><span class="si">{:,.0f}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ii</span><span class="p">)</span> <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="n">y_ticks</span><span class="p">])</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">y_ticks</span><span class="p">,</span> <span class="n">y_ticklabels</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BaseChainLadderResult._data_transform"><a class="viewcode-back" href="../../../estimators.html#trikit.estimators.base.BaseChainLadderResult._data_transform">[docs]</a>    <span class="k">def</span> <span class="nf">_data_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Transform dataset for use in FacetGrid plot by origin exhibting chain</span>
+<span class="sd">        ladder reserve estimates.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">trisqrd</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trisqrd</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="s2">&quot;index&quot;</span><span class="p">:</span> <span class="s2">&quot;origin&quot;</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">df0</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">melt</span><span class="p">(</span><span class="n">trisqrd</span><span class="p">,</span> <span class="n">id_vars</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;origin&quot;</span><span class="p">],</span> <span class="n">var_name</span><span class="o">=</span><span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="n">value_name</span><span class="o">=</span><span class="s2">&quot;value&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Combine df0 with latest cumulative loss by origin period.</span>
+        <span class="n">df0</span> <span class="o">=</span> <span class="n">df0</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">latest</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="s2">&quot;index&quot;</span><span class="p">:</span> <span class="s2">&quot;origin&quot;</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+            <span class="n">on</span><span class="o">=</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">dfult</span> <span class="o">=</span> <span class="n">df0</span><span class="p">[</span><span class="n">df0</span><span class="p">[</span><span class="s2">&quot;dev&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;ultimate&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">dev_increment</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ldfs</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">ldfs</span><span class="o">.</span><span class="n">index</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">dfult</span><span class="p">[</span><span class="s2">&quot;dev&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ldfs</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="n">dev_increment</span>
+        <span class="n">dfult</span><span class="p">[</span><span class="s2">&quot;rectype&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;forecast&quot;</span>
+        <span class="n">df0</span> <span class="o">=</span> <span class="n">df0</span><span class="p">[</span><span class="n">df0</span><span class="p">[</span><span class="s2">&quot;dev&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;ultimate&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Create tabular dataset based on tri.triind. Rows wiith 0s represent</span>
+        <span class="c1"># actuals, rows with 1 represent forecasts.</span>
+        <span class="n">df1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tri</span><span class="o">.</span><span class="n">triind</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="s2">&quot;index&quot;</span><span class="p">:</span> <span class="s2">&quot;origin&quot;</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">df1</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">melt</span><span class="p">(</span><span class="n">df1</span><span class="p">,</span> <span class="n">id_vars</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;origin&quot;</span><span class="p">],</span> <span class="n">var_name</span><span class="o">=</span><span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="n">value_name</span><span class="o">=</span><span class="s2">&quot;value&quot;</span><span class="p">)</span>
+        <span class="n">df1</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df1</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">v</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">df1</span> <span class="o">=</span> <span class="n">df1</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">df1</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">])]</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+            <span class="p">{</span><span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;actual_ind&quot;</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Combine df0 and df1 into a single DataFrame, then perform cleanup</span>
+        <span class="c1"># actions for cases in which df0 has more records than df1.</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">df0</span><span class="p">,</span> <span class="n">df1</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="s2">&quot;dev&quot;</span><span class="p">],</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="c1"># Bind reference to maximum dev period for each origin.</span>
+        <span class="n">dfma</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;actual_ind&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span>
+            <span class="p">[</span><span class="s2">&quot;origin&quot;</span><span class="p">])[</span><span class="s2">&quot;dev&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">.</span><span class="n">to_frame</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+            <span class="p">{</span><span class="s2">&quot;index&quot;</span><span class="p">:</span> <span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="s2">&quot;dev&quot;</span><span class="p">:</span> <span class="s2">&quot;max_actual&quot;</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+            <span class="p">)</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">dfma</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;incl_actual&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;actual_ind&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">v</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;incl_pred&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">rec</span><span class="p">:</span> <span class="mi">1</span> <span class="k">if</span> <span class="p">(</span><span class="n">rec</span><span class="o">.</span><span class="n">actual_ind</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">rec</span><span class="o">.</span><span class="n">dev</span> <span class="o">==</span> <span class="n">rec</span><span class="o">.</span><span class="n">max_actual</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Split data into actual and pred cohorts, then recombine. Note that</span>
+        <span class="c1"># the latest cumulative loss by origin intentionally appears in both</span>
+        <span class="c1"># datasets.</span>
+        <span class="n">dfact</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;incl_actual&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">][[</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="s2">&quot;latest&quot;</span><span class="p">]]</span>
+        <span class="n">dfact</span><span class="p">[</span><span class="s2">&quot;rectype&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;actual&quot;</span>
+        <span class="n">dfpred</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;incl_pred&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">][[</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="s2">&quot;latest&quot;</span><span class="p">]]</span>
+        <span class="n">dfpred</span><span class="p">[</span><span class="s2">&quot;rectype&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;forecast&quot;</span>
+
+        <span class="c1"># Create total DataFrame, representing losses across all origin periods</span>
+        <span class="c1"># by development period and at ultimate.</span>
+        <span class="n">dftotal</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span>
+            <span class="n">dfpred</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="s2">&quot;rectype&quot;</span><span class="p">],</span> <span class="n">as_index</span><span class="o">=</span><span class="kc">False</span><span class="p">)[[</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="s2">&quot;latest&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span>
+            <span class="n">dfult</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="s2">&quot;rectype&quot;</span><span class="p">],</span> <span class="n">as_index</span><span class="o">=</span><span class="kc">False</span><span class="p">)[[</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="s2">&quot;latest&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            <span class="p">])</span>
+
+        <span class="c1"># Combine dfact, dfpred, dfult and dftotal.</span>
+        <span class="n">dftotal</span><span class="p">[</span><span class="s2">&quot;origin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;total&quot;</span>
+        <span class="n">dfall</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">dfact</span><span class="p">,</span> <span class="n">dfpred</span><span class="p">,</span> <span class="n">dfult</span><span class="p">,</span> <span class="n">dftotal</span><span class="p">])</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+            <span class="p">{</span><span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;loss&quot;</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+            <span class="p">)</span>
+
+
+        <span class="c1"># Add origin index column sort origin columns, which is of type object</span>
+        <span class="c1"># # since adding &quot;total&quot;.</span>
+        <span class="n">dfall</span><span class="p">[</span><span class="s2">&quot;dev&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dfall</span><span class="p">[</span><span class="s2">&quot;dev&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">origin_vals</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">([</span><span class="nb">int</span><span class="p">(</span><span class="n">ii</span><span class="p">)</span> <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="n">dfall</span><span class="p">[</span><span class="s2">&quot;origin&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span> <span class="k">if</span> <span class="n">ii</span> <span class="o">!=</span> <span class="s2">&quot;total&quot;</span><span class="p">])</span>
+        <span class="n">dindex</span> <span class="o">=</span> <span class="p">{</span><span class="n">jj</span><span class="p">:</span> <span class="n">ii</span> <span class="k">for</span> <span class="n">ii</span><span class="p">,</span> <span class="n">jj</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">origin_vals</span><span class="p">)}</span>
+        <span class="n">dindex</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;total&quot;</span><span class="p">:</span> <span class="nb">max</span><span class="p">(</span><span class="n">dindex</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">+</span> <span class="mi">1</span><span class="p">})</span>
+        <span class="n">dfall</span><span class="p">[</span><span class="s2">&quot;origin_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dfall</span><span class="p">[</span><span class="s2">&quot;origin&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">dindex</span><span class="p">)</span>
+
+        <span class="c1"># Add reserve column, defined as value - latest when rectype==&quot;forecast&quot;,</span>
+        <span class="c1"># otherwise 0.</span>
+        <span class="n">dfall</span><span class="p">[</span><span class="s2">&quot;reserve&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dfall</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">rec</span><span class="p">:</span> <span class="n">rec</span><span class="o">.</span><span class="n">loss</span> <span class="o">-</span> <span class="n">rec</span><span class="o">.</span><span class="n">latest</span> <span class="k">if</span> <span class="n">rec</span><span class="o">.</span><span class="n">rectype</span> <span class="o">==</span> <span class="s2">&quot;forecast&quot;</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+            <span class="p">)</span>
+        <span class="n">column_order</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;origin_index&quot;</span><span class="p">,</span> <span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="s2">&quot;dev&quot;</span><span class="p">,</span> <span class="s2">&quot;loss&quot;</span><span class="p">,</span> <span class="s2">&quot;reserve&quot;</span><span class="p">,</span> <span class="s2">&quot;rectype&quot;</span><span class="p">]</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">dfall</span><span class="p">[</span><span class="n">column_order</span><span class="p">]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="BaseChainLadderResult.plot"><a class="viewcode-back" href="../../../trikit.estimators.html#trikit.estimators.base.BaseChainLadderResult.plot">[docs]</a>    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actuals_color</span><span class="o">=</span><span class="s2">&quot;#334488&quot;</span><span class="p">,</span> <span class="n">forecasts_color</span><span class="o">=</span><span class="s2">&quot;#FFFFFF&quot;</span><span class="p">,</span> <span class="n">axes_style</span><span class="o">=</span><span class="s2">&quot;darkgrid&quot;</span><span class="p">,</span>
+             <span class="n">context</span><span class="o">=</span><span class="s2">&quot;notebook&quot;</span><span class="p">,</span> <span class="n">col_wrap</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">hue_kws</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exhibit_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Visualize actual losses along with projected chain ladder development.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        actuals_color: str</span>
+<span class="sd">            A color name or hexidecimal code used to represent actual</span>
+<span class="sd">            observations. Defaults to &quot;#00264C&quot;.</span>
+
+<span class="sd">        forecasts_color: str</span>
+<span class="sd">            A color name or hexidecimal code used to represent forecast</span>
+<span class="sd">            observations. Defaults to &quot;#FFFFFF&quot;.</span>
+
+<span class="sd">        axes_style: str</span>
+<span class="sd">            Aesthetic style of plots. Defaults to &quot;darkgrid&quot;. Other options</span>
+<span class="sd">            include: {whitegrid, dark, white, ticks}.</span>
+
+<span class="sd">        context: str</span>
+<span class="sd">            Set the plotting context parameters. According to the seaborn</span>
+<span class="sd">            documentation, This affects things like the size of the labels,</span>
+<span class="sd">            lines, and other elements of the plot, but not the overall style.</span>
+<span class="sd">            Defaults to &quot;notebook&quot;. Additional options include</span>
+<span class="sd">            {&quot;paper&quot;, &quot;talk&quot;, &quot;poster&quot;}.</span>
+
+<span class="sd">        col_wrap: int</span>
+<span class="sd">            The maximum number of origin period axes to have on a single row</span>
+<span class="sd">            of the resulting FacetGrid. Defaults to 5.</span>
+
+<span class="sd">        hue_kws: dictionary of param:list of values mapping</span>
+<span class="sd">            Other keyword arguments to insert into the plotting call to let</span>
+<span class="sd">            other plot attributes vary across levels of the hue variable</span>
+<span class="sd">            (e.g. the markers in a scatterplot). Each list of values should</span>
+<span class="sd">            have length 2, with each index representing aesthetic</span>
+<span class="sd">            overrides for forecasts and actuals respectively. Defaults to</span>
+<span class="sd">            ``None``.</span>
+
+<span class="sd">        exhibit_path: str</span>
+<span class="sd">            Path to which exhibit should be written. If None, exhibit will be</span>
+<span class="sd">            rendered via ``plt.show()``.</span>
+
+<span class="sd">        kwargs: dict</span>
+<span class="sd">            Additional styling options for scatter points. This can override</span>
+<span class="sd">            default values for ``plt.plot`` objects. For a demonstration,</span>
+<span class="sd">            See the Examples section.</span>
+
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        Demonstration of passing a dictionary of plot properties in order</span>
+<span class="sd">        to update the scatter size and marker::</span>
+
+<span class="sd">            In [1]: import trikit</span>
+<span class="sd">            In [2]: tri = trikit.load(dataset=&quot;raa&quot;, tri_type=&quot;cum&quot;)</span>
+<span class="sd">            In [3]: cl = tri.base_cl(sel=&quot;all-weighted&quot;, tail=1.005)</span>
+<span class="sd">            In [4]: kwds = dict(marker=&quot;s&quot;, markersize=6)</span>
+<span class="sd">            In [5]: cl.plot(**kwds)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+        <span class="kn">import</span> <span class="nn">seaborn</span> <span class="k">as</span> <span class="nn">sns</span>
+        <span class="n">sns</span><span class="o">.</span><span class="n">set_context</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_transform</span><span class="p">()</span>
+
+        <span class="k">with</span> <span class="n">sns</span><span class="o">.</span><span class="n">axes_style</span><span class="p">(</span><span class="n">axes_style</span><span class="p">):</span>
+
+            <span class="n">huekwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                <span class="n">marker</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;o&quot;</span><span class="p">,</span> <span class="s2">&quot;o&quot;</span><span class="p">],</span> <span class="n">markersize</span><span class="o">=</span><span class="p">[</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span>
+                <span class="n">color</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;#000000&quot;</span><span class="p">,</span> <span class="s2">&quot;#000000&quot;</span><span class="p">],</span> <span class="n">fillstyle</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;full&quot;</span><span class="p">,</span> <span class="s2">&quot;full&quot;</span><span class="p">],</span>
+                <span class="n">markerfacecolor</span><span class="o">=</span><span class="p">[</span><span class="n">forecasts_color</span><span class="p">,</span> <span class="n">actuals_color</span><span class="p">],</span>
+                <span class="n">markeredgecolor</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;#000000&quot;</span><span class="p">,</span> <span class="s2">&quot;#000000&quot;</span><span class="p">],</span>
+                <span class="n">markeredgewidth</span><span class="o">=</span><span class="p">[</span><span class="o">.</span><span class="mi">50</span><span class="p">,</span> <span class="o">.</span><span class="mi">50</span><span class="p">],</span> <span class="n">linestyle</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="s2">&quot;-&quot;</span><span class="p">],</span>
+                <span class="n">linewidth</span><span class="o">=</span><span class="p">[</span><span class="o">.</span><span class="mi">475</span><span class="p">,</span> <span class="o">.</span><span class="mi">475</span><span class="p">],</span>
+                <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">hue_kws</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># Determine whether the length of each element of hue_kws is 4.</span>
+                <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">hue_kws</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">==</span> <span class="mi">4</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">hue_kws</span><span class="p">):</span>
+                    <span class="n">huekwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">hue_kws</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;hue_kws overrides not correct length - Ignoring.&quot;</span><span class="p">)</span>
+
+            <span class="n">grid</span> <span class="o">=</span> <span class="n">sns</span><span class="o">.</span><span class="n">FacetGrid</span><span class="p">(</span>
+                <span class="n">data</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s2">&quot;origin&quot;</span><span class="p">,</span> <span class="n">hue</span><span class="o">=</span><span class="s2">&quot;rectype&quot;</span><span class="p">,</span> <span class="n">hue_kws</span><span class="o">=</span><span class="n">huekwargs</span><span class="p">,</span>
+                <span class="n">col_wrap</span><span class="o">=</span><span class="n">col_wrap</span><span class="p">,</span> <span class="n">margin_titles</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">despine</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">sharey</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">hue_order</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;forecast&quot;</span><span class="p">,</span> <span class="s2">&quot;actual&quot;</span><span class="p">]</span>
+                <span class="p">)</span>
+
+            <span class="n">devp_xticks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">dev</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+            <span class="n">devp_xticks_str</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">ii</span><span class="p">)</span> <span class="k">if</span> <span class="n">ii</span> <span class="o">!=</span> <span class="n">devp_xticks</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;ult&quot;</span> <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="n">devp_xticks</span>
+                <span class="p">]</span>
+            <span class="n">grid</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">xticks</span><span class="o">=</span><span class="n">devp_xticks</span><span class="p">)</span>
+            <span class="n">grid</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">devp_xticks_str</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
+            <span class="n">origin_order</span> <span class="o">=</span> <span class="n">data</span><span class="p">[[</span><span class="s2">&quot;origin_index&quot;</span><span class="p">,</span> <span class="s2">&quot;origin&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">()</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span>
+                <span class="s2">&quot;origin_index&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">origin</span><span class="o">.</span><span class="n">values</span>
+
+            <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+
+                <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+
+                <span class="k">for</span> <span class="n">origin</span><span class="p">,</span> <span class="n">ax_ii</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">origin_order</span><span class="p">,</span> <span class="n">grid</span><span class="o">.</span><span class="n">axes</span><span class="p">):</span>
+
+                    <span class="n">legend</span> <span class="o">=</span> <span class="n">ax_ii</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span>
+                        <span class="n">loc</span><span class="o">=</span><span class="s2">&quot;lower right&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="s2">&quot;x-small&quot;</span><span class="p">,</span> <span class="n">frameon</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="n">fancybox</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">shadow</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s2">&quot;#909090&quot;</span><span class="p">,</span>
+                        <span class="n">framealpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">markerfirst</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="n">legend</span><span class="o">.</span><span class="n">get_frame</span><span class="p">()</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="s2">&quot;#FFFFFF&quot;</span><span class="p">)</span>
+
+                    <span class="c1"># For given origin, determine optimal 5-point tick labels.</span>
+                    <span class="n">origin_max_val</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="o">.</span><span class="n">origin</span> <span class="o">==</span> <span class="n">origin</span><span class="p">]</span><span class="o">.</span><span class="n">loss</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+                    <span class="n">y_ticks</span><span class="p">,</span> <span class="n">y_ticklabels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_yticks</span><span class="p">(</span><span class="n">origin_max_val</span><span class="p">)</span>
+                    <span class="n">ax_ii</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">(</span><span class="n">y_ticks</span><span class="p">)</span>
+                    <span class="n">ax_ii</span><span class="o">.</span><span class="n">set_yticklabels</span><span class="p">(</span><span class="n">y_ticklabels</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
+                    <span class="n">ax_ii</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span>
+                        <span class="n">origin</span><span class="p">,</span> <span class="n">xy</span><span class="o">=</span><span class="p">(</span><span class="o">.</span><span class="mi">075</span><span class="p">,</span> <span class="o">.</span><span class="mi">90</span><span class="p">),</span> <span class="n">xytext</span><span class="o">=</span><span class="p">(</span><span class="o">.</span><span class="mi">075</span><span class="p">,</span> <span class="o">.</span><span class="mi">90</span><span class="p">),</span> <span class="n">xycoords</span><span class="o">=</span><span class="s1">&#39;axes fraction&#39;</span><span class="p">,</span>
+                        <span class="n">textcoords</span><span class="o">=</span><span class="s1">&#39;axes fraction&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#000000&quot;</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="n">ax_ii</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                    <span class="n">ax_ii</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                    <span class="n">ax_ii</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+                    <span class="c1"># Draw border around each facet.</span>
+                    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">spine</span> <span class="ow">in</span> <span class="n">ax_ii</span><span class="o">.</span><span class="n">spines</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                        <span class="n">spine</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">visible</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#000000&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=.</span><span class="mi">50</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">exhibit_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">exhibit_path</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">to_string</span><span class="p">(</span><span class="n">formatters</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_summspecs</span><span class="p">))</span>
+
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">to_string</span><span class="p">(</span><span class="n">formatters</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_summspecs</span><span class="p">))</span></div>
+
+
+
+
+
+<div class="viewcode-block" id="BaseRangeEstimator"><a class="viewcode-back" href="../../../trikit.estimators.html#trikit.estimators.base.BaseRangeEstimator">[docs]</a><span class="k">class</span> <span class="nc">BaseRangeEstimator</span><span class="p">(</span><span class="n">BaseChainLadder</span><span class="p">):</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_qtls_formatter</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">two_sided</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return array_like of formatted quantiles.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        q: array_like of float or float</span>
+<span class="sd">            Quantile or sequence of quantiles to compute, which must be</span>
+<span class="sd">            between 0 and 1 inclusive.</span>
+
+<span class="sd">        two_sided: bool</span>
+<span class="sd">            Whether the two_sided interval should be included in summary</span>
+<span class="sd">            output. For example, if ``two_sided==True`` and ``q=.95``, then</span>
+<span class="sd">            the 2.5th and 97.5th quantiles of the estimated reserve</span>
+<span class="sd">            distribution will be returned [(1 - .95) / 2, (1 + .95) / 2]. When</span>
+<span class="sd">            False, only the specified quantile(s) will be computed. Defaults</span>
+<span class="sd">            to False.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple of list</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">qtls</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">q</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">))</span> <span class="k">else</span> <span class="n">q</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">qtls</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">qtls</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">two_sided</span><span class="p">:</span>
+                <span class="n">qtls</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="mi">1</span> <span class="o">-</span> <span class="n">qtls</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">qtls</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.</span><span class="p">)))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">qtls</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">qtls</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Values for quantiles must fall between [0, 1].&quot;</span><span class="p">)</span>
+        <span class="n">qtlhdrs</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;</span><span class="si">{:.5f}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ii</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;0&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;%&quot;</span> <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="mi">100</span> <span class="o">*</span> <span class="n">qtls</span>
+        <span class="p">]</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">qtls</span><span class="p">,</span> <span class="n">qtlhdrs</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="BaseRangeEstimatorResult"><a class="viewcode-back" href="../../../trikit.estimators.html#trikit.estimators.base.BaseRangeEstimatorResult">[docs]</a><span class="k">class</span> <span class="nc">BaseRangeEstimatorResult</span><span class="p">(</span><span class="n">BaseChainLadderResult</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">summary</span><span class="p">,</span> <span class="n">tri</span><span class="p">,</span> <span class="n">ldfs</span><span class="p">,</span> <span class="n">tail</span><span class="p">,</span> <span class="n">trisqrd</span><span class="p">,</span> <span class="n">process_error</span><span class="p">,</span> <span class="n">parameter_error</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Container class for reserve estimators which quantify reserve variability.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">summary</span><span class="o">=</span><span class="n">summary</span><span class="p">,</span> <span class="n">tri</span><span class="o">=</span><span class="n">tri</span><span class="p">,</span> <span class="n">ldfs</span><span class="o">=</span><span class="n">ldfs</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="n">tail</span><span class="p">,</span> <span class="n">trisqrd</span><span class="o">=</span><span class="n">trisqrd</span><span class="p">,</span> <span class="n">sel</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameter_error</span> <span class="o">=</span> <span class="n">parameter_error</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">process_error</span> <span class="o">=</span> <span class="n">process_error</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">std_error</span> <span class="o">=</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;std_error&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mse</span> <span class="o">=</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;std_error&quot;</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cv</span> <span class="o">=</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;cv&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Quantile suffix for plot method annotations.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dsuffix</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;0&quot;</span><span class="p">:</span> <span class="s2">&quot;th&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">:</span> <span class="s2">&quot;st&quot;</span><span class="p">,</span> <span class="s2">&quot;2&quot;</span><span class="p">:</span> <span class="s2">&quot;nd&quot;</span><span class="p">,</span> <span class="s2">&quot;3&quot;</span><span class="p">:</span> <span class="s2">&quot;rd&quot;</span><span class="p">,</span> <span class="s2">&quot;4&quot;</span><span class="p">:</span> <span class="s2">&quot;th&quot;</span><span class="p">,</span> <span class="s2">&quot;5&quot;</span><span class="p">:</span> <span class="s2">&quot;th&quot;</span><span class="p">,</span> <span class="s2">&quot;6&quot;</span><span class="p">:</span> <span class="s2">&quot;th&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;7&quot;</span><span class="p">:</span> <span class="s2">&quot;th&quot;</span><span class="p">,</span> <span class="s2">&quot;8&quot;</span><span class="p">:</span> <span class="s2">&quot;th&quot;</span><span class="p">,</span> <span class="s2">&quot;9&quot;</span><span class="p">:</span> <span class="s2">&quot;th&quot;</span><span class="p">,</span>
+            <span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_summspecs</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;std_error&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">{:,.0f}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">,</span> <span class="s2">&quot;cv&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">{:.3f}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">})</span>
+
+
+
+    <span class="k">def</span> <span class="nf">_qtls_formatter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return array_like of actual and formatted quantiles.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        q: array_like of float or float</span>
+<span class="sd">            Quantile or sequence of quantiles to compute, which must be</span>
+<span class="sd">            between 0 and 1 inclusive.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple of list</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">qtls</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">q</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">))</span> <span class="k">else</span> <span class="n">q</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">qtls</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">qtls</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)):</span>
+            <span class="n">qtls</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">qtls</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Values for quantiles must fall between [0, 1].&quot;</span><span class="p">)</span>
+
+        <span class="n">qtlhdrs</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;</span><span class="si">{:.5f}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ii</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;0&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="mi">100</span> <span class="o">*</span> <span class="n">qtls</span>
+            <span class="p">]</span>
+        <span class="n">qtlhdrs</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">ii</span> <span class="o">+</span> <span class="s2">&quot;th&quot;</span> <span class="k">if</span> <span class="s2">&quot;.&quot;</span> <span class="ow">in</span> <span class="n">ii</span> <span class="k">else</span> <span class="n">ii</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">dsuffix</span><span class="p">[</span><span class="n">ii</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span> <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="n">qtlhdrs</span>
+            <span class="p">]</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">qtls</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="n">qtlhdrs</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="BaseRangeEstimatorResult.get_quantiles"><a class="viewcode-back" href="../../../trikit.estimators.html#trikit.estimators.base.BaseRangeEstimatorResult.get_quantiles">[docs]</a>    <span class="k">def</span> <span class="nf">get_quantiles</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Estimator specific routine to produce quantiles of estimated reserve distribution.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2018, James D. Triveri
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

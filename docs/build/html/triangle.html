@@ -1,0 +1,1005 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Incremental and Cumulative Triangle Objects &mdash; trikit 0.3.2 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Reserve Estimators" href="estimators.html" />
+    <link rel="prev" title="trikit Quickstart Guide" href="quickstart.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> trikit
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Project Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Triangles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="estimators.html">Estimators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">Sample Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lrdb.html">CAS Loss Reserving Database</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial/correlated.html">Correlated Reserve Indications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial/smoothing.html">Smoothing Loss Development Patterns</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">trikit</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Incremental and Cumulative Triangle Objects</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/triangle.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="incremental-and-cumulative-triangle-objects">
+<span id="triangle"></span><h1>Incremental and Cumulative Triangle Objects<a class="headerlink" href="#incremental-and-cumulative-triangle-objects" title="Permalink to this headline">¶</a></h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Refer to the <a class="reference internal" href="quickstart.html#quickstart"><span class="std std-ref">Quickstart Guide</span></a> for invocation examples.</p>
+</div>
+<div class="section" id="triangle-functions">
+<h2>Triangle Functions<a class="headerlink" href="#triangle-functions" title="Permalink to this headline">¶</a></h2>
+<p>Within trikit, datasets are transformed into triangle objects by calling <code class="docutils literal notranslate"><span class="pre">totri</span></code>.</p>
+<dl class="py function">
+<dt id="trikit.totri">
+<code class="sig-name descname">totri</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">tri_type</span><span class="o">=</span><span class="default_value">'cum'</span></em>, <em class="sig-param"><span class="n">data_format</span><span class="o">=</span><span class="default_value">'incr'</span></em>, <em class="sig-param"><span class="n">data_shape</span><span class="o">=</span><span class="default_value">'tabular'</span></em>, <em class="sig-param"><span class="n">origin</span><span class="o">=</span><span class="default_value">'origin'</span></em>, <em class="sig-param"><span class="n">dev</span><span class="o">=</span><span class="default_value">'dev'</span></em>, <em class="sig-param"><span class="n">value</span><span class="o">=</span><span class="default_value">'value'</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#totri"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.totri" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a triangle object based on <code class="docutils literal notranslate"><span class="pre">data</span></code>. <code class="docutils literal notranslate"><span class="pre">tri_type</span></code> can be one of
+“incr” or “cum”, determining whether the resulting triangle represents
+incremental or cumulative losses/counts.
+If <code class="docutils literal notranslate"><span class="pre">data_shape=&quot;triangle&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">data</span></code> is assumed to be structured as a
+runoff triangle, indexed by origin with columns representing development
+periods. If <code class="docutils literal notranslate"><span class="pre">data_shape=&quot;tabular&quot;</span></code>, data is assumed to be tabular with at
+minimum columns <code class="docutils literal notranslate"><span class="pre">origin</span></code>, <code class="docutils literal notranslate"><span class="pre">dev</span></code> and <code class="docutils literal notranslate"><span class="pre">value</span></code>, which represent origin
+year, development period and metric of interest respectively.
+<code class="docutils literal notranslate"><span class="pre">data_format</span></code> specifies whether the metric of interest are cumulative
+or incremental in nature. Default value is “incr”.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>pd.DataFrame</em>) – The dataset to be coerced into a triangle instance. <code class="docutils literal notranslate"><span class="pre">data</span></code> can be
+tabular loss data, or a dataset (pandas DataFrame) formatted as a
+triangle, but not typed as such. In the latter case,
+<code class="docutils literal notranslate"><span class="pre">data_shape</span></code> should be set to “triangle”.</p></li>
+<li><p><strong>tri_type</strong> (<em>{&quot;cum&quot;</em><em>, </em><em>&quot;incr&quot;}</em>) – Either “cum” or “incr”. Specifies how the measure of interest (losses,
+counts, alae, etc.) should be represented in the returned triangle
+instance.</p></li>
+<li><p><strong>data_format</strong> (<em>{&quot;cum&quot;</em><em>, </em><em>&quot;incr&quot;}</em>) – Specifies the representation of the metric of interest in <code class="docutils literal notranslate"><span class="pre">data</span></code>.
+Default value is “incr”.</p></li>
+<li><p><strong>data_shape</strong> (<em>{&quot;tabular&quot;</em><em>, </em><em>&quot;triangle&quot;}</em>) – Indicates whether <code class="docutils literal notranslate"><span class="pre">data</span></code> is formatted as a triangle instead of
+tabular loss data. In some workflows, triangles may have already
+been created and are available. In such cases, the triangle-formatted
+data is read into a DataFrame, then coerced into the desired triangle
+representation. Default value is “tabular”.</p></li>
+<li><p><strong>origin</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The field in <code class="docutils literal notranslate"><span class="pre">data</span></code> representing origin year. When <code class="docutils literal notranslate"><span class="pre">data_shape=&quot;triangle&quot;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">origin</span></code> is ignored. Default value is “origin”.</p></li>
+<li><p><strong>dev</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The field in <code class="docutils literal notranslate"><span class="pre">data</span></code> representing development period. When
+<code class="docutils literal notranslate"><span class="pre">data_shape=&quot;triangle&quot;</span></code>,  <code class="docutils literal notranslate"><span class="pre">dev</span></code> is ignored. Default value is
+“dev”.</p></li>
+<li><p><strong>value</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The field in <code class="docutils literal notranslate"><span class="pre">data</span></code> representing the metric of interest (losses, counts, etc.).
+When <code class="docutils literal notranslate"><span class="pre">data_shape=&quot;triangle&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">value</span></code> is ignored. Default value is “value”.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>{trikit.triangle.IncrTriangle, trikit.triangle.CumTriangle}</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p>Create incremental triangle based on RAA dataset:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">from</span> <span class="nn">trikit</span> <span class="kn">import</span> <span class="n">load</span><span class="p">,</span> <span class="n">totri</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">df</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="s2">&quot;raa&quot;</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">tri</span> <span class="o">=</span> <span class="n">totri</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">tri_type</span><span class="o">=</span><span class="s2">&quot;incr&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="triangle-class-definitions">
+<h2>Triangle Class Definitions<a class="headerlink" href="#triangle-class-definitions" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="trikit.triangle._BaseTriangle">
+<em class="property">class </em><code class="sig-name descname">_BaseTriangle</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">origin</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">dev</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">value</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#_BaseTriangle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle._BaseTriangle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transforms <code class="docutils literal notranslate"><span class="pre">data</span></code> into a triangle instance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>pd.DataFrame</em>) – The dataset to be transformed into a <code class="docutils literal notranslate"><span class="pre">_BaseTriangle</span></code> instance.
+<code class="docutils literal notranslate"><span class="pre">data</span></code> must be tabular loss data with at minimum columns
+representing the origin/acident year, the development
+period and the actual loss amount, given by <code class="docutils literal notranslate"><span class="pre">origin</span></code>, <code class="docutils literal notranslate"><span class="pre">dev</span></code>
+and <code class="docutils literal notranslate"><span class="pre">value</span></code> arguments.</p></li>
+<li><p><strong>origin</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The fieldname in <code class="docutils literal notranslate"><span class="pre">data</span></code> representing origin period.</p></li>
+<li><p><strong>dev</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The fieldname in <code class="docutils literal notranslate"><span class="pre">data</span></code> representing development period.</p></li>
+<li><p><strong>value</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The fieldname in <code class="docutils literal notranslate"><span class="pre">data</span></code> representing loss amounts.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trikit.triangle._BaseTriangle._neg_handler">
+<em class="property">static </em><code class="sig-name descname">_neg_handler</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">dev</span></em>, <em class="sig-param"><span class="n">value</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#_BaseTriangle._neg_handler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle._BaseTriangle._neg_handler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert any first development period negative values to 1.0.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle._BaseTriangle._validate">
+<em class="property">static </em><code class="sig-name descname">_validate</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">origin</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">dev</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">value</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#_BaseTriangle._validate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle._BaseTriangle._validate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ensure data has requisite columns.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>pd.DataFrame</em>) – Initial dataset to be coerced to triangle.</p></li>
+<li><p><strong>origin</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The fieldname in <code class="docutils literal notranslate"><span class="pre">data</span></code> representing origin period.</p></li>
+<li><p><strong>dev</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The fieldname in <code class="docutils literal notranslate"><span class="pre">data</span></code> representing development period.</p></li>
+<li><p><strong>value</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The fieldname in <code class="docutils literal notranslate"><span class="pre">data</span></code> representing loss amounts.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle._BaseTriangle.clvi">
+<em class="property">property </em><code class="sig-name descname">clvi</code><a class="headerlink" href="#trikit.triangle._BaseTriangle.clvi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the last valid index by development period.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle._BaseTriangle.devp">
+<em class="property">property </em><code class="sig-name descname">devp</code><a class="headerlink" href="#trikit.triangle._BaseTriangle.devp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return triangle’s development periods.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.Series</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle._BaseTriangle.diagonal">
+<code class="sig-name descname">diagonal</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">offset</span><span class="o">=</span><span class="default_value">0</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#_BaseTriangle.diagonal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle._BaseTriangle.diagonal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return triangle values at given offset. When <code class="docutils literal notranslate"><span class="pre">offset=0</span></code>, returns
+latest diagonal.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>offset</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – Negative integer value (or 0) representing the diagonal to return.
+To return the second diagonal, set <code class="docutils literal notranslate"><span class="pre">offset=-1</span></code>. If abs(offset)
+exceeds (number of development periods - 1), <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> is raised.
+Default value is 0 (represents latest diagonal).</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.Series</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle._BaseTriangle.latest">
+<em class="property">property </em><code class="sig-name descname">latest</code><a class="headerlink" href="#trikit.triangle._BaseTriangle.latest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the values on the triangle’s latest diagonal. Loss amounts
+are given, along with the associated origin year and development
+period. The latest loss amount by origin year alone can be  obtained
+by calling <code class="docutils literal notranslate"><span class="pre">self.latest_by_origin</span></code>, or by development period by
+calling by <code class="docutils literal notranslate"><span class="pre">self.latest_by_devp</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle._BaseTriangle.latest_by_devp">
+<em class="property">property </em><code class="sig-name descname">latest_by_devp</code><a class="headerlink" href="#trikit.triangle._BaseTriangle.latest_by_devp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the latest loss amounts by development period.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.Series</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle._BaseTriangle.latest_by_origin">
+<em class="property">property </em><code class="sig-name descname">latest_by_origin</code><a class="headerlink" href="#trikit.triangle._BaseTriangle.latest_by_origin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the latest loss amounts by origin year.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.Series</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle._BaseTriangle.maturity">
+<em class="property">property </em><code class="sig-name descname">maturity</code><a class="headerlink" href="#trikit.triangle._BaseTriangle.maturity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the maturity for each origin period.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>ps.Series</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle._BaseTriangle.nbr_cells">
+<em class="property">property </em><code class="sig-name descname">nbr_cells</code><a class="headerlink" href="#trikit.triangle._BaseTriangle.nbr_cells" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the number of non-NaN cells.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle._BaseTriangle.origins">
+<em class="property">property </em><code class="sig-name descname">origins</code><a class="headerlink" href="#trikit.triangle._BaseTriangle.origins" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return triangle’s origin periods.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.Series</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle._BaseTriangle.rlvi">
+<em class="property">property </em><code class="sig-name descname">rlvi</code><a class="headerlink" href="#trikit.triangle._BaseTriangle.rlvi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the last valid index by origin.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle._BaseTriangle.to_tbl">
+<code class="sig-name descname">to_tbl</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dropna</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#_BaseTriangle.to_tbl"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle._BaseTriangle.to_tbl" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transform triangle instance into a tabular representation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>dropna</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><em>bool</em></a>) – Should records with NA values be dropped? Default value is True.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle._BaseTriangle.triind">
+<em class="property">property </em><code class="sig-name descname">triind</code><a class="headerlink" href="#trikit.triangle._BaseTriangle.triind" title="Permalink to this definition">¶</a></dt>
+<dd><p>Table indicating forecast cells with 1, actual data with 0.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trikit.triangle._BaseIncrTriangle">
+<em class="property">class </em><code class="sig-name descname">_BaseIncrTriangle</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">origin</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">dev</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">value</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#_BaseIncrTriangle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle._BaseIncrTriangle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Internal incremental triangle class definition.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="trikit.triangle.IncrTriangle">
+<em class="property">class </em><code class="sig-name descname">IncrTriangle</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">origin</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">dev</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">value</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#IncrTriangle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle.IncrTriangle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Public incremental triangle class definition.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>pd.DataFrame</em>) – The dataset to be transformed into a triangle instance.
+<code class="docutils literal notranslate"><span class="pre">data</span></code> must be tabular loss data with at minimum columns
+representing the origin/acident year, development
+period and value of interest, given by <code class="docutils literal notranslate"><span class="pre">origin</span></code>, <code class="docutils literal notranslate"><span class="pre">dev</span></code>
+and <code class="docutils literal notranslate"><span class="pre">value</span></code> respectively.</p></li>
+<li><p><strong>origin</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The fieldname in <code class="docutils literal notranslate"><span class="pre">data</span></code> representing origin year.</p></li>
+<li><p><strong>dev</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The fieldname in <code class="docutils literal notranslate"><span class="pre">data</span></code> representing development period.</p></li>
+<li><p><strong>value</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The fieldname in <code class="docutils literal notranslate"><span class="pre">data</span></code> representing loss amounts.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trikit.triangle.IncrTriangle.to_cum">
+<code class="sig-name descname">to_cum</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#IncrTriangle.to_cum"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle.IncrTriangle.to_cum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transform triangle instance into cumulative representation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#trikit.triangle.CumTriangle" title="trikit.triangle.CumTriangle">trikit.triangle.CumTriangle</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trikit.triangle._BaseCumTriangle">
+<em class="property">class </em><code class="sig-name descname">_BaseCumTriangle</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">origin</span><span class="o">=</span><span class="default_value">'origin'</span></em>, <em class="sig-param"><span class="n">dev</span><span class="o">=</span><span class="default_value">'dev'</span></em>, <em class="sig-param"><span class="n">value</span><span class="o">=</span><span class="default_value">'value'</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#_BaseCumTriangle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle._BaseCumTriangle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Internal cumulative triangle class definition. Transforms <code class="docutils literal notranslate"><span class="pre">data</span></code> into a
+cumulative triangle instance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>pd.DataFrame</em>) – The dataset to be transformed into a triangle instance.
+<code class="docutils literal notranslate"><span class="pre">data</span></code> must be tabular loss data with at minimum columns
+representing the origin/acident year, development
+period and incremental value of interest, given by <code class="docutils literal notranslate"><span class="pre">origin</span></code>,
+<code class="docutils literal notranslate"><span class="pre">dev</span></code> and <code class="docutils literal notranslate"><span class="pre">value</span></code> respectively.</p></li>
+<li><p><strong>origin</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The fieldname in <code class="docutils literal notranslate"><span class="pre">data</span></code> representing the origin year.</p></li>
+<li><p><strong>dev</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The fieldname in <code class="docutils literal notranslate"><span class="pre">data</span></code> representing the development period.</p></li>
+<li><p><strong>value</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The fieldname in <code class="docutils literal notranslate"><span class="pre">data</span></code> representing incremental loss amounts.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trikit.triangle._BaseCumTriangle._geometric">
+<em class="property">static </em><code class="sig-name descname">_geometric</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">vals</span></em>, <em class="sig-param"><span class="n">weights</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#_BaseCumTriangle._geometric"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle._BaseCumTriangle._geometric" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the geometric average of the elements of <code class="docutils literal notranslate"><span class="pre">vals</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>vals</strong> (<em>np.ndarray</em>) – An array of values, typically representing link ratios from a
+single development period.</p></li>
+<li><p><strong>weights</strong> (<em>np.ndarray</em>) – Not yet implemented.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle._BaseCumTriangle._medial">
+<em class="property">static </em><code class="sig-name descname">_medial</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">vals</span></em>, <em class="sig-param"><span class="n">weights</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#_BaseCumTriangle._medial"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle._BaseCumTriangle._medial" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the medial average of elements in <code class="docutils literal notranslate"><span class="pre">vals</span></code>. Medial average
+eliminates the min and max values, then returns the arithmetic
+average of the remaining items.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>vals</strong> (<em>np.ndarray</em>) – An array of values, typically representing link ratios from a
+single development period.</p></li>
+<li><p><strong>weights</strong> (<em>np.ndarray</em>) – Weights to assign specific values in the average computation.
+If None, each value is assigned equal weight.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle._BaseCumTriangle._simple">
+<em class="property">static </em><code class="sig-name descname">_simple</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">vals</span></em>, <em class="sig-param"><span class="n">weights</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#_BaseCumTriangle._simple"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle._BaseCumTriangle._simple" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the simple average of elements of <code class="docutils literal notranslate"><span class="pre">vals</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>vals</strong> (<em>np.ndarray</em>) – An array of values, typically representing link ratios from a
+single development period.</p></li>
+<li><p><strong>weights</strong> (<em>np.ndarray</em>) – Not yet implemented.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle._BaseCumTriangle.a2a">
+<em class="property">property </em><code class="sig-name descname">a2a</code><a class="headerlink" href="#trikit.triangle._BaseCumTriangle.a2a" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute adjacent proportions, a.k.a. link ratios.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle._BaseCumTriangle.a2a_assignment">
+<em class="property">property </em><code class="sig-name descname">a2a_assignment</code><a class="headerlink" href="#trikit.triangle._BaseCumTriangle.a2a_assignment" title="Permalink to this definition">¶</a></dt>
+<dd><p>Identify triangle age-to-age factors into high and low categories based
+on value relative to the median for a given development period. Factors
+in excess of the median are assigned a value of +1. Age-to-age factors
+with value less than the median are assigned a value of -1. For
+development periods with an odd number of values, the true median is set
+to 0. Returned DataFrame has same dimensionality as self.tri.a2a.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle._BaseCumTriangle.a2a_avgs">
+<code class="sig-name descname">a2a_avgs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#_BaseCumTriangle.a2a_avgs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle._BaseCumTriangle.a2a_avgs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute age-to-age factors based on <code class="docutils literal notranslate"><span class="pre">self.a2a</span></code> table of adjacent
+proportions. Averages computed include “simple”, “geometric”, “medial”
+and “weighted”.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle._BaseCumTriangle.a2a_lvi">
+<em class="property">property </em><code class="sig-name descname">a2a_lvi</code><a class="headerlink" href="#trikit.triangle._BaseCumTriangle.a2a_lvi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reference to last valid index for triangle age-to-age factors.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle._BaseCumTriangle.a2aind">
+<em class="property">property </em><code class="sig-name descname">a2aind</code><a class="headerlink" href="#trikit.triangle._BaseCumTriangle.a2aind" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine which cells should be included and which to exclude
+when computing age-to-age averages. Cells populated with 1
+are included, cells populated with 0 are excluded.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle._BaseCumTriangle.ranked_a2a">
+<em class="property">property </em><code class="sig-name descname">ranked_a2a</code><a class="headerlink" href="#trikit.triangle._BaseCumTriangle.ranked_a2a" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct triangle of ranked age-to-age factors for use in development
+period correlation testing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trikit.triangle.CumTriangle">
+<em class="property">class </em><code class="sig-name descname">CumTriangle</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">origin</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">dev</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">value</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#CumTriangle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle.CumTriangle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cumulative triangle class definition.</p>
+<dl class="py method">
+<dt id="trikit.triangle.CumTriangle._combined_view">
+<code class="sig-name descname">_combined_view</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#CumTriangle._combined_view"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle.CumTriangle._combined_view" title="Permalink to this definition">¶</a></dt>
+<dd><p>Visualize triangle loss development using a combined view.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cmap</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Selected matplotlib color map. For additional options, visit:
+<a class="reference external" href="https://matplotlib.org/tutorials/colors/colormaps.html">https://matplotlib.org/tutorials/colors/colormaps.html</a>.</p></li>
+<li><p><strong>kwargs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.9)"><em>dict</em></a>) – Additional plot styling options.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle.CumTriangle._faceted_view">
+<code class="sig-name descname">_faceted_view</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">color</span><span class="o">=</span><span class="default_value">'#334488'</span></em>, <em class="sig-param"><span class="n">axes_style</span><span class="o">=</span><span class="default_value">'darkgrid'</span></em>, <em class="sig-param"><span class="n">context</span><span class="o">=</span><span class="default_value">'notebook'</span></em>, <em class="sig-param"><span class="n">col_wrap</span><span class="o">=</span><span class="default_value">4</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#CumTriangle._faceted_view"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle.CumTriangle._faceted_view" title="Permalink to this definition">¶</a></dt>
+<dd><p>Visualize triangle loss development using a faceted view.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>color</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Color to plot loss development in each facet. Default value is “#334488”.</p></li>
+<li><p><strong>axes_style</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Aesthetic style of plots. Defaults to “darkgrid”. Other options
+include: {whitegrid, dark, white, ticks}.</p></li>
+<li><p><strong>context</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Set the plotting context parameters. According to the seaborn
+documentation, This affects things like the size of the labels,
+lines, and other elements of the plot, but not the overall style.
+Defaults to <code class="docutils literal notranslate"><span class="pre">&quot;notebook&quot;</span></code>. Additional options include
+{“paper”, “talk”, “poster”}.</p></li>
+<li><p><strong>kwargs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.9)"><em>dict</em></a>) – Additional plot styling options.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle.CumTriangle.base_cl">
+<code class="sig-name descname">base_cl</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sel</span><span class="o">=</span><span class="default_value">'all-weighted'</span></em>, <em class="sig-param"><span class="n">tail</span><span class="o">=</span><span class="default_value">1.0</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#CumTriangle.base_cl"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle.CumTriangle.base_cl" title="Permalink to this definition">¶</a></dt>
+<dd><p>Produce chain ladder reserve estimates based on cumulative triangle instance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sel</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>, </em><em>pd.Series</em><em> or </em><em>array_like</em>) – If <code class="docutils literal notranslate"><span class="pre">sel</span></code> is a string, the specified loss development patterns will be
+the associated entry from <code class="docutils literal notranslate"><span class="pre">self.tri.a2a_avgs</span></code>.
+If <code class="docutils literal notranslate"><span class="pre">sel</span></code> is array_like, values will be used in place of loss development
+factors computed from the traingle directly. For a triangle with n development
+periods, <code class="docutils literal notranslate"><span class="pre">sel</span></code> should be array_like with length n - 1.
+Defaults to “all-weighted”.</p></li>
+<li><p><strong>tail</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Chain ladder tail factor. Defaults to 1.0.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p>Generate chain ladder reserve point estimates using the raa dataset.
+<code class="docutils literal notranslate"><span class="pre">tri</span></code> is first created using the raa dataset:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">import</span> <span class="nn">trikit</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">tri</span> <span class="o">=</span> <span class="n">trikit</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;raa&quot;</span><span class="p">,</span> <span class="n">tri_type</span><span class="o">=</span><span class="s2">&quot;cum&quot;</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="n">cl</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">base_cl</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Perform standard chain ladder, using non-default values for <code class="docutils literal notranslate"><span class="pre">sel</span></code> and <code class="docutils literal notranslate"><span class="pre">tail</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">5</span><span class="p">]:</span> <span class="n">cl</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">base_cl</span><span class="p">(</span><span class="n">sel</span><span class="o">=</span><span class="s2">&quot;medial-5&quot;</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="mf">1.015</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Passing a custom sequence of loss development factors:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">6</span><span class="p">]:</span> <span class="n">ldfs</span> <span class="o">=</span> <span class="p">[</span><span class="mf">5.</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">,</span> <span class="mf">1.25</span><span class="p">,</span> <span class="mf">1.15</span><span class="p">,</span> <span class="mf">1.10</span><span class="p">,</span> <span class="mf">1.05</span><span class="p">,</span> <span class="mf">1.025</span><span class="p">,</span> <span class="mf">1.01</span><span class="p">,</span> <span class="mf">1.005</span><span class="p">,]</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">7</span><span class="p">]:</span> <span class="n">cl</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">base_cl</span><span class="p">(</span><span class="n">sel</span><span class="o">=</span><span class="n">ldfs</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="mf">1.001</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle.CumTriangle.boot_cl">
+<code class="sig-name descname">boot_cl</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sims</span><span class="o">=</span><span class="default_value">1000</span></em>, <em class="sig-param"><span class="n">q</span><span class="o">=</span><span class="default_value">[0.75, 0.95]</span></em>, <em class="sig-param"><span class="n">procdist</span><span class="o">=</span><span class="default_value">'gamma'</span></em>, <em class="sig-param"><span class="n">parametric</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">two_sided</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">interpolation</span><span class="o">=</span><span class="default_value">'linear'</span></em>, <em class="sig-param"><span class="n">random_state</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#CumTriangle.boot_cl"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle.CumTriangle.boot_cl" title="Permalink to this definition">¶</a></dt>
+<dd><p>Estimate reserves and the distribution of reserve outcomes by origin and in
+total via bootstrap resampling. The estimated distribution of losses assumes
+development is completen by the final development period in order to avoid the
+complication of modeling a tail factor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sims</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – The number of bootstrap simulations to perform. Defaults to 1000.</p></li>
+<li><p><strong>q</strong> (<em>array_like of float</em><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Quantile or sequence of quantiles to compute, which must be
+between 0 and 1 inclusive.</p></li>
+<li><p><strong>procdist</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The distribution used to incorporate process variance. Currently,
+this can only be set to “gamma”.</p></li>
+<li><p><strong>two_sided</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><em>bool</em></a>) – Whether to include the two_sided interval in summary output. For example,
+if <code class="docutils literal notranslate"><span class="pre">two_sided==True</span></code> and <code class="docutils literal notranslate"><span class="pre">q=.95</span></code>, the 2.5th and 97.5th quantiles of the
+bootstrapped reserve  distribution will be returned [(1 - .95) / 2, (1 + .95) / 2].
+When False, only the specified quantile(s) will be computed. Defaults
+to False.</p></li>
+<li><p><strong>parametric</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><em>bool</em></a>) – If True, fit standardized residuals to a normal distribution via maximum likelihood,
+and sample from the resulting distribution. Otherwise, values are sampled with
+replacement from the collection of standardized residuals. Defaults to False.</p></li>
+<li><p><strong>interpolation</strong> (<em>{&quot;linear&quot;</em><em>, </em><em>&quot;lower&quot;</em><em>, </em><em>&quot;higher&quot;</em><em>, </em><em>&quot;midpoint&quot;</em><em>, </em><em>&quot;nearest&quot;}</em>) – Optional parameter which specifies the interpolation method to use
+when the desired quantile lies between two data points i &lt; j. See
+<code class="docutils literal notranslate"><span class="pre">numpy.quantile</span></code> for more information. Default value is “linear”.</p></li>
+<li><p><strong>random_state</strong> (<em>np.random.RandomState</em>) – If int, random_state is the seed used by the random number
+generator; If RandomState instance, random_state is the random
+number generator; If None, the random number generator is the
+RandomState instance used by np.random.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="trikit.estimators.html#trikit.estimators.bootstrap.BootstrapChainLadderResult" title="trikit.estimators.bootstrap.BootstrapChainLadderResult">BootstrapChainLadderResult</a></p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p>Generate boostrap chain ladder reserve estimates. <code class="docutils literal notranslate"><span class="pre">tri</span></code> is first created
+using the raa dataset:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">import</span> <span class="nn">trikit</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">tri</span> <span class="o">=</span> <span class="n">trikit</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;raa&quot;</span><span class="p">,</span> <span class="n">tri_type</span><span class="o">=</span><span class="s2">&quot;cum&quot;</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">bcl</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">boot_cl</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle.CumTriangle.glm">
+<code class="sig-name descname">glm</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">var_power</span><span class="o">=</span><span class="default_value">1</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#CumTriangle.glm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle.CumTriangle.glm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate reserve estimates via Generalized Linear Model framework.
+Note that <code class="docutils literal notranslate"><span class="pre">glm_estimator</span></code> assumes development is complete by the final
+development period. GLMs are fit using statsmodels Tweedie family
+with log link.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle.CumTriangle.mack_cl">
+<code class="sig-name descname">mack_cl</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">alpha</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">tail</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">dist</span><span class="o">=</span><span class="default_value">'lognorm'</span></em>, <em class="sig-param"><span class="n">q</span><span class="o">=</span><span class="default_value">[0.75, 0.95]</span></em>, <em class="sig-param"><span class="n">two_sided</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#CumTriangle.mack_cl"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle.CumTriangle.mack_cl" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a summary of ultimate and reserve estimates resulting from
+the application of the development technique over self.tri. Summary
+DataFrame is comprised of origin year, maturity of origin year, loss
+amount at latest evaluation, cumulative loss development factors,
+projected ultimates and the reserve estimate, by origin year and in
+aggregate.</p>
+<p>### TODO ###
+Allow for tail factor other than 1.0.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>alpha</strong> (<em>{0</em><em>, </em><em>1</em><em>, </em><em>2}</em>) – <ul>
+<li><p>0: Straight average of observed individual link ratios.</p></li>
+<li><p>1: Historical Chain Ladder age-to-age factors.</p></li>
+<li><p>2: Regression of <img class="math" src="_images/math/1bead0a08cdab1fe3f2a736e1f8415d92471d75a.png" alt="C_{k+1}"/> on <img class="math" src="_images/math/e3abe42aff12d2540074535c8e20e3664471401d.png" alt="C_{k}"/> with 0 intercept.</p></li>
+</ul>
+</p></li>
+<li><p><strong>tail</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Tail factor. Currently not implemented. Will be available in
+a future release.</p></li>
+<li><p><strong>dist</strong> (<em>{&quot;norm&quot;</em><em>, </em><em>&quot;lognorm&quot;}</em>) – <p>The distribution function chosen to approximate the true
+distribution of reserves by origin period. In Mack[1], if the
+volume of outstanding claims is large enough, due to the central
+limit theorem, we can assume that the distribution function is
+Normal with expected value equal to the point estimate given by
+<img class="math" src="_images/math/60bf243b4c6f5e3fb74686244011b1d7c84be5b9.png" alt="R_{i}"/> and standard deviation equal to the standard error of
+<img class="math" src="_images/math/60bf243b4c6f5e3fb74686244011b1d7c84be5b9.png" alt="R_{i}"/>, <img class="math" src="_images/math/3d55e966c47167b6d95dccbe39b80a953311dd66.png" alt="s.e.(R_{i})"/>. It is also noted that if the true
+distribution of reserves is skewed, the Normal may not serve as a
+good approximation, and it may be preferrable to opt for
+the Log-normal distribution.</p>
+<ul>
+<li><p>If <code class="docutils literal notranslate"><span class="pre">dist=&quot;norm&quot;</span></code>, the Normal distribution will be used to</p></li>
+</ul>
+<p>estimate reserve quantiles.</p>
+<ul>
+<li><p>If <code class="docutils literal notranslate"><span class="pre">dist=&quot;lognorm&quot;</span></code>, the Log-normal distribution will be used</p></li>
+</ul>
+<p>to estimate reserve quantiles.</p>
+</p></li>
+<li><p><strong>q</strong> (<em>array_like of float</em>) – Quantile or sequence of quantiles to compute, which must be
+between 0 and 1 inclusive.</p></li>
+<li><p><strong>two_sided</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><em>bool</em></a>) – Whether the two_sided interval should be included in summary
+output. For example, if <code class="docutils literal notranslate"><span class="pre">two_sided==True</span></code> and <code class="docutils literal notranslate"><span class="pre">q=.95</span></code>, then
+the 2.5th and 97.5th quantiles of the estimated reserve
+distribution will be returned [(1 - .95) / 2, (1 + .95) / 2]. When
+False, only the specified quantile(s) will be computed. Defaults
+to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="trikit.estimators.html#trikit.estimators.mack.MackChainLadderResult" title="trikit.estimators.mack.MackChainLadderResult">MackChainLadderResult</a></p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p>Generate Mack chain ladder reserve estimates. <code class="docutils literal notranslate"><span class="pre">tri</span></code> is first created
+using the raa dataset. In the call to <code class="docutils literal notranslate"><span class="pre">mack_cl</span></code>, <code class="docutils literal notranslate"><span class="pre">alpha</span></code> is set to
+2, and <code class="docutils literal notranslate"><span class="pre">two_sided=True</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">import</span> <span class="nn">trikit</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">tri</span> <span class="o">=</span> <span class="n">trikit</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;raa&quot;</span><span class="p">,</span> <span class="n">tri_type</span><span class="o">=</span><span class="s2">&quot;cum&quot;</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">mcl</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">mack_cl</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">two_sided</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle.CumTriangle.plot">
+<code class="sig-name descname">plot</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">display</span><span class="o">=</span><span class="default_value">'combined'</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#CumTriangle.plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle.CumTriangle.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot cumulative loss development over a single set of axes or
+as faceted-by-origin exhibit.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>view</strong> (<em>{&quot;combined&quot;</em><em>, </em><em>&quot;faceted&quot;}</em>) – Whether to display cumulative loss development in a single or faceted view.
+Default value is <code class="docutils literal notranslate"><span class="pre">&quot;combined&quot;</span></code>.</p></li>
+<li><p><strong>kwargs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.9)"><em>dict</em></a>) – <p>Options for combined view:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>cmap: str</dt><dd><p>Selected matplotlib color map. For additional options, visit:
+<a class="reference external" href="https://matplotlib.org/tutorials/colors/colormaps.html">https://matplotlib.org/tutorials/colors/colormaps.html</a>.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>Options for faceted view:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>color: str</dt><dd><p>Color to plot loss development in each facet. Default value is “#334488”.</p>
+</dd>
+<dt>axes_style: str</dt><dd><p>Aesthetic style of plots. Defaults to “darkgrid”. Other options
+include: {whitegrid, dark, white, ticks}.</p>
+</dd>
+<dt>context: str</dt><dd><p>Set the plotting context parameters. According to the seaborn
+documentation, This affects things like the size of the labels,
+lines, and other elements of the plot, but not the overall style.
+Defaults to <code class="docutils literal notranslate"><span class="pre">&quot;notebook&quot;</span></code>. Additional options include
+{“paper”, “talk”, “poster”}.</p>
+</dd>
+</dl>
+</div></blockquote>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.triangle.CumTriangle.to_incr">
+<code class="sig-name descname">to_incr</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/triangle.html#CumTriangle.to_incr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.triangle.CumTriangle.to_incr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain incremental triangle based on cumulative triangle instance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#trikit.triangle.IncrTriangle" title="trikit.triangle.IncrTriangle">trikit.triangle.IncrTriangle</a></p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p>Convert existing cumulative triangle instance into an instance of
+<code class="docutils literal notranslate"><span class="pre">trikit.triangle.IncrTriangle</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">from</span> <span class="nn">trikit</span> <span class="kn">import</span> <span class="n">load</span><span class="p">,</span> <span class="n">totri</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">cumtri</span> <span class="o">=</span> <span class="n">totri</span><span class="p">(</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;raa&quot;</span><span class="p">))</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">incrtri</span> <span class="o">=</span> <span class="n">cumtri</span><span class="o">.</span><span class="n">to_incr</span><span class="p">()</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="nb">type</span><span class="p">(</span><span class="n">incrtri</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="n">triangle</span><span class="o">.</span><span class="n">IncrTriangle</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="estimators.html" class="btn btn-neutral float-right" title="Reserve Estimators" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="quickstart.html" class="btn btn-neutral float-left" title="trikit Quickstart Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2018, James D. Triveri
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

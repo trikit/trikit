@@ -1,0 +1,972 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>trikit Quickstart Guide &mdash; trikit 0.3.2 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Incremental and Cumulative Triangle Objects" href="triangle.html" />
+    <link rel="prev" title="Project Overview" href="overview.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> trikit
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Project Overview</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="triangle.html">Triangles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="estimators.html">Estimators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">Sample Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lrdb.html">CAS Loss Reserving Database</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial/correlated.html">Correlated Reserve Indications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial/smoothing.html">Smoothing Loss Development Patterns</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">trikit</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>trikit Quickstart Guide</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/quickstart.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="trikit-quickstart-guide">
+<span id="quickstart"></span><h1>trikit Quickstart Guide<a class="headerlink" href="#trikit-quickstart-guide" title="Permalink to this headline">¶</a></h1>
+<dl class="field-list simple">
+<dt class="field-odd">Release</dt>
+<dd class="field-odd"><p>0.3.2</p>
+</dd>
+</dl>
+<p>trikit is a collection of Loss Reserving utilities developed to facilitate
+Actuarial analysis in Python, with particular emphasis on automating the basic
+techniques generally used for estimating unpaid claim liabilities.
+trikit’s core data structure is the triangle, which comes in both incremental
+and cumulative variants. trikit’s triangle objects inherit directly
+from Pandas DataFrame, so all of the familiar methods and attributes used
+when working in Pandas can be be applied to trikit triangle objects.</p>
+<p>Along with the core <code class="docutils literal notranslate"><span class="pre">IncrTriangle</span></code> and <code class="docutils literal notranslate"><span class="pre">CumTriangle</span></code> data structures,
+trikit exposes a number of common methods for estimating unpaid claim liabilities,
+as well as techniques to quantify variability around those estimates.
+Currently available reserve estimators are <code class="docutils literal notranslate"><span class="pre">BaseChainLadder</span></code>, <code class="docutils literal notranslate"><span class="pre">MackChainLadder</span></code>
+and <code class="docutils literal notranslate"><span class="pre">BootstrapChainLadder</span></code>. Refer to the examples below for sample use cases.</p>
+<p>Finally, in addition to the library’s core Chain Ladder functionality, <code class="docutils literal notranslate"><span class="pre">trikit</span></code>
+exposes a convenient interface that links to the Casualty Actuarial Society’s
+Schedule P Loss Rerserving Database. The database contains information on
+losses across a number of lines of business for all property-casualty insurers
+that write business in the U.S. More information related to the the Schedule P
+Loss Reserving Database can be found <a class="reference external" href="https://www.casact.org/research/index.cfm?fa=loss_reserves_data">here</a>.</p>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>trikit can be installed by running:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ python -m pip install trikit
+</pre></div>
+</div>
+</div>
+<div class="section" id="id1">
+<h2>Quickstart<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>We begin by loading the RAA sample dataset, which represents Automatic
+Factultative business in General Liability provided by the Reinsurance
+Association of America. Sample datasets are loaded as DataFrame objects, and
+always represent incremental losses. Sample datasets can be loaded as follows:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">import</span> <span class="nn">trikit</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">raa</span> <span class="o">=</span> <span class="n">trikit</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;raa&quot;</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">raa</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">3</span><span class="p">]:</span>
+   <span class="n">origin</span>  <span class="n">dev</span>  <span class="n">value</span>
+<span class="mi">0</span>    <span class="mi">1981</span>    <span class="mi">1</span>   <span class="mi">5012</span>
+<span class="mi">1</span>    <span class="mi">1981</span>    <span class="mi">2</span>   <span class="mi">3257</span>
+<span class="mi">2</span>    <span class="mi">1981</span>    <span class="mi">3</span>   <span class="mi">2638</span>
+<span class="mi">3</span>    <span class="mi">1981</span>    <span class="mi">4</span>    <span class="mi">898</span>
+<span class="mi">4</span>    <span class="mi">1981</span>    <span class="mi">5</span>   <span class="mi">1734</span>
+</pre></div>
+</div>
+<p>A list of available datasets can be obtained by calling <code class="docutils literal notranslate"><span class="pre">get_datasets</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="n">trikit</span><span class="o">.</span><span class="n">get_datasets</span><span class="p">()</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="p">[</span><span class="s1">&#39;amw09&#39;</span><span class="p">,</span> <span class="s1">&#39;autoliab&#39;</span><span class="p">,</span> <span class="s1">&#39;glre&#39;</span><span class="p">,</span> <span class="s1">&#39;raa&#39;</span><span class="p">,</span> <span class="s1">&#39;singinjury&#39;</span><span class="p">,</span> <span class="s1">&#39;singproperty&#39;</span><span class="p">,</span> <span class="s1">&#39;ta83&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Any of the datasets listed above can be read in the same way using
+<code class="docutils literal notranslate"><span class="pre">trikit.load</span></code>. Note that sample datasets can be returned as triangle objects directly. For
+example, the RAA dataset can be returned as a cumulative triangle as follows:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">5</span><span class="p">]:</span> <span class="n">tri</span> <span class="o">=</span> <span class="n">trikit</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;raa&quot;</span><span class="p">,</span> <span class="n">tri_type</span><span class="o">=</span><span class="s2">&quot;cum&quot;</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">6</span><span class="p">]:</span> <span class="n">tri</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">6</span><span class="p">]:</span>
+        <span class="mi">1</span>      <span class="mi">2</span>      <span class="mi">3</span>      <span class="mi">4</span>      <span class="mi">5</span>      <span class="mi">6</span>      <span class="mi">7</span>      <span class="mi">8</span>      <span class="mi">9</span>      <span class="mi">10</span>
+<span class="mi">1981</span> <span class="mi">5</span><span class="p">,</span><span class="mi">012</span>  <span class="mi">8</span><span class="p">,</span><span class="mi">269</span> <span class="mi">10</span><span class="p">,</span><span class="mi">907</span> <span class="mi">11</span><span class="p">,</span><span class="mi">805</span> <span class="mi">13</span><span class="p">,</span><span class="mi">539</span> <span class="mi">16</span><span class="p">,</span><span class="mi">181</span> <span class="mi">18</span><span class="p">,</span><span class="mi">009</span> <span class="mi">18</span><span class="p">,</span><span class="mi">608</span> <span class="mi">18</span><span class="p">,</span><span class="mi">662</span> <span class="mi">18</span><span class="p">,</span><span class="mi">834</span>
+<span class="mi">1982</span>   <span class="mi">106</span>  <span class="mi">4</span><span class="p">,</span><span class="mi">285</span>  <span class="mi">5</span><span class="p">,</span><span class="mi">396</span> <span class="mi">10</span><span class="p">,</span><span class="mi">666</span> <span class="mi">13</span><span class="p">,</span><span class="mi">782</span> <span class="mi">15</span><span class="p">,</span><span class="mi">599</span> <span class="mi">15</span><span class="p">,</span><span class="mi">496</span> <span class="mi">16</span><span class="p">,</span><span class="mi">169</span> <span class="mi">16</span><span class="p">,</span><span class="mi">704</span>    <span class="n">nan</span>
+<span class="mi">1983</span> <span class="mi">3</span><span class="p">,</span><span class="mi">410</span>  <span class="mi">8</span><span class="p">,</span><span class="mi">992</span> <span class="mi">13</span><span class="p">,</span><span class="mi">873</span> <span class="mi">16</span><span class="p">,</span><span class="mi">141</span> <span class="mi">18</span><span class="p">,</span><span class="mi">735</span> <span class="mi">22</span><span class="p">,</span><span class="mi">214</span> <span class="mi">22</span><span class="p">,</span><span class="mi">863</span> <span class="mi">23</span><span class="p">,</span><span class="mi">466</span>    <span class="n">nan</span>    <span class="n">nan</span>
+<span class="mi">1984</span> <span class="mi">5</span><span class="p">,</span><span class="mi">655</span> <span class="mi">11</span><span class="p">,</span><span class="mi">555</span> <span class="mi">15</span><span class="p">,</span><span class="mi">766</span> <span class="mi">21</span><span class="p">,</span><span class="mi">266</span> <span class="mi">23</span><span class="p">,</span><span class="mi">425</span> <span class="mi">26</span><span class="p">,</span><span class="mi">083</span> <span class="mi">27</span><span class="p">,</span><span class="mi">067</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>
+<span class="mi">1985</span> <span class="mi">1</span><span class="p">,</span><span class="mi">092</span>  <span class="mi">9</span><span class="p">,</span><span class="mi">565</span> <span class="mi">15</span><span class="p">,</span><span class="mi">836</span> <span class="mi">22</span><span class="p">,</span><span class="mi">169</span> <span class="mi">25</span><span class="p">,</span><span class="mi">955</span> <span class="mi">26</span><span class="p">,</span><span class="mi">180</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>
+<span class="mi">1986</span> <span class="mi">1</span><span class="p">,</span><span class="mi">513</span>  <span class="mi">6</span><span class="p">,</span><span class="mi">445</span> <span class="mi">11</span><span class="p">,</span><span class="mi">702</span> <span class="mi">12</span><span class="p">,</span><span class="mi">935</span> <span class="mi">15</span><span class="p">,</span><span class="mi">852</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>
+<span class="mi">1987</span>   <span class="mi">557</span>  <span class="mi">4</span><span class="p">,</span><span class="mi">020</span> <span class="mi">10</span><span class="p">,</span><span class="mi">946</span> <span class="mi">12</span><span class="p">,</span><span class="mi">314</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>
+<span class="mi">1988</span> <span class="mi">1</span><span class="p">,</span><span class="mi">351</span>  <span class="mi">6</span><span class="p">,</span><span class="mi">947</span> <span class="mi">13</span><span class="p">,</span><span class="mi">112</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>
+<span class="mi">1989</span> <span class="mi">3</span><span class="p">,</span><span class="mi">133</span>  <span class="mi">5</span><span class="p">,</span><span class="mi">395</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>
+<span class="mi">1990</span> <span class="mi">2</span><span class="p">,</span><span class="mi">063</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>
+</pre></div>
+</div>
+<div class="section" id="working-with-triangles">
+<h3>Working with Triangles<a class="headerlink" href="#working-with-triangles" title="Permalink to this headline">¶</a></h3>
+<p>Triangles are created by calling the <code class="docutils literal notranslate"><span class="pre">totri</span></code> function. Available arguments
+are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">data</span></code>: The dataset to transform into a triangle instance.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tri_type</span></code>: {“cum”, “incr”} Specifies the type of triangle to create.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">data_format</span></code>: {“cum”, “incr”} Specifies how losses are represented with the
+input dataset <code class="docutils literal notranslate"><span class="pre">data</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">data_shape</span></code>: {“tabular”, “triangle”} Specifies whether input dataset <code class="docutils literal notranslate"><span class="pre">data</span></code>
+represents tabular loss data with columns “origin”, “dev” and “value”,
+or data already structured as a loss triangle with columns corresponding to
+development periods.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">origin</span></code>: The column name in <code class="docutils literal notranslate"><span class="pre">data</span></code> corresponding to accident year.
+Ignored if <code class="docutils literal notranslate"><span class="pre">data_shape=&quot;triangle&quot;</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dev</span></code>: The column name in <code class="docutils literal notranslate"><span class="pre">data</span></code> corresponding to development period.
+Ignored if <code class="docutils literal notranslate"><span class="pre">data_shape=&quot;triangle&quot;</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">value</span></code>: The column name in <code class="docutils literal notranslate"><span class="pre">data</span></code> corresponding to the measure of interest.
+Ignored if <code class="docutils literal notranslate"><span class="pre">data_shape=&quot;triangle&quot;</span></code>.</p></li>
+</ul>
+<p>Next we demonstrate how to create triangles using <code class="docutils literal notranslate"><span class="pre">totri</span></code> and various
+combinations of the arguments listed above.</p>
+<div class="section" id="example-1-create-a-cumulative-loss-triangle-from-tabular-incremental-data">
+<h4><strong>Example 1:</strong> Create a cumulative loss triangle from tabular incremental data<a class="headerlink" href="#example-1-create-a-cumulative-loss-triangle-from-tabular-incremental-data" title="Permalink to this headline">¶</a></h4>
+<p>Referring again to the RAA dataset, let’s create a cumulative loss triangle.
+We mentioned above that trikit sample datasets are Pandas DataFrames which
+reflect incremental losses, so <code class="docutils literal notranslate"><span class="pre">data_format=&quot;incr&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">data_shape=&quot;tabular&quot;</span></code>,
+both of which are defaults. Also, the default for <code class="docutils literal notranslate"><span class="pre">tri_type</span></code> is <code class="docutils literal notranslate"><span class="pre">&quot;cum&quot;</span></code>, so the
+only argument required to pass into <code class="docutils literal notranslate"><span class="pre">totri</span></code> is the input dataset <code class="docutils literal notranslate"><span class="pre">data</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="kn">from</span> <span class="nn">trikit</span> <span class="kn">import</span> <span class="n">load</span><span class="p">,</span> <span class="n">totri</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">raa</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="s2">&quot;raa&quot;</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="n">tri</span> <span class="o">=</span> <span class="n">totri</span><span class="p">(</span><span class="n">raa</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">5</span><span class="p">]:</span> <span class="n">tri</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">5</span><span class="p">]:</span>
+        <span class="mi">1</span>      <span class="mi">2</span>      <span class="mi">3</span>      <span class="mi">4</span>      <span class="mi">5</span>      <span class="mi">6</span>      <span class="mi">7</span>      <span class="mi">8</span>      <span class="mi">9</span>      <span class="mi">10</span>
+<span class="mi">1981</span> <span class="mi">5</span><span class="p">,</span><span class="mi">012</span>  <span class="mi">8</span><span class="p">,</span><span class="mi">269</span> <span class="mi">10</span><span class="p">,</span><span class="mi">907</span> <span class="mi">11</span><span class="p">,</span><span class="mi">805</span> <span class="mi">13</span><span class="p">,</span><span class="mi">539</span> <span class="mi">16</span><span class="p">,</span><span class="mi">181</span> <span class="mi">18</span><span class="p">,</span><span class="mi">009</span> <span class="mi">18</span><span class="p">,</span><span class="mi">608</span> <span class="mi">18</span><span class="p">,</span><span class="mi">662</span> <span class="mi">18</span><span class="p">,</span><span class="mi">834</span>
+<span class="mi">1982</span>   <span class="mi">106</span>  <span class="mi">4</span><span class="p">,</span><span class="mi">285</span>  <span class="mi">5</span><span class="p">,</span><span class="mi">396</span> <span class="mi">10</span><span class="p">,</span><span class="mi">666</span> <span class="mi">13</span><span class="p">,</span><span class="mi">782</span> <span class="mi">15</span><span class="p">,</span><span class="mi">599</span> <span class="mi">15</span><span class="p">,</span><span class="mi">496</span> <span class="mi">16</span><span class="p">,</span><span class="mi">169</span> <span class="mi">16</span><span class="p">,</span><span class="mi">704</span>    <span class="n">nan</span>
+<span class="mi">1983</span> <span class="mi">3</span><span class="p">,</span><span class="mi">410</span>  <span class="mi">8</span><span class="p">,</span><span class="mi">992</span> <span class="mi">13</span><span class="p">,</span><span class="mi">873</span> <span class="mi">16</span><span class="p">,</span><span class="mi">141</span> <span class="mi">18</span><span class="p">,</span><span class="mi">735</span> <span class="mi">22</span><span class="p">,</span><span class="mi">214</span> <span class="mi">22</span><span class="p">,</span><span class="mi">863</span> <span class="mi">23</span><span class="p">,</span><span class="mi">466</span>    <span class="n">nan</span>    <span class="n">nan</span>
+<span class="mi">1984</span> <span class="mi">5</span><span class="p">,</span><span class="mi">655</span> <span class="mi">11</span><span class="p">,</span><span class="mi">555</span> <span class="mi">15</span><span class="p">,</span><span class="mi">766</span> <span class="mi">21</span><span class="p">,</span><span class="mi">266</span> <span class="mi">23</span><span class="p">,</span><span class="mi">425</span> <span class="mi">26</span><span class="p">,</span><span class="mi">083</span> <span class="mi">27</span><span class="p">,</span><span class="mi">067</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>
+<span class="mi">1985</span> <span class="mi">1</span><span class="p">,</span><span class="mi">092</span>  <span class="mi">9</span><span class="p">,</span><span class="mi">565</span> <span class="mi">15</span><span class="p">,</span><span class="mi">836</span> <span class="mi">22</span><span class="p">,</span><span class="mi">169</span> <span class="mi">25</span><span class="p">,</span><span class="mi">955</span> <span class="mi">26</span><span class="p">,</span><span class="mi">180</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>
+<span class="mi">1986</span> <span class="mi">1</span><span class="p">,</span><span class="mi">513</span>  <span class="mi">6</span><span class="p">,</span><span class="mi">445</span> <span class="mi">11</span><span class="p">,</span><span class="mi">702</span> <span class="mi">12</span><span class="p">,</span><span class="mi">935</span> <span class="mi">15</span><span class="p">,</span><span class="mi">852</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>
+<span class="mi">1987</span>   <span class="mi">557</span>  <span class="mi">4</span><span class="p">,</span><span class="mi">020</span> <span class="mi">10</span><span class="p">,</span><span class="mi">946</span> <span class="mi">12</span><span class="p">,</span><span class="mi">314</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>
+<span class="mi">1988</span> <span class="mi">1</span><span class="p">,</span><span class="mi">351</span>  <span class="mi">6</span><span class="p">,</span><span class="mi">947</span> <span class="mi">13</span><span class="p">,</span><span class="mi">112</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>
+<span class="mi">1989</span> <span class="mi">3</span><span class="p">,</span><span class="mi">133</span>  <span class="mi">5</span><span class="p">,</span><span class="mi">395</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>
+<span class="mi">1990</span> <span class="mi">2</span><span class="p">,</span><span class="mi">063</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">tri</span></code> is an instance of <code class="docutils literal notranslate"><span class="pre">trikit.triangle.CumTriangle</span></code>, which inherits from pandas.DataFrame:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">6</span><span class="p">]:</span> <span class="nb">type</span><span class="p">(</span><span class="n">tri</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">6</span><span class="p">]:</span> <span class="n">trikit</span><span class="o">.</span><span class="n">triangle</span><span class="o">.</span><span class="n">CumTriangle</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">7</span><span class="p">]:</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tri</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">7</span><span class="p">]:</span> <span class="kc">True</span>
+</pre></div>
+</div>
+<p>This means that all of the functionality exposed by DataFrame objects gets inherited
+by triangle objects. For example, to access the first column of <code class="docutils literal notranslate"><span class="pre">tri</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">8</span><span class="p">]:</span> <span class="n">tri</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">8</span><span class="p">]:</span>
+<span class="mi">1981</span>   <span class="mf">5012.00000</span>
+<span class="mi">1982</span>    <span class="mf">106.00000</span>
+<span class="mi">1983</span>   <span class="mf">3410.00000</span>
+<span class="mi">1984</span>   <span class="mf">5655.00000</span>
+<span class="mi">1985</span>   <span class="mf">1092.00000</span>
+<span class="mi">1986</span>   <span class="mf">1513.00000</span>
+<span class="mi">1987</span>    <span class="mf">557.00000</span>
+<span class="mi">1988</span>   <span class="mf">1351.00000</span>
+<span class="mi">1989</span>   <span class="mf">3133.00000</span>
+<span class="mi">1990</span>   <span class="mf">2063.00000</span>
+<span class="n">Name</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="p">:</span> <span class="n">float64</span>
+</pre></div>
+</div>
+<p>Triangle objects offer a number of methods useful in Actuarial reserving
+contexts. To extract the latest diagonal, call <code class="docutils literal notranslate"><span class="pre">tri.latest</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">9</span><span class="p">]:</span> <span class="n">tri</span><span class="o">.</span><span class="n">latest</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">9</span><span class="p">]:</span>
+   <span class="n">origin</span>  <span class="n">dev</span>      <span class="n">latest</span>
+<span class="mi">0</span>    <span class="mi">1981</span>   <span class="mi">10</span> <span class="mf">18834.00000</span>
+<span class="mi">1</span>    <span class="mi">1982</span>    <span class="mi">9</span> <span class="mf">16704.00000</span>
+<span class="mi">2</span>    <span class="mi">1983</span>    <span class="mi">8</span> <span class="mf">23466.00000</span>
+<span class="mi">3</span>    <span class="mi">1984</span>    <span class="mi">7</span> <span class="mf">27067.00000</span>
+<span class="mi">4</span>    <span class="mi">1985</span>    <span class="mi">6</span> <span class="mf">26180.00000</span>
+<span class="mi">5</span>    <span class="mi">1986</span>    <span class="mi">5</span> <span class="mf">15852.00000</span>
+<span class="mi">6</span>    <span class="mi">1987</span>    <span class="mi">4</span> <span class="mf">12314.00000</span>
+<span class="mi">7</span>    <span class="mi">1988</span>    <span class="mi">3</span> <span class="mf">13112.00000</span>
+<span class="mi">8</span>    <span class="mi">1989</span>    <span class="mi">2</span>  <span class="mf">5395.00000</span>
+<span class="mi">9</span>    <span class="mi">1990</span>    <span class="mi">1</span>  <span class="mf">2063.00000</span>
+</pre></div>
+</div>
+<p>Calling <code class="docutils literal notranslate"><span class="pre">tri.a2a</span></code> produces a DataFrame of age-to-age factors:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span><span class="p">[</span><span class="mi">10</span><span class="p">]:</span> <span class="n">tri</span><span class="o">.</span><span class="n">a2a</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">10</span><span class="p">]:</span>
+            <span class="mi">1</span>       <span class="mi">2</span>       <span class="mi">3</span>       <span class="mi">4</span>       <span class="mi">5</span>       <span class="mi">6</span>       <span class="mi">7</span>       <span class="mi">8</span>       <span class="mi">9</span>
+<span class="mi">1981</span>  <span class="mf">1.64984</span> <span class="mf">1.31902</span> <span class="mf">1.08233</span> <span class="mf">1.14689</span> <span class="mf">1.19514</span> <span class="mf">1.11297</span> <span class="mf">1.03326</span> <span class="mf">1.00290</span> <span class="mf">1.00922</span>
+<span class="mi">1982</span> <span class="mf">40.42453</span> <span class="mf">1.25928</span> <span class="mf">1.97665</span> <span class="mf">1.29214</span> <span class="mf">1.13184</span> <span class="mf">0.99340</span> <span class="mf">1.04343</span> <span class="mf">1.03309</span>     <span class="n">nan</span>
+<span class="mi">1983</span>  <span class="mf">2.63695</span> <span class="mf">1.54282</span> <span class="mf">1.16348</span> <span class="mf">1.16071</span> <span class="mf">1.18570</span> <span class="mf">1.02922</span> <span class="mf">1.02637</span>     <span class="n">nan</span>     <span class="n">nan</span>
+<span class="mi">1984</span>  <span class="mf">2.04332</span> <span class="mf">1.36443</span> <span class="mf">1.34885</span> <span class="mf">1.10152</span> <span class="mf">1.11347</span> <span class="mf">1.03773</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>
+<span class="mi">1985</span>  <span class="mf">8.75916</span> <span class="mf">1.65562</span> <span class="mf">1.39991</span> <span class="mf">1.17078</span> <span class="mf">1.00867</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>
+<span class="mi">1986</span>  <span class="mf">4.25975</span> <span class="mf">1.81567</span> <span class="mf">1.10537</span> <span class="mf">1.22551</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>
+<span class="mi">1987</span>  <span class="mf">7.21724</span> <span class="mf">2.72289</span> <span class="mf">1.12498</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>
+<span class="mi">1988</span>  <span class="mf">5.14212</span> <span class="mf">1.88743</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>
+<span class="mi">1989</span>  <span class="mf">1.72199</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>
+</pre></div>
+</div>
+<p>Calling <code class="docutils literal notranslate"><span class="pre">tri.a2a_avgs</span></code> produces a table of candidate loss development factors,
+which contains arithmetic, geometric and weighted age-to-age averages for a
+number of different periods:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span><span class="p">[</span><span class="mi">11</span><span class="p">]:</span> <span class="n">tri</span><span class="o">.</span><span class="n">a2a_avgs</span><span class="p">()</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">11</span><span class="p">]:</span>
+                    <span class="mi">1</span>       <span class="mi">2</span>       <span class="mi">3</span>       <span class="mi">4</span>       <span class="mi">5</span>       <span class="mi">6</span>       <span class="mi">7</span>       <span class="mi">8</span>       <span class="mi">9</span>
+<span class="n">simple</span><span class="o">-</span><span class="mi">1</span>      <span class="mf">1.72199</span> <span class="mf">1.88743</span> <span class="mf">1.12498</span> <span class="mf">1.22551</span> <span class="mf">1.00867</span> <span class="mf">1.03773</span> <span class="mf">1.02637</span> <span class="mf">1.03309</span> <span class="mf">1.00922</span>
+<span class="n">simple</span><span class="o">-</span><span class="mi">2</span>      <span class="mf">3.43205</span> <span class="mf">2.30516</span> <span class="mf">1.11517</span> <span class="mf">1.19815</span> <span class="mf">1.06107</span> <span class="mf">1.03347</span> <span class="mf">1.03490</span> <span class="mf">1.01799</span> <span class="mf">1.00922</span>
+<span class="n">simple</span><span class="o">-</span><span class="mi">3</span>      <span class="mf">4.69378</span> <span class="mf">2.14200</span> <span class="mf">1.21009</span> <span class="mf">1.16594</span> <span class="mf">1.10261</span> <span class="mf">1.02011</span> <span class="mf">1.03436</span> <span class="mf">1.01799</span> <span class="mf">1.00922</span>
+<span class="n">simple</span><span class="o">-</span><span class="mi">4</span>      <span class="mf">4.58527</span> <span class="mf">2.02040</span> <span class="mf">1.24478</span> <span class="mf">1.16463</span> <span class="mf">1.10992</span> <span class="mf">1.04333</span> <span class="mf">1.03436</span> <span class="mf">1.01799</span> <span class="mf">1.00922</span>
+<span class="n">simple</span><span class="o">-</span><span class="mi">5</span>      <span class="mf">5.42005</span> <span class="mf">1.88921</span> <span class="mf">1.22852</span> <span class="mf">1.19013</span> <span class="mf">1.12696</span> <span class="mf">1.04333</span> <span class="mf">1.03436</span> <span class="mf">1.01799</span> <span class="mf">1.00922</span>
+<span class="n">simple</span><span class="o">-</span><span class="mi">6</span>      <span class="mf">4.85726</span> <span class="mf">1.83148</span> <span class="mf">1.35321</span> <span class="mf">1.18293</span> <span class="mf">1.12696</span> <span class="mf">1.04333</span> <span class="mf">1.03436</span> <span class="mf">1.01799</span> <span class="mf">1.00922</span>
+<span class="n">simple</span><span class="o">-</span><span class="mi">7</span>      <span class="mf">4.54007</span> <span class="mf">1.74973</span> <span class="mf">1.31451</span> <span class="mf">1.18293</span> <span class="mf">1.12696</span> <span class="mf">1.04333</span> <span class="mf">1.03436</span> <span class="mf">1.01799</span> <span class="mf">1.00922</span>
+<span class="n">simple</span><span class="o">-</span><span class="mi">8</span>      <span class="mf">9.02563</span> <span class="mf">1.69589</span> <span class="mf">1.31451</span> <span class="mf">1.18293</span> <span class="mf">1.12696</span> <span class="mf">1.04333</span> <span class="mf">1.03436</span> <span class="mf">1.01799</span> <span class="mf">1.00922</span>
+<span class="nb">all</span><span class="o">-</span><span class="n">simple</span>    <span class="mf">8.20610</span> <span class="mf">1.69589</span> <span class="mf">1.31451</span> <span class="mf">1.18293</span> <span class="mf">1.12696</span> <span class="mf">1.04333</span> <span class="mf">1.03436</span> <span class="mf">1.01799</span> <span class="mf">1.00922</span>
+<span class="n">geometric</span><span class="o">-</span><span class="mi">1</span>   <span class="mf">1.72199</span> <span class="mf">1.88743</span> <span class="mf">1.12498</span> <span class="mf">1.22551</span> <span class="mf">1.00867</span> <span class="mf">1.03773</span> <span class="mf">1.02637</span> <span class="mf">1.03309</span> <span class="mf">1.00922</span>
+<span class="n">geometric</span><span class="o">-</span><span class="mi">2</span>   <span class="mf">2.97568</span> <span class="mf">2.26699</span> <span class="mf">1.11513</span> <span class="mf">1.19783</span> <span class="mf">1.05977</span> <span class="mf">1.03346</span> <span class="mf">1.03487</span> <span class="mf">1.01788</span> <span class="mf">1.00922</span>
+<span class="n">geometric</span><span class="o">-</span><span class="mi">3</span>   <span class="mf">3.99805</span> <span class="mf">2.10529</span> <span class="mf">1.20296</span> <span class="mf">1.16483</span> <span class="mf">1.10019</span> <span class="mf">1.01993</span> <span class="mf">1.03433</span> <span class="mf">1.01788</span> <span class="mf">1.00922</span>
+<span class="n">geometric</span><span class="o">-</span><span class="mi">4</span>   <span class="mf">4.06193</span> <span class="mf">1.98255</span> <span class="mf">1.23788</span> <span class="mf">1.16380</span> <span class="mf">1.10802</span> <span class="mf">1.04244</span> <span class="mf">1.03433</span> <span class="mf">1.01788</span> <span class="mf">1.00922</span>
+<span class="n">geometric</span><span class="o">-</span><span class="mi">5</span>   <span class="mf">4.73672</span> <span class="mf">1.83980</span> <span class="mf">1.22263</span> <span class="mf">1.18840</span> <span class="mf">1.12492</span> <span class="mf">1.04244</span> <span class="mf">1.03433</span> <span class="mf">1.01788</span> <span class="mf">1.00922</span>
+<span class="n">geometric</span><span class="o">-</span><span class="mi">6</span>   <span class="mf">4.11738</span> <span class="mf">1.78660</span> <span class="mf">1.32455</span> <span class="mf">1.18138</span> <span class="mf">1.12492</span> <span class="mf">1.04244</span> <span class="mf">1.03433</span> <span class="mf">1.01788</span> <span class="mf">1.00922</span>
+<span class="n">geometric</span><span class="o">-</span><span class="mi">7</span>   <span class="mf">3.86345</span> <span class="mf">1.69952</span> <span class="mf">1.28688</span> <span class="mf">1.18138</span> <span class="mf">1.12492</span> <span class="mf">1.04244</span> <span class="mf">1.03433</span> <span class="mf">1.01788</span> <span class="mf">1.00922</span>
+<span class="n">geometric</span><span class="o">-</span><span class="mi">8</span>   <span class="mf">5.18125</span> <span class="mf">1.64652</span> <span class="mf">1.28688</span> <span class="mf">1.18138</span> <span class="mf">1.12492</span> <span class="mf">1.04244</span> <span class="mf">1.03433</span> <span class="mf">1.01788</span> <span class="mf">1.00922</span>
+<span class="nb">all</span><span class="o">-</span><span class="n">geometric</span> <span class="mf">4.56261</span> <span class="mf">1.64652</span> <span class="mf">1.28688</span> <span class="mf">1.18138</span> <span class="mf">1.12492</span> <span class="mf">1.04244</span> <span class="mf">1.03433</span> <span class="mf">1.01788</span> <span class="mf">1.00922</span>
+<span class="n">weighted</span><span class="o">-</span><span class="mi">1</span>    <span class="mf">1.72199</span> <span class="mf">1.88743</span> <span class="mf">1.12498</span> <span class="mf">1.22551</span> <span class="mf">1.00867</span> <span class="mf">1.03773</span> <span class="mf">1.02637</span> <span class="mf">1.03309</span> <span class="mf">1.00922</span>
+<span class="n">weighted</span><span class="o">-</span><span class="mi">2</span>    <span class="mf">2.75245</span> <span class="mf">2.19367</span> <span class="mf">1.11484</span> <span class="mf">1.19095</span> <span class="mf">1.05838</span> <span class="mf">1.03381</span> <span class="mf">1.03326</span> <span class="mf">1.01694</span> <span class="mf">1.00922</span>
+<span class="n">weighted</span><span class="o">-</span><span class="mi">3</span>    <span class="mf">3.24578</span> <span class="mf">2.05376</span> <span class="mf">1.23215</span> <span class="mf">1.15721</span> <span class="mf">1.09340</span> <span class="mf">1.02395</span> <span class="mf">1.03326</span> <span class="mf">1.01694</span> <span class="mf">1.00922</span>
+<span class="n">weighted</span><span class="o">-</span><span class="mi">4</span>    <span class="mf">3.47986</span> <span class="mf">1.91259</span> <span class="mf">1.26606</span> <span class="mf">1.15799</span> <span class="mf">1.09987</span> <span class="mf">1.04193</span> <span class="mf">1.03326</span> <span class="mf">1.01694</span> <span class="mf">1.00922</span>
+<span class="n">weighted</span><span class="o">-</span><span class="mi">5</span>    <span class="mf">4.23385</span> <span class="mf">1.74821</span> <span class="mf">1.24517</span> <span class="mf">1.17519</span> <span class="mf">1.11338</span> <span class="mf">1.04193</span> <span class="mf">1.03326</span> <span class="mf">1.01694</span> <span class="mf">1.00922</span>
+<span class="n">weighted</span><span class="o">-</span><span class="mi">6</span>    <span class="mf">3.30253</span> <span class="mf">1.70935</span> <span class="mf">1.29886</span> <span class="mf">1.17167</span> <span class="mf">1.11338</span> <span class="mf">1.04193</span> <span class="mf">1.03326</span> <span class="mf">1.01694</span> <span class="mf">1.00922</span>
+<span class="n">weighted</span><span class="o">-</span><span class="mi">7</span>    <span class="mf">3.16672</span> <span class="mf">1.67212</span> <span class="mf">1.27089</span> <span class="mf">1.17167</span> <span class="mf">1.11338</span> <span class="mf">1.04193</span> <span class="mf">1.03326</span> <span class="mf">1.01694</span> <span class="mf">1.00922</span>
+<span class="n">weighted</span><span class="o">-</span><span class="mi">8</span>    <span class="mf">3.40156</span> <span class="mf">1.62352</span> <span class="mf">1.27089</span> <span class="mf">1.17167</span> <span class="mf">1.11338</span> <span class="mf">1.04193</span> <span class="mf">1.03326</span> <span class="mf">1.01694</span> <span class="mf">1.00922</span>
+<span class="nb">all</span><span class="o">-</span><span class="n">weighted</span>  <span class="mf">2.99936</span> <span class="mf">1.62352</span> <span class="mf">1.27089</span> <span class="mf">1.17167</span> <span class="mf">1.11338</span> <span class="mf">1.04193</span> <span class="mf">1.03326</span> <span class="mf">1.01694</span> <span class="mf">1.00922</span>
+</pre></div>
+</div>
+<p>We can obtain a reference to an incremental representation of the cumulative triangle
+by calling <code class="docutils literal notranslate"><span class="pre">tri.to_incr</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span><span class="p">[</span><span class="mi">12</span><span class="p">]:</span> <span class="n">tri</span><span class="o">.</span><span class="n">to_incr</span><span class="p">()</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">12</span><span class="p">]:</span>
+        <span class="mi">1</span>     <span class="mi">2</span>     <span class="mi">3</span>     <span class="mi">4</span>     <span class="mi">5</span>     <span class="mi">6</span>     <span class="mi">7</span>   <span class="mi">8</span>   <span class="mi">9</span>   <span class="mi">10</span>
+<span class="mi">1981</span> <span class="mi">5</span><span class="p">,</span><span class="mi">012</span> <span class="mi">3</span><span class="p">,</span><span class="mi">257</span> <span class="mi">2</span><span class="p">,</span><span class="mi">638</span>   <span class="mi">898</span> <span class="mi">1</span><span class="p">,</span><span class="mi">734</span> <span class="mi">2</span><span class="p">,</span><span class="mi">642</span> <span class="mi">1</span><span class="p">,</span><span class="mi">828</span> <span class="mi">599</span>  <span class="mi">54</span> <span class="mi">172</span>
+<span class="mi">1982</span>   <span class="mi">106</span> <span class="mi">4</span><span class="p">,</span><span class="mi">179</span> <span class="mi">1</span><span class="p">,</span><span class="mi">111</span> <span class="mi">5</span><span class="p">,</span><span class="mi">270</span> <span class="mi">3</span><span class="p">,</span><span class="mi">116</span> <span class="mi">1</span><span class="p">,</span><span class="mi">817</span>  <span class="o">-</span><span class="mi">103</span> <span class="mi">673</span> <span class="mi">535</span> <span class="n">nan</span>
+<span class="mi">1983</span> <span class="mi">3</span><span class="p">,</span><span class="mi">410</span> <span class="mi">5</span><span class="p">,</span><span class="mi">582</span> <span class="mi">4</span><span class="p">,</span><span class="mi">881</span> <span class="mi">2</span><span class="p">,</span><span class="mi">268</span> <span class="mi">2</span><span class="p">,</span><span class="mi">594</span> <span class="mi">3</span><span class="p">,</span><span class="mi">479</span>   <span class="mi">649</span> <span class="mi">603</span> <span class="n">nan</span> <span class="n">nan</span>
+<span class="mi">1984</span> <span class="mi">5</span><span class="p">,</span><span class="mi">655</span> <span class="mi">5</span><span class="p">,</span><span class="mi">900</span> <span class="mi">4</span><span class="p">,</span><span class="mi">211</span> <span class="mi">5</span><span class="p">,</span><span class="mi">500</span> <span class="mi">2</span><span class="p">,</span><span class="mi">159</span> <span class="mi">2</span><span class="p">,</span><span class="mi">658</span>   <span class="mi">984</span> <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span>
+<span class="mi">1985</span> <span class="mi">1</span><span class="p">,</span><span class="mi">092</span> <span class="mi">8</span><span class="p">,</span><span class="mi">473</span> <span class="mi">6</span><span class="p">,</span><span class="mi">271</span> <span class="mi">6</span><span class="p">,</span><span class="mi">333</span> <span class="mi">3</span><span class="p">,</span><span class="mi">786</span>   <span class="mi">225</span>   <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span>
+<span class="mi">1986</span> <span class="mi">1</span><span class="p">,</span><span class="mi">513</span> <span class="mi">4</span><span class="p">,</span><span class="mi">932</span> <span class="mi">5</span><span class="p">,</span><span class="mi">257</span> <span class="mi">1</span><span class="p">,</span><span class="mi">233</span> <span class="mi">2</span><span class="p">,</span><span class="mi">917</span>   <span class="n">nan</span>   <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span>
+<span class="mi">1987</span>   <span class="mi">557</span> <span class="mi">3</span><span class="p">,</span><span class="mi">463</span> <span class="mi">6</span><span class="p">,</span><span class="mi">926</span> <span class="mi">1</span><span class="p">,</span><span class="mi">368</span>   <span class="n">nan</span>   <span class="n">nan</span>   <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span>
+<span class="mi">1988</span> <span class="mi">1</span><span class="p">,</span><span class="mi">351</span> <span class="mi">5</span><span class="p">,</span><span class="mi">596</span> <span class="mi">6</span><span class="p">,</span><span class="mi">165</span>   <span class="n">nan</span>   <span class="n">nan</span>   <span class="n">nan</span>   <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span>
+<span class="mi">1989</span> <span class="mi">3</span><span class="p">,</span><span class="mi">133</span> <span class="mi">2</span><span class="p">,</span><span class="mi">262</span>   <span class="n">nan</span>   <span class="n">nan</span>   <span class="n">nan</span>   <span class="n">nan</span>   <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span>
+<span class="mi">1990</span> <span class="mi">2</span><span class="p">,</span><span class="mi">063</span>   <span class="n">nan</span>   <span class="n">nan</span>   <span class="n">nan</span>   <span class="n">nan</span>   <span class="n">nan</span>   <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="example-2-create-an-incremental-loss-triangle-from-tabular-incremental-data">
+<h4><strong>Example 2:</strong> Create an incremental loss triangle from tabular incremental data<a class="headerlink" href="#example-2-create-an-incremental-loss-triangle-from-tabular-incremental-data" title="Permalink to this headline">¶</a></h4>
+<p>The call to <code class="docutils literal notranslate"><span class="pre">totri</span></code> is identical to Example #1, but we change <code class="docutils literal notranslate"><span class="pre">tri_type</span></code> from
+“cum” to “incr”:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="kn">from</span> <span class="nn">trikit</span> <span class="kn">import</span> <span class="n">load</span><span class="p">,</span> <span class="n">totri</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">raa</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="s2">&quot;raa&quot;</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="n">tri</span> <span class="o">=</span> <span class="n">totri</span><span class="p">(</span><span class="n">raa</span><span class="p">,</span> <span class="n">tri_type</span><span class="o">=</span><span class="s2">&quot;incr&quot;</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">5</span><span class="p">]:</span> <span class="nb">type</span><span class="p">(</span><span class="n">tri</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">5</span><span class="p">]:</span> <span class="n">trikit</span><span class="o">.</span><span class="n">triangle</span><span class="o">.</span><span class="n">IncrTriangle</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">6</span><span class="p">]:</span> <span class="n">tri</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">6</span><span class="p">]:</span>
+        <span class="mi">1</span>     <span class="mi">2</span>     <span class="mi">3</span>     <span class="mi">4</span>     <span class="mi">5</span>     <span class="mi">6</span>     <span class="mi">7</span>   <span class="mi">8</span>   <span class="mi">9</span>   <span class="mi">10</span>
+<span class="mi">1981</span> <span class="mi">5</span><span class="p">,</span><span class="mi">012</span> <span class="mi">3</span><span class="p">,</span><span class="mi">257</span> <span class="mi">2</span><span class="p">,</span><span class="mi">638</span>   <span class="mi">898</span> <span class="mi">1</span><span class="p">,</span><span class="mi">734</span> <span class="mi">2</span><span class="p">,</span><span class="mi">642</span> <span class="mi">1</span><span class="p">,</span><span class="mi">828</span> <span class="mi">599</span>  <span class="mi">54</span> <span class="mi">172</span>
+<span class="mi">1982</span>   <span class="mi">106</span> <span class="mi">4</span><span class="p">,</span><span class="mi">179</span> <span class="mi">1</span><span class="p">,</span><span class="mi">111</span> <span class="mi">5</span><span class="p">,</span><span class="mi">270</span> <span class="mi">3</span><span class="p">,</span><span class="mi">116</span> <span class="mi">1</span><span class="p">,</span><span class="mi">817</span>  <span class="o">-</span><span class="mi">103</span> <span class="mi">673</span> <span class="mi">535</span> <span class="n">nan</span>
+<span class="mi">1983</span> <span class="mi">3</span><span class="p">,</span><span class="mi">410</span> <span class="mi">5</span><span class="p">,</span><span class="mi">582</span> <span class="mi">4</span><span class="p">,</span><span class="mi">881</span> <span class="mi">2</span><span class="p">,</span><span class="mi">268</span> <span class="mi">2</span><span class="p">,</span><span class="mi">594</span> <span class="mi">3</span><span class="p">,</span><span class="mi">479</span>   <span class="mi">649</span> <span class="mi">603</span> <span class="n">nan</span> <span class="n">nan</span>
+<span class="mi">1984</span> <span class="mi">5</span><span class="p">,</span><span class="mi">655</span> <span class="mi">5</span><span class="p">,</span><span class="mi">900</span> <span class="mi">4</span><span class="p">,</span><span class="mi">211</span> <span class="mi">5</span><span class="p">,</span><span class="mi">500</span> <span class="mi">2</span><span class="p">,</span><span class="mi">159</span> <span class="mi">2</span><span class="p">,</span><span class="mi">658</span>   <span class="mi">984</span> <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span>
+<span class="mi">1985</span> <span class="mi">1</span><span class="p">,</span><span class="mi">092</span> <span class="mi">8</span><span class="p">,</span><span class="mi">473</span> <span class="mi">6</span><span class="p">,</span><span class="mi">271</span> <span class="mi">6</span><span class="p">,</span><span class="mi">333</span> <span class="mi">3</span><span class="p">,</span><span class="mi">786</span>   <span class="mi">225</span>   <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span>
+<span class="mi">1986</span> <span class="mi">1</span><span class="p">,</span><span class="mi">513</span> <span class="mi">4</span><span class="p">,</span><span class="mi">932</span> <span class="mi">5</span><span class="p">,</span><span class="mi">257</span> <span class="mi">1</span><span class="p">,</span><span class="mi">233</span> <span class="mi">2</span><span class="p">,</span><span class="mi">917</span>   <span class="n">nan</span>   <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span>
+<span class="mi">1987</span>   <span class="mi">557</span> <span class="mi">3</span><span class="p">,</span><span class="mi">463</span> <span class="mi">6</span><span class="p">,</span><span class="mi">926</span> <span class="mi">1</span><span class="p">,</span><span class="mi">368</span>   <span class="n">nan</span>   <span class="n">nan</span>   <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span>
+<span class="mi">1988</span> <span class="mi">1</span><span class="p">,</span><span class="mi">351</span> <span class="mi">5</span><span class="p">,</span><span class="mi">596</span> <span class="mi">6</span><span class="p">,</span><span class="mi">165</span>   <span class="n">nan</span>   <span class="n">nan</span>   <span class="n">nan</span>   <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span>
+<span class="mi">1989</span> <span class="mi">3</span><span class="p">,</span><span class="mi">133</span> <span class="mi">2</span><span class="p">,</span><span class="mi">262</span>   <span class="n">nan</span>   <span class="n">nan</span>   <span class="n">nan</span>   <span class="n">nan</span>   <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span>
+<span class="mi">1990</span> <span class="mi">2</span><span class="p">,</span><span class="mi">063</span>   <span class="n">nan</span>   <span class="n">nan</span>   <span class="n">nan</span>   <span class="n">nan</span>   <span class="n">nan</span>   <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span> <span class="n">nan</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">tri</span></code> now represents RAA losses in incremental format.</p>
+<p>It is possible to obtain a cumulative representation of an incremental triangle
+object by calling <code class="docutils literal notranslate"><span class="pre">tri.to_cum</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">7</span><span class="p">]:</span> <span class="n">tri</span><span class="o">.</span><span class="n">to_cum</span><span class="p">()</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">7</span><span class="p">]:</span>
+        <span class="mi">1</span>      <span class="mi">2</span>      <span class="mi">3</span>      <span class="mi">4</span>      <span class="mi">5</span>      <span class="mi">6</span>      <span class="mi">7</span>      <span class="mi">8</span>      <span class="mi">9</span>      <span class="mi">10</span>
+<span class="mi">1981</span> <span class="mi">5</span><span class="p">,</span><span class="mi">012</span>  <span class="mi">8</span><span class="p">,</span><span class="mi">269</span> <span class="mi">10</span><span class="p">,</span><span class="mi">907</span> <span class="mi">11</span><span class="p">,</span><span class="mi">805</span> <span class="mi">13</span><span class="p">,</span><span class="mi">539</span> <span class="mi">16</span><span class="p">,</span><span class="mi">181</span> <span class="mi">18</span><span class="p">,</span><span class="mi">009</span> <span class="mi">18</span><span class="p">,</span><span class="mi">608</span> <span class="mi">18</span><span class="p">,</span><span class="mi">662</span> <span class="mi">18</span><span class="p">,</span><span class="mi">834</span>
+<span class="mi">1982</span>   <span class="mi">106</span>  <span class="mi">4</span><span class="p">,</span><span class="mi">285</span>  <span class="mi">5</span><span class="p">,</span><span class="mi">396</span> <span class="mi">10</span><span class="p">,</span><span class="mi">666</span> <span class="mi">13</span><span class="p">,</span><span class="mi">782</span> <span class="mi">15</span><span class="p">,</span><span class="mi">599</span> <span class="mi">15</span><span class="p">,</span><span class="mi">496</span> <span class="mi">16</span><span class="p">,</span><span class="mi">169</span> <span class="mi">16</span><span class="p">,</span><span class="mi">704</span>    <span class="n">nan</span>
+<span class="mi">1983</span> <span class="mi">3</span><span class="p">,</span><span class="mi">410</span>  <span class="mi">8</span><span class="p">,</span><span class="mi">992</span> <span class="mi">13</span><span class="p">,</span><span class="mi">873</span> <span class="mi">16</span><span class="p">,</span><span class="mi">141</span> <span class="mi">18</span><span class="p">,</span><span class="mi">735</span> <span class="mi">22</span><span class="p">,</span><span class="mi">214</span> <span class="mi">22</span><span class="p">,</span><span class="mi">863</span> <span class="mi">23</span><span class="p">,</span><span class="mi">466</span>    <span class="n">nan</span>    <span class="n">nan</span>
+<span class="mi">1984</span> <span class="mi">5</span><span class="p">,</span><span class="mi">655</span> <span class="mi">11</span><span class="p">,</span><span class="mi">555</span> <span class="mi">15</span><span class="p">,</span><span class="mi">766</span> <span class="mi">21</span><span class="p">,</span><span class="mi">266</span> <span class="mi">23</span><span class="p">,</span><span class="mi">425</span> <span class="mi">26</span><span class="p">,</span><span class="mi">083</span> <span class="mi">27</span><span class="p">,</span><span class="mi">067</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>
+<span class="mi">1985</span> <span class="mi">1</span><span class="p">,</span><span class="mi">092</span>  <span class="mi">9</span><span class="p">,</span><span class="mi">565</span> <span class="mi">15</span><span class="p">,</span><span class="mi">836</span> <span class="mi">22</span><span class="p">,</span><span class="mi">169</span> <span class="mi">25</span><span class="p">,</span><span class="mi">955</span> <span class="mi">26</span><span class="p">,</span><span class="mi">180</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>
+<span class="mi">1986</span> <span class="mi">1</span><span class="p">,</span><span class="mi">513</span>  <span class="mi">6</span><span class="p">,</span><span class="mi">445</span> <span class="mi">11</span><span class="p">,</span><span class="mi">702</span> <span class="mi">12</span><span class="p">,</span><span class="mi">935</span> <span class="mi">15</span><span class="p">,</span><span class="mi">852</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>
+<span class="mi">1987</span>   <span class="mi">557</span>  <span class="mi">4</span><span class="p">,</span><span class="mi">020</span> <span class="mi">10</span><span class="p">,</span><span class="mi">946</span> <span class="mi">12</span><span class="p">,</span><span class="mi">314</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>
+<span class="mi">1988</span> <span class="mi">1</span><span class="p">,</span><span class="mi">351</span>  <span class="mi">6</span><span class="p">,</span><span class="mi">947</span> <span class="mi">13</span><span class="p">,</span><span class="mi">112</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>
+<span class="mi">1989</span> <span class="mi">3</span><span class="p">,</span><span class="mi">133</span>  <span class="mi">5</span><span class="p">,</span><span class="mi">395</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>
+<span class="mi">1990</span> <span class="mi">2</span><span class="p">,</span><span class="mi">063</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>    <span class="n">nan</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="example-3-create-a-cumulative-loss-triangle-from-data-formatted-as-a-triangle">
+<h4><strong>Example 3:</strong> Create a cumulative loss triangle from data formatted as a triangle<a class="headerlink" href="#example-3-create-a-cumulative-loss-triangle-from-data-formatted-as-a-triangle" title="Permalink to this headline">¶</a></h4>
+<p>There may be situations in which data is already formatted as a triangle,
+and we’re interested in creating a triangle instance from this data.
+In the next example, we create a DataFrame with the same shape as a triangle,
+which we then pass into <code class="docutils literal notranslate"><span class="pre">totri</span></code> with <code class="docutils literal notranslate"><span class="pre">data_shape=&quot;triangle&quot;</span></code> to obtain a
+cumulative triangle instance:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="kn">from</span> <span class="nn">trikit</span> <span class="kn">import</span> <span class="n">load</span><span class="p">,</span> <span class="n">totri</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">dftri</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+            <span class="mi">1</span><span class="p">:[</span><span class="mi">1010</span><span class="p">,</span> <span class="mi">1207</span><span class="p">,</span> <span class="mi">1555</span><span class="p">,</span> <span class="mi">1313</span><span class="p">,</span> <span class="mi">1905</span><span class="p">],</span>
+            <span class="mi">2</span><span class="p">:[</span><span class="mi">767</span><span class="p">,</span> <span class="mi">1100</span><span class="p">,</span> <span class="mi">1203</span><span class="p">,</span> <span class="mi">900</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span><span class="p">],</span>
+            <span class="mi">3</span><span class="p">:[</span><span class="mi">444</span><span class="p">,</span> <span class="mi">623</span><span class="p">,</span> <span class="mi">841</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span><span class="p">],</span>
+            <span class="mi">4</span><span class="p">:[</span><span class="mi">239</span><span class="p">,</span> <span class="mi">556</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span><span class="p">],</span>
+            <span class="mi">5</span><span class="p">:[</span><span class="mi">80</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span><span class="p">],</span>
+            <span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+            <span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="n">dftri</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">4</span><span class="p">]:</span>
+      <span class="mi">1</span>     <span class="mi">2</span>    <span class="mi">3</span>    <span class="mi">4</span>   <span class="mi">5</span>
+<span class="mi">1</span>  <span class="mf">1010.</span>  <span class="mf">767.</span> <span class="mf">444.</span> <span class="mf">239.</span> <span class="mf">80.</span>
+<span class="mi">2</span>  <span class="mf">1207.</span> <span class="mf">1100.</span> <span class="mf">623.</span> <span class="mf">556.</span> <span class="n">nan</span>
+<span class="mi">3</span>  <span class="mf">1555.</span> <span class="mf">1203.</span> <span class="mf">841.</span> <span class="n">nan</span>  <span class="n">nan</span>
+<span class="mi">4</span>  <span class="mf">1313.</span>  <span class="mf">900.</span> <span class="n">nan</span>  <span class="n">nan</span>  <span class="n">nan</span>
+<span class="mi">5</span>  <span class="mf">1905.</span>  <span class="n">nan</span>  <span class="n">nan</span>  <span class="n">nan</span>  <span class="n">nan</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">5</span><span class="p">]:</span> <span class="n">tri</span> <span class="o">=</span> <span class="n">totri</span><span class="p">(</span><span class="n">dftri</span><span class="p">,</span> <span class="n">data_shape</span><span class="o">=</span><span class="s2">&quot;triangle&quot;</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">6</span><span class="p">]:</span> <span class="nb">type</span><span class="p">(</span><span class="n">tri</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">6</span><span class="p">]:</span> <span class="n">trikit</span><span class="o">.</span><span class="n">triangle</span><span class="o">.</span><span class="n">CumTriangle</span>
+</pre></div>
+</div>
+<p>trikit cumulative triangle instances expose a plot method, which generates a
+faceted plot by origin representing the progression of cumulative losses to
+date by development period. The exhibit can be obtained as follows:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">5</span><span class="p">]:</span> <span class="n">tri</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Which yields:</p>
+<img alt="_images/tridev_combined.png" class="align-center" src="_images/tridev_combined.png" />
+</div>
+</div>
+</div>
+<div class="section" id="reserve-estimators">
+<h2>Reserve Estimators<a class="headerlink" href="#reserve-estimators" title="Permalink to this headline">¶</a></h2>
+<p>trikit includes a number of reserve estimators. Let’s refer to the CAS Loss Reserving
+Dastabase (lrdb) included with trikit, focusing on <code class="docutils literal notranslate"><span class="pre">grcode=1767</span></code> and <code class="docutils literal notranslate"><span class="pre">lob=&quot;comauto&quot;</span></code>
+(<code class="docutils literal notranslate"><span class="pre">grcode</span></code> uniquely identifies each company in the database. To obtain a full list of
+grcodes and associated companies, use <code class="docutils literal notranslate"><span class="pre">trikit.get_lrdb_specs</span></code>; to obtain a list
+of availavble lines of business (lobs), use <code class="docutils literal notranslate"><span class="pre">trikit.get_lrdb_lobs</span></code>):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">from</span> <span class="nn">trikit</span> <span class="kn">import</span> <span class="n">load_lrdb</span><span class="p">,</span> <span class="n">totri</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">df</span> <span class="o">=</span> <span class="n">load_lrdb</span><span class="p">(</span><span class="n">lob</span><span class="o">=</span><span class="s2">&quot;comauto&quot;</span><span class="p">,</span> <span class="n">grcode</span><span class="o">=</span><span class="mi">1767</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">tri</span> <span class="o">=</span> <span class="n">totri</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="n">tri</span>
+          <span class="mi">1</span>       <span class="mi">2</span>       <span class="mi">3</span>       <span class="mi">4</span>       <span class="mi">5</span>         <span class="mi">6</span>         <span class="mi">7</span>         <span class="mi">8</span>         <span class="mi">9</span>         <span class="mi">10</span>
+<span class="mi">1988</span> <span class="mi">110</span><span class="p">,</span><span class="mi">231</span> <span class="mi">263</span><span class="p">,</span><span class="mi">079</span> <span class="mi">431</span><span class="p">,</span><span class="mi">216</span> <span class="mi">611</span><span class="p">,</span><span class="mi">278</span> <span class="mi">797</span><span class="p">,</span><span class="mi">428</span>   <span class="mi">985</span><span class="p">,</span><span class="mi">570</span> <span class="mi">1</span><span class="p">,</span><span class="mi">174</span><span class="p">,</span><span class="mi">922</span> <span class="mi">1</span><span class="p">,</span><span class="mi">366</span><span class="p">,</span><span class="mi">229</span> <span class="mi">1</span><span class="p">,</span><span class="mi">558</span><span class="p">,</span><span class="mi">096</span> <span class="mi">1</span><span class="p">,</span><span class="mi">752</span><span class="p">,</span><span class="mi">096</span>
+<span class="mi">1989</span> <span class="mi">121</span><span class="p">,</span><span class="mi">678</span> <span class="mi">279</span><span class="p">,</span><span class="mi">896</span> <span class="mi">456</span><span class="p">,</span><span class="mi">640</span> <span class="mi">644</span><span class="p">,</span><span class="mi">767</span> <span class="mi">837</span><span class="p">,</span><span class="mi">733</span> <span class="mi">1</span><span class="p">,</span><span class="mi">033</span><span class="p">,</span><span class="mi">837</span> <span class="mi">1</span><span class="p">,</span><span class="mi">233</span><span class="p">,</span><span class="mi">015</span> <span class="mi">1</span><span class="p">,</span><span class="mi">432</span><span class="p">,</span><span class="mi">670</span> <span class="mi">1</span><span class="p">,</span><span class="mi">633</span><span class="p">,</span><span class="mi">619</span>       <span class="n">nan</span>
+<span class="mi">1990</span> <span class="mi">123</span><span class="p">,</span><span class="mi">376</span> <span class="mi">298</span><span class="p">,</span><span class="mi">615</span> <span class="mi">500</span><span class="p">,</span><span class="mi">570</span> <span class="mi">714</span><span class="p">,</span><span class="mi">683</span> <span class="mi">934</span><span class="p">,</span><span class="mi">671</span> <span class="mi">1</span><span class="p">,</span><span class="mi">157</span><span class="p">,</span><span class="mi">979</span> <span class="mi">1</span><span class="p">,</span><span class="mi">383</span><span class="p">,</span><span class="mi">820</span> <span class="mi">1</span><span class="p">,</span><span class="mi">610</span><span class="p">,</span><span class="mi">193</span>       <span class="n">nan</span>       <span class="n">nan</span>
+<span class="mi">1991</span> <span class="mi">117</span><span class="p">,</span><span class="mi">457</span> <span class="mi">280</span><span class="p">,</span><span class="mi">058</span> <span class="mi">463</span><span class="p">,</span><span class="mi">396</span> <span class="mi">662</span><span class="p">,</span><span class="mi">003</span> <span class="mi">865</span><span class="p">,</span><span class="mi">401</span> <span class="mi">1</span><span class="p">,</span><span class="mi">071</span><span class="p">,</span><span class="mi">271</span> <span class="mi">1</span><span class="p">,</span><span class="mi">278</span><span class="p">,</span><span class="mi">228</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>
+<span class="mi">1992</span> <span class="mi">124</span><span class="p">,</span><span class="mi">611</span> <span class="mi">291</span><span class="p">,</span><span class="mi">399</span> <span class="mi">481</span><span class="p">,</span><span class="mi">170</span> <span class="mi">682</span><span class="p">,</span><span class="mi">203</span> <span class="mi">889</span><span class="p">,</span><span class="mi">029</span> <span class="mi">1</span><span class="p">,</span><span class="mi">101</span><span class="p">,</span><span class="mi">390</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>
+<span class="mi">1993</span> <span class="mi">137</span><span class="p">,</span><span class="mi">902</span> <span class="mi">323</span><span class="p">,</span><span class="mi">854</span> <span class="mi">533</span><span class="p">,</span><span class="mi">211</span> <span class="mi">753</span><span class="p">,</span><span class="mi">639</span> <span class="mi">980</span><span class="p">,</span><span class="mi">180</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>
+<span class="mi">1994</span> <span class="mi">150</span><span class="p">,</span><span class="mi">582</span> <span class="mi">345</span><span class="p">,</span><span class="mi">110</span> <span class="mi">561</span><span class="p">,</span><span class="mi">315</span> <span class="mi">792</span><span class="p">,</span><span class="mi">392</span>     <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>
+<span class="mi">1995</span> <span class="mi">150</span><span class="p">,</span><span class="mi">511</span> <span class="mi">345</span><span class="p">,</span><span class="mi">241</span> <span class="mi">560</span><span class="p">,</span><span class="mi">278</span>     <span class="n">nan</span>     <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>
+<span class="mi">1996</span> <span class="mi">142</span><span class="p">,</span><span class="mi">301</span> <span class="mi">326</span><span class="p">,</span><span class="mi">584</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>
+<span class="mi">1997</span> <span class="mi">143</span><span class="p">,</span><span class="mi">970</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>     <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>       <span class="n">nan</span>
+</pre></div>
+</div>
+<p>Similar to <code class="docutils literal notranslate"><span class="pre">load</span></code>, <code class="docutils literal notranslate"><span class="pre">load_lrdb</span></code> also accepts a <code class="docutils literal notranslate"><span class="pre">tri_type</span></code> argument, which returns the lrdb subset
+as an incremental or cumulative triangle:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">5</span><span class="p">]:</span> <span class="n">tri</span> <span class="o">=</span> <span class="n">load_lrdb</span><span class="p">(</span><span class="n">tri_type</span><span class="o">=</span><span class="s2">&quot;cum&quot;</span><span class="p">,</span> <span class="n">lob</span><span class="o">=</span><span class="s2">&quot;comauto&quot;</span><span class="p">,</span> <span class="n">grcode</span><span class="o">=</span><span class="mi">1767</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To obtain base chain ladder reserve estimates, call the cumulative triangle’s
+<code class="docutils literal notranslate"><span class="pre">base_cl</span></code> method:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">5</span><span class="p">]:</span> <span class="n">result</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">base_cl</span><span class="p">()</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">6</span><span class="p">]:</span> <span class="n">result</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">6</span><span class="p">]:</span>
+      <span class="n">maturity</span>     <span class="n">cldf</span> <span class="n">emergence</span>     <span class="n">latest</span>   <span class="n">ultimate</span>    <span class="n">reserve</span>
+<span class="mi">1988</span>        <span class="mi">10</span>  <span class="mf">1.00000</span>   <span class="mf">1.00000</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">752</span><span class="p">,</span><span class="mi">096</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">752</span><span class="p">,</span><span class="mi">096</span>          <span class="mi">0</span>
+<span class="mi">1989</span>         <span class="mi">9</span>  <span class="mf">1.12451</span>   <span class="mf">0.88928</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">633</span><span class="p">,</span><span class="mi">619</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">837</span><span class="p">,</span><span class="mi">022</span>    <span class="mi">203</span><span class="p">,</span><span class="mi">403</span>
+<span class="mi">1990</span>         <span class="mi">8</span>  <span class="mf">1.28233</span>   <span class="mf">0.77983</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">610</span><span class="p">,</span><span class="mi">193</span>  <span class="mi">2</span><span class="p">,</span><span class="mi">064</span><span class="p">,</span><span class="mi">802</span>    <span class="mi">454</span><span class="p">,</span><span class="mi">609</span>
+<span class="mi">1991</span>         <span class="mi">7</span>  <span class="mf">1.49111</span>   <span class="mf">0.67064</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">278</span><span class="p">,</span><span class="mi">228</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">905</span><span class="p">,</span><span class="mi">977</span>    <span class="mi">627</span><span class="p">,</span><span class="mi">749</span>
+<span class="mi">1992</span>         <span class="mi">6</span>  <span class="mf">1.77936</span>   <span class="mf">0.56200</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">101</span><span class="p">,</span><span class="mi">390</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">959</span><span class="p">,</span><span class="mi">771</span>    <span class="mi">858</span><span class="p">,</span><span class="mi">381</span>
+<span class="mi">1993</span>         <span class="mi">5</span>  <span class="mf">2.20146</span>   <span class="mf">0.45425</span>    <span class="mi">980</span><span class="p">,</span><span class="mi">180</span>  <span class="mi">2</span><span class="p">,</span><span class="mi">157</span><span class="p">,</span><span class="mi">822</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">177</span><span class="p">,</span><span class="mi">642</span>
+<span class="mi">1994</span>         <span class="mi">4</span>  <span class="mf">2.87017</span>   <span class="mf">0.34841</span>    <span class="mi">792</span><span class="p">,</span><span class="mi">392</span>  <span class="mi">2</span><span class="p">,</span><span class="mi">274</span><span class="p">,</span><span class="mi">299</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">481</span><span class="p">,</span><span class="mi">907</span>
+<span class="mi">1995</span>         <span class="mi">3</span>  <span class="mf">4.07052</span>   <span class="mf">0.24567</span>    <span class="mi">560</span><span class="p">,</span><span class="mi">278</span>  <span class="mi">2</span><span class="p">,</span><span class="mi">280</span><span class="p">,</span><span class="mi">624</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">720</span><span class="p">,</span><span class="mi">346</span>
+<span class="mi">1996</span>         <span class="mi">2</span>  <span class="mf">6.68757</span>   <span class="mf">0.14953</span>    <span class="mi">326</span><span class="p">,</span><span class="mi">584</span>  <span class="mi">2</span><span class="p">,</span><span class="mi">184</span><span class="p">,</span><span class="mi">053</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">857</span><span class="p">,</span><span class="mi">469</span>
+<span class="mi">1997</span>         <span class="mi">1</span> <span class="mf">15.62506</span>   <span class="mf">0.06400</span>    <span class="mi">143</span><span class="p">,</span><span class="mi">970</span>  <span class="mi">2</span><span class="p">,</span><span class="mi">249</span><span class="p">,</span><span class="mi">541</span>  <span class="mi">2</span><span class="p">,</span><span class="mi">105</span><span class="p">,</span><span class="mi">571</span>
+<span class="n">total</span>               <span class="n">nan</span>       <span class="n">nan</span> <span class="mi">10</span><span class="p">,</span><span class="mi">178</span><span class="p">,</span><span class="mi">930</span> <span class="mi">20</span><span class="p">,</span><span class="mi">666</span><span class="p">,</span><span class="mi">007</span> <span class="mi">10</span><span class="p">,</span><span class="mi">487</span><span class="p">,</span><span class="mi">077</span>
+</pre></div>
+</div>
+<p>The result is of type <code class="docutils literal notranslate"><span class="pre">BaseChainLadderResult</span></code>. The columns
+of the result can be obtained in total or individually. The result above
+can be returned as a DataFrame by calling <code class="docutils literal notranslate"><span class="pre">result.summary</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">7</span><span class="p">]:</span> <span class="n">result</span><span class="o">.</span><span class="n">summary</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">7</span><span class="p">]:</span>
+      <span class="n">maturity</span>       <span class="n">cldf</span>  <span class="n">emergence</span>      <span class="n">latest</span>      <span class="n">ultimate</span>       <span class="n">reserve</span>
+<span class="mi">1988</span>        <span class="mi">10</span>   <span class="mf">1.000000</span>   <span class="mf">1.000000</span>   <span class="mf">1752096.0</span>  <span class="mf">1.752096e+06</span>  <span class="mf">0.000000e+00</span>
+<span class="mi">1989</span>         <span class="mi">9</span>   <span class="mf">1.124511</span>   <span class="mf">0.889275</span>   <span class="mf">1633619.0</span>  <span class="mf">1.837022e+06</span>  <span class="mf">2.034034e+05</span>
+<span class="mi">1990</span>         <span class="mi">8</span>   <span class="mf">1.282332</span>   <span class="mf">0.779829</span>   <span class="mf">1610193.0</span>  <span class="mf">2.064802e+06</span>  <span class="mf">4.546094e+05</span>
+<span class="mi">1991</span>         <span class="mi">7</span>   <span class="mf">1.491108</span>   <span class="mf">0.670642</span>   <span class="mf">1278228.0</span>  <span class="mf">1.905977e+06</span>  <span class="mf">6.277486e+05</span>
+<span class="mi">1992</span>         <span class="mi">6</span>   <span class="mf">1.779362</span>   <span class="mf">0.561999</span>   <span class="mf">1101390.0</span>  <span class="mf">1.959771e+06</span>  <span class="mf">8.583811e+05</span>
+<span class="mi">1993</span>         <span class="mi">5</span>   <span class="mf">2.201455</span>   <span class="mf">0.454245</span>    <span class="mf">980180.0</span>  <span class="mf">2.157822e+06</span>  <span class="mf">1.177642e+06</span>
+<span class="mi">1994</span>         <span class="mi">4</span>   <span class="mf">2.870169</span>   <span class="mf">0.348412</span>    <span class="mf">792392.0</span>  <span class="mf">2.274299e+06</span>  <span class="mf">1.481907e+06</span>
+<span class="mi">1995</span>         <span class="mi">3</span>   <span class="mf">4.070523</span>   <span class="mf">0.245669</span>    <span class="mf">560278.0</span>  <span class="mf">2.280624e+06</span>  <span class="mf">1.720346e+06</span>
+<span class="mi">1996</span>         <span class="mi">2</span>   <span class="mf">6.687568</span>   <span class="mf">0.149531</span>    <span class="mf">326584.0</span>  <span class="mf">2.184053e+06</span>  <span class="mf">1.857469e+06</span>
+<span class="mi">1997</span>         <span class="mi">1</span>  <span class="mf">15.625064</span>   <span class="mf">0.064000</span>    <span class="mf">143970.0</span>  <span class="mf">2.249541e+06</span>  <span class="mf">2.105571e+06</span>
+<span class="n">total</span>                 <span class="n">NaN</span>        <span class="n">NaN</span>  <span class="mf">10178930.0</span>  <span class="mf">2.066601e+07</span>  <span class="mf">1.048708e+07</span>
+</pre></div>
+</div>
+<p>To access the reserve estimates as a Series, call <code class="docutils literal notranslate"><span class="pre">result.reserve</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">8</span><span class="p">]:</span> <span class="n">result</span><span class="o">.</span><span class="n">reserve</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">8</span><span class="p">]:</span>
+<span class="mi">1988</span>            <span class="mf">0.0</span>
+<span class="mi">1989</span>       <span class="mf">203403.0</span>
+<span class="mi">1990</span>       <span class="mf">454609.0</span>
+<span class="mi">1991</span>       <span class="mf">627749.0</span>
+<span class="mi">1992</span>       <span class="mf">858381.0</span>
+<span class="mi">1993</span>      <span class="mf">1177642.0</span>
+<span class="mi">1994</span>      <span class="mf">1481907.0</span>
+<span class="mi">1995</span>      <span class="mf">1720346.0</span>
+<span class="mi">1996</span>      <span class="mf">1857469.0</span>
+<span class="mi">1997</span>      <span class="mf">2105571.0</span>
+<span class="n">total</span>    <span class="mf">10487077.0</span>
+<span class="n">Name</span><span class="p">:</span> <span class="n">reserve</span><span class="p">,</span> <span class="n">dtype</span><span class="p">:</span> <span class="n">float64</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">base_cl</span></code> accepts two optional arguments:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">tail</span></code>: The tail factor, which defaults to 1.0.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sel</span></code>: Loss development factors, which defaults to “all-weighted”. <code class="docutils literal notranslate"><span class="pre">sel</span></code> can be either a string corresponding to a pre-computed pattern available in <code class="docutils literal notranslate"><span class="pre">tri.a2a_avgs().index</span></code>, or a custom set of loss development factors as a numpy array or Pandas Series.</p></li>
+</ul>
+<p>Example #2 demonstrated how to access a number of candidate loss development patterns
+by calling <code class="docutils literal notranslate"><span class="pre">tri.a2a_avgs</span></code>. Available pre-computed options for <code class="docutils literal notranslate"><span class="pre">sel</span></code> can be any
+value present in <code class="docutils literal notranslate"><span class="pre">tri.a2a_avgs</span></code>’s index. To obtain a list of available pre-computed
+loss development factors by name, run:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">9</span><span class="p">]:</span> <span class="n">tri</span><span class="o">.</span><span class="n">a2a_avgs</span><span class="p">()</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">9</span><span class="p">]:</span>
+<span class="p">[</span><span class="s1">&#39;simple-1&#39;</span><span class="p">,</span> <span class="s1">&#39;simple-2&#39;</span><span class="p">,</span> <span class="s1">&#39;simple-3&#39;</span><span class="p">,</span> <span class="s1">&#39;simple-4&#39;</span><span class="p">,</span> <span class="s1">&#39;simple-5&#39;</span><span class="p">,</span> <span class="s1">&#39;simple-6&#39;</span><span class="p">,</span> <span class="s1">&#39;simple-7&#39;</span><span class="p">,</span>
+<span class="s1">&#39;simple-8&#39;</span><span class="p">,</span> <span class="s1">&#39;all-simple&#39;</span><span class="p">,</span> <span class="s1">&#39;geometric-1&#39;</span><span class="p">,</span> <span class="s1">&#39;geometric-2&#39;</span><span class="p">,</span> <span class="s1">&#39;geometric-3&#39;</span><span class="p">,</span> <span class="s1">&#39;geometric-4&#39;</span><span class="p">,</span>
+<span class="s1">&#39;geometric-5&#39;</span><span class="p">,</span> <span class="s1">&#39;geometric-6&#39;</span><span class="p">,</span> <span class="s1">&#39;geometric-7&#39;</span><span class="p">,</span> <span class="s1">&#39;geometric-8&#39;</span><span class="p">,</span> <span class="s1">&#39;all-geometric&#39;</span><span class="p">,</span>
+<span class="s1">&#39;weighted-1&#39;</span><span class="p">,</span> <span class="s1">&#39;weighted-2&#39;</span><span class="p">,</span> <span class="s1">&#39;weighted-3&#39;</span><span class="p">,</span> <span class="s1">&#39;weighted-4&#39;</span><span class="p">,</span> <span class="s1">&#39;weighted-5&#39;</span><span class="p">,</span> <span class="s1">&#39;weighted-6&#39;</span><span class="p">,</span>
+<span class="s1">&#39;weighted-7&#39;</span><span class="p">,</span> <span class="s1">&#39;weighted-8&#39;</span><span class="p">,</span> <span class="s1">&#39;all-weighted&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>If instead of <code class="docutils literal notranslate"><span class="pre">all-weighted</span></code>, a 5-year geometric loss development pattern is
+preferred, along with a tail factor of 1.015, the call to <code class="docutils literal notranslate"><span class="pre">base_cl</span></code> would be modified
+as follows:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span><span class="p">[</span><span class="mi">10</span><span class="p">]:</span> <span class="n">tri</span><span class="o">.</span><span class="n">base_cl</span><span class="p">(</span><span class="n">sel</span><span class="o">=</span><span class="s2">&quot;geometric-5&quot;</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="mf">1.015</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">10</span><span class="p">]:</span>
+      <span class="n">maturity</span>     <span class="n">cldf</span> <span class="n">emergence</span>     <span class="n">latest</span>   <span class="n">ultimate</span>    <span class="n">reserve</span>
+<span class="mi">1988</span>        <span class="mi">10</span>  <span class="mf">1.01500</span>   <span class="mf">0.98522</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">752</span><span class="p">,</span><span class="mi">096</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">778</span><span class="p">,</span><span class="mi">377</span>     <span class="mi">26</span><span class="p">,</span><span class="mi">281</span>
+<span class="mi">1989</span>         <span class="mi">9</span>  <span class="mf">1.14138</span>   <span class="mf">0.87613</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">633</span><span class="p">,</span><span class="mi">619</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">864</span><span class="p">,</span><span class="mi">578</span>    <span class="mi">230</span><span class="p">,</span><span class="mi">959</span>
+<span class="mi">1990</span>         <span class="mi">8</span>  <span class="mf">1.30157</span>   <span class="mf">0.76830</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">610</span><span class="p">,</span><span class="mi">193</span>  <span class="mi">2</span><span class="p">,</span><span class="mi">095</span><span class="p">,</span><span class="mi">778</span>    <span class="mi">485</span><span class="p">,</span><span class="mi">585</span>
+<span class="mi">1991</span>         <span class="mi">7</span>  <span class="mf">1.51344</span>   <span class="mf">0.66075</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">278</span><span class="p">,</span><span class="mi">228</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">934</span><span class="p">,</span><span class="mi">517</span>    <span class="mi">656</span><span class="p">,</span><span class="mi">289</span>
+<span class="mi">1992</span>         <span class="mi">6</span>  <span class="mf">1.80591</span>   <span class="mf">0.55374</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">101</span><span class="p">,</span><span class="mi">390</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">989</span><span class="p">,</span><span class="mi">009</span>    <span class="mi">887</span><span class="p">,</span><span class="mi">619</span>
+<span class="mi">1993</span>         <span class="mi">5</span>  <span class="mf">2.23416</span>   <span class="mf">0.44760</span>    <span class="mi">980</span><span class="p">,</span><span class="mi">180</span>  <span class="mi">2</span><span class="p">,</span><span class="mi">189</span><span class="p">,</span><span class="mi">878</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">209</span><span class="p">,</span><span class="mi">698</span>
+<span class="mi">1994</span>         <span class="mi">4</span>  <span class="mf">2.91249</span>   <span class="mf">0.34335</span>    <span class="mi">792</span><span class="p">,</span><span class="mi">392</span>  <span class="mi">2</span><span class="p">,</span><span class="mi">307</span><span class="p">,</span><span class="mi">832</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">515</span><span class="p">,</span><span class="mi">440</span>
+<span class="mi">1995</span>         <span class="mi">3</span>  <span class="mf">4.13521</span>   <span class="mf">0.24183</span>    <span class="mi">560</span><span class="p">,</span><span class="mi">278</span>  <span class="mi">2</span><span class="p">,</span><span class="mi">316</span><span class="p">,</span><span class="mi">869</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">756</span><span class="p">,</span><span class="mi">591</span>
+<span class="mi">1996</span>         <span class="mi">2</span>  <span class="mf">6.78292</span>   <span class="mf">0.14743</span>    <span class="mi">326</span><span class="p">,</span><span class="mi">584</span>  <span class="mi">2</span><span class="p">,</span><span class="mi">215</span><span class="p">,</span><span class="mi">194</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">888</span><span class="p">,</span><span class="mi">610</span>
+<span class="mi">1997</span>         <span class="mi">1</span> <span class="mf">15.69149</span>   <span class="mf">0.06373</span>    <span class="mi">143</span><span class="p">,</span><span class="mi">970</span>  <span class="mi">2</span><span class="p">,</span><span class="mi">259</span><span class="p">,</span><span class="mi">103</span>  <span class="mi">2</span><span class="p">,</span><span class="mi">115</span><span class="p">,</span><span class="mi">133</span>
+<span class="n">total</span>               <span class="n">nan</span>       <span class="n">nan</span> <span class="mi">10</span><span class="p">,</span><span class="mi">178</span><span class="p">,</span><span class="mi">930</span> <span class="mi">20</span><span class="p">,</span><span class="mi">951</span><span class="p">,</span><span class="mi">135</span> <span class="mi">10</span><span class="p">,</span><span class="mi">772</span><span class="p">,</span><span class="mi">205</span>
+</pre></div>
+</div>
+<p>If <code class="docutils literal notranslate"><span class="pre">sel</span></code> is a Series or numpy ndarray, a check will first be made to ensure the LDFs
+have the requiste number of elements. The provided LDFs should not include a tail factor.
+Next, reserves are estimated with the chain ladder along with an external set of LDFs
+using the same loss reserve database subset (<code class="docutils literal notranslate"><span class="pre">grcode=1767</span></code> and <code class="docutils literal notranslate"><span class="pre">lob=&quot;commauto&quot;</span></code>):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span><span class="p">[</span><span class="mi">11</span><span class="p">]:</span> <span class="n">tri</span> <span class="o">=</span> <span class="n">load_lrdb</span><span class="p">(</span><span class="n">tri_type</span><span class="o">=</span><span class="s2">&quot;cum&quot;</span><span class="p">,</span> <span class="n">lob</span><span class="o">=</span><span class="s2">&quot;commauto&quot;</span><span class="p">,</span> <span class="n">grcode</span><span class="o">=</span><span class="mi">1767</span><span class="p">)</span>
+<span class="n">In</span><span class="p">[</span><span class="mi">12</span><span class="p">]:</span> <span class="n">ldfs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mf">2.75</span><span class="p">,</span> <span class="mf">1.55</span><span class="p">,</span> <span class="mf">1.50</span><span class="p">,</span> <span class="mf">1.25</span><span class="p">,</span> <span class="mf">1.15</span><span class="p">,</span> <span class="mf">1.075</span><span class="p">,</span> <span class="mf">1.03</span><span class="p">,</span> <span class="mf">1.02</span><span class="p">,</span> <span class="mf">1.01</span><span class="p">])</span>
+<span class="n">In</span><span class="p">[</span><span class="mi">13</span><span class="p">]:</span> <span class="n">cl</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">base_cl</span><span class="p">(</span><span class="n">sel</span><span class="o">=</span><span class="n">ldfs</span><span class="p">)</span>
+<span class="n">In</span><span class="p">[</span><span class="mi">14</span><span class="p">]:</span> <span class="n">cl</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">14</span><span class="p">]:</span>
+      <span class="n">maturity</span>     <span class="n">cldf</span> <span class="n">emergence</span>     <span class="n">latest</span>   <span class="n">ultimate</span>   <span class="n">reserve</span>
+<span class="mi">1988</span>        <span class="mi">10</span>  <span class="mf">1.00000</span>   <span class="mf">1.00000</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">752</span><span class="p">,</span><span class="mi">096</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">752</span><span class="p">,</span><span class="mi">096</span>         <span class="mi">0</span>
+<span class="mi">1989</span>         <span class="mi">9</span>  <span class="mf">1.01000</span>   <span class="mf">0.99010</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">633</span><span class="p">,</span><span class="mi">619</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">649</span><span class="p">,</span><span class="mi">955</span>    <span class="mi">16</span><span class="p">,</span><span class="mi">336</span>
+<span class="mi">1990</span>         <span class="mi">8</span>  <span class="mf">1.03020</span>   <span class="mf">0.97069</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">610</span><span class="p">,</span><span class="mi">193</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">658</span><span class="p">,</span><span class="mi">821</span>    <span class="mi">48</span><span class="p">,</span><span class="mi">628</span>
+<span class="mi">1991</span>         <span class="mi">7</span>  <span class="mf">1.06111</span>   <span class="mf">0.94241</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">278</span><span class="p">,</span><span class="mi">228</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">356</span><span class="p">,</span><span class="mi">335</span>    <span class="mi">78</span><span class="p">,</span><span class="mi">107</span>
+<span class="mi">1992</span>         <span class="mi">6</span>  <span class="mf">1.14069</span>   <span class="mf">0.87666</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">101</span><span class="p">,</span><span class="mi">390</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">256</span><span class="p">,</span><span class="mi">343</span>   <span class="mi">154</span><span class="p">,</span><span class="mi">953</span>
+<span class="mi">1993</span>         <span class="mi">5</span>  <span class="mf">1.31179</span>   <span class="mf">0.76232</span>    <span class="mi">980</span><span class="p">,</span><span class="mi">180</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">285</span><span class="p">,</span><span class="mi">793</span>   <span class="mi">305</span><span class="p">,</span><span class="mi">613</span>
+<span class="mi">1994</span>         <span class="mi">4</span>  <span class="mf">1.63974</span>   <span class="mf">0.60985</span>    <span class="mi">792</span><span class="p">,</span><span class="mi">392</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">299</span><span class="p">,</span><span class="mi">317</span>   <span class="mi">506</span><span class="p">,</span><span class="mi">925</span>
+<span class="mi">1995</span>         <span class="mi">3</span>  <span class="mf">2.45961</span>   <span class="mf">0.40657</span>    <span class="mi">560</span><span class="p">,</span><span class="mi">278</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">378</span><span class="p">,</span><span class="mi">066</span>   <span class="mi">817</span><span class="p">,</span><span class="mi">788</span>
+<span class="mi">1996</span>         <span class="mi">2</span>  <span class="mf">3.81240</span>   <span class="mf">0.26230</span>    <span class="mi">326</span><span class="p">,</span><span class="mi">584</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">245</span><span class="p">,</span><span class="mi">068</span>   <span class="mi">918</span><span class="p">,</span><span class="mi">484</span>
+<span class="mi">1997</span>         <span class="mi">1</span> <span class="mf">10.48409</span>   <span class="mf">0.09538</span>    <span class="mi">143</span><span class="p">,</span><span class="mi">970</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">509</span><span class="p">,</span><span class="mi">394</span> <span class="mi">1</span><span class="p">,</span><span class="mi">365</span><span class="p">,</span><span class="mi">424</span>
+<span class="n">total</span>               <span class="n">nan</span>       <span class="n">nan</span> <span class="mi">10</span><span class="p">,</span><span class="mi">178</span><span class="p">,</span><span class="mi">930</span> <span class="mi">14</span><span class="p">,</span><span class="mi">391</span><span class="p">,</span><span class="mi">188</span> <span class="mi">4</span><span class="p">,</span><span class="mi">212</span><span class="p">,</span><span class="mi">258</span>
+</pre></div>
+</div>
+<p>If <code class="docutils literal notranslate"><span class="pre">ldfs</span></code> is not of the correct length (length n-1 for a triangle
+having n development periods), <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> is raised:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span><span class="p">[</span><span class="mi">15</span><span class="p">]:</span> <span class="n">ldfs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mf">2.75</span><span class="p">,</span> <span class="mf">1.55</span><span class="p">,</span> <span class="mf">1.50</span><span class="p">,</span> <span class="mf">1.25</span><span class="p">,</span> <span class="mf">1.15</span><span class="p">,</span> <span class="mf">1.075</span><span class="p">,</span> <span class="mf">1.03</span><span class="p">])</span>
+<span class="n">In</span><span class="p">[</span><span class="mi">16</span><span class="p">]:</span> <span class="n">result</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">_base_cl</span><span class="p">(</span><span class="n">sel</span><span class="o">=</span><span class="n">ldfs</span><span class="p">)</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+<span class="n">File</span> <span class="s2">&quot;trikit\chainladder</span><span class="se">\b</span><span class="s2">ase.py&quot;</span><span class="p">,</span> <span class="n">line</span> <span class="mi">117</span><span class="p">,</span> <span class="ow">in</span> <span class="fm">__call__</span>
+<span class="ne">ValueError</span><span class="p">:</span> <span class="n">sel</span> <span class="n">has</span> <span class="mi">7</span> <span class="n">values</span><span class="p">,</span> <span class="n">LDF</span> <span class="n">overrides</span> <span class="n">require</span> <span class="mf">9.</span>
+</pre></div>
+</div>
+<p>A faceted plot by origin combining actuals and forcasts can be obtained by calling
+<code class="docutils literal notranslate"><span class="pre">result</span></code>’s plot method:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">17</span><span class="p">]:</span> <span class="n">result</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">base_cl</span><span class="p">(</span><span class="n">sel</span><span class="o">=</span><span class="s2">&quot;geometric-5&quot;</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="mf">1.015</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">18</span><span class="p">]:</span> <span class="n">result</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Which produces the following:</p>
+<img alt="_images/cl_plot.png" class="align-center" src="_images/cl_plot.png" />
+</div>
+<div class="section" id="quantifying-reserve-variability">
+<h2>Quantifying Reserve Variability<a class="headerlink" href="#quantifying-reserve-variability" title="Permalink to this headline">¶</a></h2>
+<p>The Base Chain Ladder method provides an estimate by origin and in total of
+future outstanding claim liabilities, but offers no indication of the variability
+around those point estimates. We can obtain quantiles of the predictive
+distribution of reserve estimates through a number of trikit estimators.</p>
+<div class="section" id="mack-chain-ladder">
+<h3>Mack Chain Ladder<a class="headerlink" href="#mack-chain-ladder" title="Permalink to this headline">¶</a></h3>
+<p>The Mack Chain Ladder is a distribution free model which estimates the first
+two moments of standard chain ladder forecasts. Within trikit, the Mack Chain
+Ladder is encapsulated within a cumulative triangle’s <code class="docutils literal notranslate"><span class="pre">mack_cl</span></code> method.
+<code class="docutils literal notranslate"><span class="pre">mack_cl</span></code> accepts a number of optional arguments:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">alpha</span></code>: Controls how loss development factors are computed. Can be 0, 1 or 2.
+When <code class="docutils literal notranslate"><span class="pre">alpha=0</span></code>, LDFs are computed as the straight average of observed individual link ratios.
+When <code class="docutils literal notranslate"><span class="pre">alpha=1</span></code>, the historical Chain Ladder age-to-age factors are computed.
+When <code class="docutils literal notranslate"><span class="pre">alpha=2</span></code>, a regression of :math: <cite>C_{k+1}</cite> on :math: <cite>C_{k}</cite> with 0 intercept is performed.
+Default is 1.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dist</span></code>: Either “norm” or “lognorm”. Represents the selected distribution to
+approximate the true distribution of reserves by origin period and in aggregate.
+Setting <code class="docutils literal notranslate"><span class="pre">dist=&quot;norm&quot;</span></code> specifies a normal distribution. <code class="docutils literal notranslate"><span class="pre">dist=&quot;lognorm&quot;</span></code>
+assumes a log-normal distribution. Default is “lognorm”.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">q</span></code>:  Quantile or sequence of quantiles to compute, which must be between 0 and
+1 inclusive. Default is [.75, .95].</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">two_sided</span></code>: Whether the two_sided interval should be included in summary
+output. For example, if <code class="docutils literal notranslate"><span class="pre">two_sided==True</span></code> and <code class="docutils literal notranslate"><span class="pre">q=.95</span></code>, then the 2.5th and 97.5th
+quantiles of the estimated reserve distribution will be returned ((1 - .95) / 2, (1 + .95) / 2).
+When False, only the specified quantile(s) will be computed. Default value is False.</p></li>
+</ul>
+<p>Using the <code class="docutils literal notranslate"><span class="pre">ta83</span></code> sample dataset, calling <code class="docutils literal notranslate"><span class="pre">mack_cl</span></code> with default arguments yields:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">from</span> <span class="nn">trikit</span> <span class="kn">import</span> <span class="n">load</span><span class="p">,</span> <span class="n">totri</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">tri</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="s2">&quot;ta83&quot;</span><span class="p">,</span> <span class="n">tri_type</span><span class="o">=</span><span class="s2">&quot;cum&quot;</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">mcl</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">mack_cl</span><span class="p">()</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="n">mcl</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">4</span><span class="p">]:</span>
+      <span class="n">maturity</span>     <span class="n">cldf</span> <span class="n">emergence</span>     <span class="n">latest</span>   <span class="n">ultimate</span>    <span class="n">reserve</span> <span class="n">std_error</span>      <span class="n">cv</span>        <span class="mi">75</span><span class="o">%</span>        <span class="mi">95</span><span class="o">%</span>
+<span class="mi">1</span>           <span class="mi">10</span>  <span class="mf">1.00000</span>   <span class="mf">1.00000</span>  <span class="mi">3</span><span class="p">,</span><span class="mi">901</span><span class="p">,</span><span class="mi">463</span>  <span class="mi">3</span><span class="p">,</span><span class="mi">901</span><span class="p">,</span><span class="mi">463</span>          <span class="mi">0</span>         <span class="mi">0</span>     <span class="n">nan</span>        <span class="n">nan</span>        <span class="n">nan</span>
+<span class="mi">2</span>            <span class="mi">9</span>  <span class="mf">1.01772</span>   <span class="mf">0.98258</span>  <span class="mi">5</span><span class="p">,</span><span class="mi">339</span><span class="p">,</span><span class="mi">085</span>  <span class="mi">5</span><span class="p">,</span><span class="mi">433</span><span class="p">,</span><span class="mi">719</span>     <span class="mi">94</span><span class="p">,</span><span class="mi">634</span>    <span class="mi">75</span><span class="p">,</span><span class="mi">535</span> <span class="mf">0.79818</span>    <span class="mi">118</span><span class="p">,</span><span class="mi">760</span>    <span class="mi">234</span><span class="p">,</span><span class="mi">717</span>
+<span class="mi">3</span>            <span class="mi">8</span>  <span class="mf">1.09564</span>   <span class="mf">0.91271</span>  <span class="mi">4</span><span class="p">,</span><span class="mi">909</span><span class="p">,</span><span class="mi">315</span>  <span class="mi">5</span><span class="p">,</span><span class="mi">378</span><span class="p">,</span><span class="mi">826</span>    <span class="mi">469</span><span class="p">,</span><span class="mi">511</span>   <span class="mi">121</span><span class="p">,</span><span class="mi">700</span> <span class="mf">0.25921</span>    <span class="mi">539</span><span class="p">,</span><span class="mi">788</span>    <span class="mi">691</span><span class="p">,</span><span class="mi">334</span>
+<span class="mi">4</span>            <span class="mi">7</span>  <span class="mf">1.15466</span>   <span class="mf">0.86605</span>  <span class="mi">4</span><span class="p">,</span><span class="mi">588</span><span class="p">,</span><span class="mi">268</span>  <span class="mi">5</span><span class="p">,</span><span class="mi">297</span><span class="p">,</span><span class="mi">906</span>    <span class="mi">709</span><span class="p">,</span><span class="mi">638</span>   <span class="mi">133</span><span class="p">,</span><span class="mi">551</span> <span class="mf">0.18820</span>    <span class="mi">790</span><span class="p">,</span><span class="mi">911</span>    <span class="mi">947</span><span class="p">,</span><span class="mi">870</span>
+<span class="mi">5</span>            <span class="mi">6</span>  <span class="mf">1.25428</span>   <span class="mf">0.79727</span>  <span class="mi">3</span><span class="p">,</span><span class="mi">873</span><span class="p">,</span><span class="mi">311</span>  <span class="mi">4</span><span class="p">,</span><span class="mi">858</span><span class="p">,</span><span class="mi">200</span>    <span class="mi">984</span><span class="p">,</span><span class="mi">889</span>   <span class="mi">261</span><span class="p">,</span><span class="mi">412</span> <span class="mf">0.26542</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">135</span><span class="p">,</span><span class="mi">100</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">462</span><span class="p">,</span><span class="mi">149</span>
+<span class="mi">6</span>            <span class="mi">5</span>  <span class="mf">1.38450</span>   <span class="mf">0.72228</span>  <span class="mi">3</span><span class="p">,</span><span class="mi">691</span><span class="p">,</span><span class="mi">712</span>  <span class="mi">5</span><span class="p">,</span><span class="mi">111</span><span class="p">,</span><span class="mi">171</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">419</span><span class="p">,</span><span class="mi">459</span>   <span class="mi">411</span><span class="p">,</span><span class="mi">028</span> <span class="mf">0.28957</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">651</span><span class="p">,</span><span class="mi">045</span>  <span class="mi">2</span><span class="p">,</span><span class="mi">174</span><span class="p">,</span><span class="mi">408</span>
+<span class="mi">7</span>            <span class="mi">4</span>  <span class="mf">1.62520</span>   <span class="mf">0.61531</span>  <span class="mi">3</span><span class="p">,</span><span class="mi">483</span><span class="p">,</span><span class="mi">130</span>  <span class="mi">5</span><span class="p">,</span><span class="mi">660</span><span class="p">,</span><span class="mi">771</span>  <span class="mi">2</span><span class="p">,</span><span class="mi">177</span><span class="p">,</span><span class="mi">641</span>   <span class="mi">558</span><span class="p">,</span><span class="mi">356</span> <span class="mf">0.25640</span>  <span class="mi">2</span><span class="p">,</span><span class="mi">500</span><span class="p">,</span><span class="mi">779</span>  <span class="mi">3</span><span class="p">,</span><span class="mi">194</span><span class="p">,</span><span class="mi">587</span>
+<span class="mi">8</span>            <span class="mi">3</span>  <span class="mf">2.36858</span>   <span class="mf">0.42219</span>  <span class="mi">2</span><span class="p">,</span><span class="mi">864</span><span class="p">,</span><span class="mi">498</span>  <span class="mi">6</span><span class="p">,</span><span class="mi">784</span><span class="p">,</span><span class="mi">799</span>  <span class="mi">3</span><span class="p">,</span><span class="mi">920</span><span class="p">,</span><span class="mi">301</span>   <span class="mi">875</span><span class="p">,</span><span class="mi">430</span> <span class="mf">0.22331</span>  <span class="mi">4</span><span class="p">,</span><span class="mi">439</span><span class="p">,</span><span class="mi">877</span>  <span class="mi">5</span><span class="p">,</span><span class="mi">499</span><span class="p">,</span><span class="mi">652</span>
+<span class="mi">9</span>            <span class="mi">2</span>  <span class="mf">4.13870</span>   <span class="mf">0.24162</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">363</span><span class="p">,</span><span class="mi">294</span>  <span class="mi">5</span><span class="p">,</span><span class="mi">642</span><span class="p">,</span><span class="mi">266</span>  <span class="mi">4</span><span class="p">,</span><span class="mi">278</span><span class="p">,</span><span class="mi">972</span>   <span class="mi">971</span><span class="p">,</span><span class="mi">385</span> <span class="mf">0.22701</span>  <span class="mi">4</span><span class="p">,</span><span class="mi">853</span><span class="p">,</span><span class="mi">918</span>  <span class="mi">6</span><span class="p">,</span><span class="mi">033</span><span class="p">,</span><span class="mi">399</span>
+<span class="mi">10</span>           <span class="mi">1</span> <span class="mf">14.44662</span>   <span class="mf">0.06922</span>    <span class="mi">344</span><span class="p">,</span><span class="mi">014</span>  <span class="mi">4</span><span class="p">,</span><span class="mi">969</span><span class="p">,</span><span class="mi">838</span>  <span class="mi">4</span><span class="p">,</span><span class="mi">625</span><span class="p">,</span><span class="mi">824</span> <span class="mi">1</span><span class="p">,</span><span class="mi">363</span><span class="p">,</span><span class="mi">376</span> <span class="mf">0.29473</span>  <span class="mi">5</span><span class="p">,</span><span class="mi">390</span><span class="p">,</span><span class="mi">689</span>  <span class="mi">7</span><span class="p">,</span><span class="mi">133</span><span class="p">,</span><span class="mi">025</span>
+<span class="n">total</span>               <span class="n">nan</span>       <span class="n">nan</span> <span class="mi">34</span><span class="p">,</span><span class="mi">358</span><span class="p">,</span><span class="mi">090</span> <span class="mi">53</span><span class="p">,</span><span class="mi">038</span><span class="p">,</span><span class="mi">959</span> <span class="mi">18</span><span class="p">,</span><span class="mi">680</span><span class="p">,</span><span class="mi">869</span> <span class="mi">2</span><span class="p">,</span><span class="mi">447</span><span class="p">,</span><span class="mi">318</span> <span class="mf">0.13101</span> <span class="mi">20</span><span class="p">,</span><span class="mi">226</span><span class="p">,</span><span class="mi">192</span> <span class="mi">22</span><span class="p">,</span><span class="mi">955</span><span class="p">,</span><span class="mi">604</span>
+</pre></div>
+</div>
+<p>Quantiles of the estimated reserve distribution can be obtained by calling <code class="docutils literal notranslate"><span class="pre">get_quantiles</span></code>.
+<code class="docutils literal notranslate"><span class="pre">q</span></code> can be either a single float or an array of floats representing the percentiles of
+interest (which must fall within [0, 1]):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">5</span><span class="p">]:</span> <span class="n">mcl</span><span class="o">.</span><span class="n">get_quantiles</span><span class="p">(</span><span class="n">q</span><span class="o">=</span><span class="p">[</span><span class="o">.</span><span class="mi">05</span><span class="p">,</span> <span class="o">.</span><span class="mi">10</span><span class="p">,</span> <span class="o">.</span><span class="mi">25</span><span class="p">,</span> <span class="o">.</span><span class="mi">50</span><span class="p">,</span> <span class="o">.</span><span class="mi">75</span><span class="p">,</span> <span class="o">.</span><span class="mi">90</span><span class="p">,</span> <span class="o">.</span><span class="mi">95</span><span class="p">])</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">5</span><span class="p">]:</span>
+             <span class="mi">5</span><span class="n">th</span>       <span class="mi">10</span><span class="n">th</span>       <span class="mi">25</span><span class="n">th</span>       <span class="mi">50</span><span class="n">th</span>       <span class="mi">75</span><span class="n">th</span>       <span class="mi">90</span><span class="n">th</span>       <span class="mi">95</span><span class="n">th</span>
+<span class="mi">1</span>            <span class="n">nan</span>        <span class="n">nan</span>        <span class="n">nan</span>        <span class="n">nan</span>        <span class="n">nan</span>        <span class="n">nan</span>        <span class="n">nan</span>
+<span class="mi">2</span>        <span class="mf">23306.0</span>    <span class="mf">30078.0</span>    <span class="mf">46063.0</span>    <span class="mf">73962.0</span>   <span class="mf">118760.0</span>   <span class="mf">181873.0</span>   <span class="mf">234717.0</span>
+<span class="mi">3</span>       <span class="mf">298788.0</span>   <span class="mf">327792.0</span>   <span class="mf">382673.0</span>   <span class="mf">454491.0</span>   <span class="mf">539788.0</span>   <span class="mf">630163.0</span>   <span class="mf">691334.0</span>
+<span class="mi">4</span>       <span class="mf">513108.0</span>   <span class="mf">549091.0</span>   <span class="mf">614936.0</span>   <span class="mf">697395.0</span>   <span class="mf">790911.0</span>   <span class="mf">885754.0</span>   <span class="mf">947870.0</span>
+<span class="mi">5</span>       <span class="mf">619750.0</span>   <span class="mf">681372.0</span>   <span class="mf">798314.0</span>   <span class="mf">951928.0</span>  <span class="mf">1135100.0</span>  <span class="mf">1329915.0</span>  <span class="mf">1462149.0</span>
+<span class="mi">6</span>       <span class="mf">854941.0</span>   <span class="mf">947780.0</span>  <span class="mf">1125948.0</span>  <span class="mf">1363448.0</span>  <span class="mf">1651045.0</span>  <span class="mf">1961416.0</span>  <span class="mf">2174408.0</span>
+<span class="mi">7</span>      <span class="mf">1392853.0</span>  <span class="mf">1526576.0</span>  <span class="mf">1779281.0</span>  <span class="mf">2109405.0</span>  <span class="mf">2500779.0</span>  <span class="mf">2914751.0</span>  <span class="mf">3194587.0</span>
+<span class="mi">8</span>      <span class="mf">2661766.0</span>  <span class="mf">2883868.0</span>  <span class="mf">3297115.0</span>  <span class="mf">3826066.0</span>  <span class="mf">4439877.0</span>  <span class="mf">5076093.0</span>  <span class="mf">5499652.0</span>
+<span class="mi">9</span>      <span class="mf">2885978.0</span>  <span class="mf">3130850.0</span>  <span class="mf">3587259.0</span>  <span class="mf">4172800.0</span>  <span class="mf">4853918.0</span>  <span class="mf">5561511.0</span>  <span class="mf">6033399.0</span>
+<span class="mi">10</span>     <span class="mf">2760122.0</span>  <span class="mf">3065251.0</span>  <span class="mf">3652226.0</span>  <span class="mf">4437118.0</span>  <span class="mf">5390689.0</span>  <span class="mf">6422971.0</span>  <span class="mf">7133025.0</span>
+<span class="n">total</span> <span class="mf">14945656.0</span> <span class="mf">15671023.0</span> <span class="mf">16962489.0</span> <span class="mf">18522596.0</span> <span class="mf">20226192.0</span> <span class="mf">21893054.0</span> <span class="mf">22955604.0</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">MackChainLadderResult</span></code>’s <code class="docutils literal notranslate"><span class="pre">plot</span></code> method returns a faceted plot of estimated
+reserve distributions by origin and in total. The mean is highlighted, along with
+any quantiles passed to the <code class="docutils literal notranslate"><span class="pre">plot</span></code> method via <code class="docutils literal notranslate"><span class="pre">q</span></code>. We can compare the estimated distributions
+when <code class="docutils literal notranslate"><span class="pre">dist=&quot;lognorm&quot;</span></code> vs. <code class="docutils literal notranslate"><span class="pre">dist=&quot;norm&quot;</span></code>, highlighting the mean and 95th percentile.
+First we take a look at <code class="docutils literal notranslate"><span class="pre">dist=&quot;lognorm&quot;</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">7</span><span class="p">]:</span> <span class="n">mcl</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Which produces the following:</p>
+<img alt="_images/mack_lognorm_facet.png" class="align-center" src="_images/mack_lognorm_facet.png" />
+<p>Next we produce the same exhibit, this time setting <code class="docutils literal notranslate"><span class="pre">dist=&quot;norm&quot;</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">8</span><span class="p">]:</span> <span class="n">mcl</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">mack_cl</span><span class="p">(</span><span class="n">dist</span><span class="o">=</span><span class="s2">&quot;norm&quot;</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">9</span><span class="p">]:</span> <span class="n">mcl</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Which generates:</p>
+<img alt="_images/mack_norm_facet.png" class="align-center" src="_images/mack_norm_facet.png" />
+</div>
+<div class="section" id="testing-for-development-period-correlation">
+<h3>Testing for Development Period Correlation<a class="headerlink" href="#testing-for-development-period-correlation" title="Permalink to this headline">¶</a></h3>
+<p>In <a class="footnote-reference brackets" href="#f2" id="id2">2</a> Appendix G., Mack proposes an approximate test to assess whether one
+of the basic Chain Ladder assumptions holds, namely that subsequent development
+periods are uncorrelated. The test can be performed via <cite>MackChainLadderResult`</cite>’s
+<code class="docutils literal notranslate"><span class="pre">devp_corr_test</span></code> method. We next apply the test to the RAA dataset:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">from</span> <span class="nn">trikit</span> <span class="kn">import</span> <span class="n">load</span><span class="p">,</span> <span class="n">totri</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">tri</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="s2">&quot;raa&quot;</span><span class="p">,</span> <span class="n">tri_type</span><span class="o">=</span><span class="s2">&quot;cum&quot;</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">mcl</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">mack_cl</span><span class="p">()</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="n">mcl</span><span class="o">.</span><span class="n">devp_corr_test</span><span class="p">()</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="p">((</span><span class="o">-</span><span class="mf">0.12746658149149367</span><span class="p">,</span> <span class="mf">0.12746658149149367</span><span class="p">),</span> <span class="mf">0.0695578231292517</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">devp_corr_test</span></code> returns a 2-tuple: The first element represents the bounds
+of the test interval ((-0.127, 0.127)). The second element is the test statistic
+for the triangle under consideration. In this example, the test statistic falls
+within the bounds of the test interval, therefore we do not reject the null-hypothesis
+of having uncorrelated development factors. If the test statistic falls outside the
+interval, the correlations should be analyzed in more detail. Refer to <a class="footnote-reference brackets" href="#f2" id="id3">2</a> for more
+information.</p>
+</div>
+<div class="section" id="testing-for-calendar-year-effects">
+<h3>Testing for Calendar Year Effects<a class="headerlink" href="#testing-for-calendar-year-effects" title="Permalink to this headline">¶</a></h3>
+<p>In <a class="footnote-reference brackets" href="#f2" id="id4">2</a> Appendix H., Mack proposes a test to assess the independence of the origin
+periods. This test can be performed via <code class="docutils literal notranslate"><span class="pre">MackChainLadderResult</span></code>’s <code class="docutils literal notranslate"><span class="pre">cy_effects_test</span></code>
+method. Again using the RAA dataset:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">from</span> <span class="nn">trikit</span> <span class="kn">import</span> <span class="n">load</span><span class="p">,</span> <span class="n">totri</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">tri</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="s2">&quot;raa&quot;</span><span class="p">,</span> <span class="n">tri_type</span><span class="o">=</span><span class="s2">&quot;cum&quot;</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">mcl</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">mack_cl</span><span class="p">()</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="n">mcl</span><span class="o">.</span><span class="n">cy_effects_test</span><span class="p">()</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="p">((</span><span class="mf">8.965613354894957</span><span class="p">,</span> <span class="mf">16.78438664510504</span><span class="p">),</span> <span class="mf">14.0</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Similar to <code class="docutils literal notranslate"><span class="pre">devp_corr_test</span></code>, <code class="docutils literal notranslate"><span class="pre">cy_effects_test</span></code> returns a 2-tuple, with the first
+element representing the bounds of the test interval ((8.97, 16.78)) and the second
+element the test statistic. In this example, the test statistic falls within the
+bounds of thew test interval, therefore we do not reject the null-hypothesis of not
+having significant calendar year influences. Refer to <a class="footnote-reference brackets" href="#f2" id="id5">2</a> for more
+information.</p>
+</div>
+<div class="section" id="mack-chain-ladder-diagnostics">
+<h3>Mack Chain Ladder Diagnostics<a class="headerlink" href="#mack-chain-ladder-diagnostics" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">MackChainLadderResult</span></code> exposes a <code class="docutils literal notranslate"><span class="pre">diagnostics</span></code> method, which generates a faceted plot
+that includes the estimated aggregate reserve distribution, development by origin
+and standardized residuals by development period and by origin:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">from</span> <span class="nn">trikit</span> <span class="kn">import</span> <span class="n">load</span><span class="p">,</span> <span class="n">totri</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">tri</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="s2">&quot;raa&quot;</span><span class="p">,</span> <span class="n">tri_type</span><span class="o">=</span><span class="s2">&quot;cum&quot;</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">mcl</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">mack_cl</span><span class="p">()</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="n">mcl</span><span class="o">.</span><span class="n">diagnostics</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Which produces the following:</p>
+<img alt="_images/mack_diagnostics.png" class="align-center" src="_images/mack_diagnostics.png" />
+</div>
+<div class="section" id="bootstrap-chain-ladder">
+<h3>Bootstrap Chain Ladder<a class="headerlink" href="#bootstrap-chain-ladder" title="Permalink to this headline">¶</a></h3>
+<p>The purpose of the Bootstrap Chain Ladder is to estimate the predicition error of
+the total reserve estimate and to approximate the predictive distribution.
+Within trikit, the Bootstrap Chain Ladder is encapsulated within a cumulative
+triangle’s <code class="docutils literal notranslate"><span class="pre">boot_cl</span></code> method. <code class="docutils literal notranslate"><span class="pre">boot_cl</span></code> accepts a number of optional arguments:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">sims</span></code>: The number of bootstrap iterations to perform. Default value is 1000.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">q</span></code>: Quantile or sequence of quantiles to compute, which must be between 0
+and 1 inclusive. Default value is [.75, .95].</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">procdist</span></code>: The distribution used to incorporate process variance. Currently,
+this can only be set to “gamma”. This may change in a future release.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">two_sided</span></code>: Whether the two_sided prediction interval should be included in
+summary output. For example, if <code class="docutils literal notranslate"><span class="pre">two_sided=True</span></code> and <code class="docutils literal notranslate"><span class="pre">q=.95</span></code>, then
+the 2.5th and 97.5th quantiles of the predictive reserve distribution will be
+returned [(1 - .95) / 2, (1 + .95) / 2]. When False, only the specified
+quantile(s) will be included in summary output. Default value is False.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">parametric</span></code>:  If True, fit standardized residuals to a normal distribution via
+maximum likelihood, and sample from the parameterized distribution. Otherwise,
+sample with replacement from the collection of standardized fitted triangle
+residuals. Default value is False.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">interpolation</span></code>: One of {“linear”, “lower”, “higher”, “midpoint”, “nearest”}.
+Default value is “linear”. Refer to <a class="reference external" href="https://numpy.org/devdocs/reference/generated/numpy.quantile.html">numpy.quantile</a>
+for more information.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">random_state</span></code>:  If int, random_state is the seed used by the random number
+generator; If <code class="docutils literal notranslate"><span class="pre">RandomState</span></code> instance, random_state is the random number generator;
+If None, the random number generator is the <code class="docutils literal notranslate"><span class="pre">RandomState</span></code> instance used by
+np.random. Default value is None.</p></li>
+</ul>
+<p>We next demonstrate the application of the Bootstrap Chain Ladder to the RAA dataset.
+The example sets <code class="docutils literal notranslate"><span class="pre">sims=1000</span></code>, <code class="docutils literal notranslate"><span class="pre">two_sided=False</span></code> and <code class="docutils literal notranslate"><span class="pre">random_state=516</span></code> for reproducibility:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">from</span> <span class="nn">trikit</span> <span class="kn">import</span> <span class="n">load</span><span class="p">,</span> <span class="n">totri</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">df</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="s2">&quot;raa&quot;</span><span class="p">,</span> <span class="n">tri_type</span><span class="o">=</span><span class="s2">&quot;cum&quot;</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">bcl</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">boot_cl</span><span class="p">(</span><span class="n">sims</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">two_sided</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">516</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="n">bcl</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">4</span><span class="p">]:</span>
+      <span class="n">maturity</span>    <span class="n">cldf</span> <span class="n">emergence</span>  <span class="n">latest</span> <span class="n">ultimate</span> <span class="n">reserve</span> <span class="n">std_error</span>    <span class="n">cv</span>    <span class="mi">75</span><span class="o">%</span>    <span class="mi">95</span><span class="o">%</span>
+<span class="mi">1981</span>        <span class="mi">10</span> <span class="mf">1.00000</span>   <span class="mf">1.00000</span>  <span class="mi">18</span><span class="p">,</span><span class="mi">834</span>   <span class="mi">18</span><span class="p">,</span><span class="mi">834</span>       <span class="mi">0</span>         <span class="mi">0</span>   <span class="n">nan</span>      <span class="mi">0</span>      <span class="mi">0</span>
+<span class="mi">1982</span>         <span class="mi">9</span> <span class="mf">1.00922</span>   <span class="mf">0.99087</span>  <span class="mi">16</span><span class="p">,</span><span class="mi">704</span>   <span class="mi">16</span><span class="p">,</span><span class="mi">863</span>     <span class="mi">159</span>       <span class="mi">529</span> <span class="mf">3.331</span>    <span class="mi">245</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">108</span>
+<span class="mi">1983</span>         <span class="mi">8</span> <span class="mf">1.02631</span>   <span class="mf">0.97437</span>  <span class="mi">23</span><span class="p">,</span><span class="mi">466</span>   <span class="mi">24</span><span class="p">,</span><span class="mi">395</span>     <span class="mi">929</span>     <span class="mi">1</span><span class="p">,</span><span class="mi">026</span> <span class="mf">1.104</span>  <span class="mi">1</span><span class="p">,</span><span class="mi">101</span>  <span class="mi">2</span><span class="p">,</span><span class="mi">609</span>
+<span class="mi">1984</span>         <span class="mi">7</span> <span class="mf">1.06045</span>   <span class="mf">0.94300</span>  <span class="mi">27</span><span class="p">,</span><span class="mi">067</span>   <span class="mi">28</span><span class="p">,</span><span class="mi">648</span>   <span class="mi">1</span><span class="p">,</span><span class="mi">581</span>     <span class="mi">1</span><span class="p">,</span><span class="mi">592</span> <span class="mf">1.007</span>  <span class="mi">2</span><span class="p">,</span><span class="mi">472</span>  <span class="mi">4</span><span class="p">,</span><span class="mi">704</span>
+<span class="mi">1985</span>         <span class="mi">6</span> <span class="mf">1.10492</span>   <span class="mf">0.90505</span>  <span class="mi">26</span><span class="p">,</span><span class="mi">180</span>   <span class="mi">29</span><span class="p">,</span><span class="mi">087</span>   <span class="mi">2</span><span class="p">,</span><span class="mi">907</span>     <span class="mi">1</span><span class="p">,</span><span class="mi">883</span> <span class="mf">0.648</span>  <span class="mi">3</span><span class="p">,</span><span class="mi">914</span>  <span class="mi">6</span><span class="p">,</span><span class="mi">341</span>
+<span class="mi">1986</span>         <span class="mi">5</span> <span class="mf">1.23020</span>   <span class="mf">0.81288</span>  <span class="mi">15</span><span class="p">,</span><span class="mi">852</span>   <span class="mi">19</span><span class="p">,</span><span class="mi">762</span>   <span class="mi">3</span><span class="p">,</span><span class="mi">910</span>     <span class="mi">1</span><span class="p">,</span><span class="mi">931</span> <span class="mf">0.494</span>  <span class="mi">4</span><span class="p">,</span><span class="mi">892</span>  <span class="mi">7</span><span class="p">,</span><span class="mi">114</span>
+<span class="mi">1987</span>         <span class="mi">4</span> <span class="mf">1.44139</span>   <span class="mf">0.69377</span>  <span class="mi">12</span><span class="p">,</span><span class="mi">314</span>   <span class="mi">17</span><span class="p">,</span><span class="mi">738</span>   <span class="mi">5</span><span class="p">,</span><span class="mi">424</span>     <span class="mi">2</span><span class="p">,</span><span class="mi">538</span> <span class="mf">0.468</span>  <span class="mi">6</span><span class="p">,</span><span class="mi">947</span> <span class="mi">10</span><span class="p">,</span><span class="mi">061</span>
+<span class="mi">1988</span>         <span class="mi">3</span> <span class="mf">1.83185</span>   <span class="mf">0.54590</span>  <span class="mi">13</span><span class="p">,</span><span class="mi">112</span>   <span class="mi">24</span><span class="p">,</span><span class="mi">365</span>  <span class="mi">11</span><span class="p">,</span><span class="mi">253</span>     <span class="mi">3</span><span class="p">,</span><span class="mi">980</span> <span class="mf">0.354</span> <span class="mi">13</span><span class="p">,</span><span class="mi">565</span> <span class="mi">18</span><span class="p">,</span><span class="mi">735</span>
+<span class="mi">1989</span>         <span class="mi">2</span> <span class="mf">2.97405</span>   <span class="mf">0.33624</span>   <span class="mi">5</span><span class="p">,</span><span class="mi">395</span>   <span class="mi">16</span><span class="p">,</span><span class="mi">325</span>  <span class="mi">10</span><span class="p">,</span><span class="mi">930</span>     <span class="mi">4</span><span class="p">,</span><span class="mi">940</span> <span class="mf">0.452</span> <span class="mi">13</span><span class="p">,</span><span class="mi">870</span> <span class="mi">19</span><span class="p">,</span><span class="mi">879</span>
+<span class="mi">1990</span>         <span class="mi">1</span> <span class="mf">8.92023</span>   <span class="mf">0.11210</span>   <span class="mi">2</span><span class="p">,</span><span class="mi">063</span>   <span class="mi">18</span><span class="p">,</span><span class="mi">973</span>  <span class="mi">16</span><span class="p">,</span><span class="mi">910</span>    <span class="mi">11</span><span class="p">,</span><span class="mi">028</span> <span class="mf">0.652</span> <span class="mi">22</span><span class="p">,</span><span class="mi">863</span> <span class="mi">37</span><span class="p">,</span><span class="mi">008</span>
+<span class="n">total</span>              <span class="n">nan</span>       <span class="n">nan</span> <span class="mi">160</span><span class="p">,</span><span class="mi">987</span>  <span class="mi">214</span><span class="p">,</span><span class="mi">989</span>  <span class="mi">54</span><span class="p">,</span><span class="mi">002</span>    <span class="mi">14</span><span class="p">,</span><span class="mi">832</span> <span class="mf">0.275</span> <span class="mi">62</span><span class="p">,</span><span class="mi">597</span> <span class="mi">80</span><span class="p">,</span><span class="mi">200</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">reserve</span></code> represents the mean of the predicitive distribution of reserve estimates
+by origin and in total; <code class="docutils literal notranslate"><span class="pre">75%</span></code> and <code class="docutils literal notranslate"><span class="pre">95%</span></code> represent quantiles of the estimated distribution.</p>
+<p>Additional quantiles of the bootstrapped reserve distribution can be obtained by calling
+<code class="docutils literal notranslate"><span class="pre">get_quantiles</span></code>. <code class="docutils literal notranslate"><span class="pre">q</span></code> can be either a single float or an array of floats representing the
+quantiles of interest (which must fall within [0, 1]). We set <code class="docutils literal notranslate"><span class="pre">lb=0</span></code> to set negative quantiles
+to 0:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">5</span><span class="p">]:</span> <span class="n">bcl</span><span class="o">.</span><span class="n">get_quantiles</span><span class="p">(</span><span class="n">q</span><span class="o">=</span><span class="p">[</span><span class="o">.</span><span class="mi">05</span><span class="p">,</span> <span class="o">.</span><span class="mi">10</span><span class="p">,</span> <span class="o">.</span><span class="mi">25</span><span class="p">,</span> <span class="o">.</span><span class="mi">75</span><span class="p">,</span> <span class="o">.</span><span class="mi">90</span><span class="p">,</span> <span class="o">.</span><span class="mi">95</span><span class="p">],</span> <span class="n">lb</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">5</span><span class="p">]:</span>
+          <span class="mi">5</span><span class="n">th</span>    <span class="mi">10</span><span class="n">th</span>    <span class="mi">25</span><span class="n">th</span>    <span class="mi">75</span><span class="n">th</span>    <span class="mi">90</span><span class="n">th</span>    <span class="mi">95</span><span class="n">th</span>
+<span class="mi">1981</span>      <span class="mf">0.0</span>     <span class="mf">0.0</span>     <span class="mf">0.0</span>     <span class="mf">0.0</span>     <span class="mf">0.0</span>     <span class="mf">0.0</span>
+<span class="mi">1982</span>      <span class="mf">0.0</span>     <span class="mf">0.0</span>     <span class="mf">0.0</span>   <span class="mf">245.0</span>   <span class="mf">694.0</span>  <span class="mf">1108.0</span>
+<span class="mi">1983</span>      <span class="mf">0.0</span>     <span class="mf">0.0</span>    <span class="mf">30.0</span>  <span class="mf">1101.0</span>  <span class="mf">2001.0</span>  <span class="mf">2609.0</span>
+<span class="mi">1984</span>      <span class="mf">0.0</span>   <span class="mf">142.0</span>   <span class="mf">618.0</span>  <span class="mf">2472.0</span>  <span class="mf">3758.0</span>  <span class="mf">4704.0</span>
+<span class="mi">1985</span>    <span class="mf">349.0</span>   <span class="mf">693.0</span>  <span class="mf">1449.0</span>  <span class="mf">3914.0</span>  <span class="mf">5234.0</span>  <span class="mf">6341.0</span>
+<span class="mi">1986</span>   <span class="mf">1117.0</span>  <span class="mf">1454.0</span>  <span class="mf">2319.0</span>  <span class="mf">4892.0</span>  <span class="mf">6348.0</span>  <span class="mf">7114.0</span>
+<span class="mi">1987</span>   <span class="mf">1838.0</span>  <span class="mf">2396.0</span>  <span class="mf">3555.0</span>  <span class="mf">6947.0</span>  <span class="mf">8832.0</span> <span class="mf">10061.0</span>
+<span class="mi">1988</span>   <span class="mf">5469.0</span>  <span class="mf">6452.0</span>  <span class="mf">8256.0</span> <span class="mf">13565.0</span> <span class="mf">16339.0</span> <span class="mf">18735.0</span>
+<span class="mi">1989</span>   <span class="mf">3671.0</span>  <span class="mf">4892.0</span>  <span class="mf">7257.0</span> <span class="mf">13870.0</span> <span class="mf">17667.0</span> <span class="mf">19879.0</span>
+<span class="mi">1990</span>   <span class="mf">1793.0</span>  <span class="mf">4278.0</span>  <span class="mf">8790.0</span> <span class="mf">22863.0</span> <span class="mf">30904.0</span> <span class="mf">37008.0</span>
+<span class="n">total</span> <span class="mf">31588.0</span> <span class="mf">36193.0</span> <span class="mf">43009.0</span> <span class="mf">62597.0</span> <span class="mf">73218.0</span> <span class="mf">80200.0</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">BoostrapChainLadderResult</span></code> object exposes two exhibits: The first
+is similar to <code class="docutils literal notranslate"><span class="pre">BaseChainLadderResult</span></code>’s <code class="docutils literal notranslate"><span class="pre">plot</span></code>, but includes the upper and lower
+bounds of the specified percentile of the predictive distribution. To obtain the faceted
+plot showing the 5th and 95th quantiles, run:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">bcl</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">boot_cl</span><span class="p">(</span><span class="n">sims</span><span class="o">=</span><span class="mi">2500</span><span class="p">,</span> <span class="n">two_sided</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">516</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">bcl</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">q</span><span class="o">=.</span><span class="mi">90</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Resulting in:</p>
+<img alt="_images/bcl_facet.png" class="align-center" src="_images/bcl_facet.png" />
+<p>In addition, we can obtain a faceted plot of the distribution of bootstrap samples
+by origin and in aggregate by calling <code class="docutils literal notranslate"><span class="pre">BoostrapChainLadderResult</span></code>’s <code class="docutils literal notranslate"><span class="pre">hist</span></code>
+method:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="n">bcl</span><span class="o">.</span><span class="n">hist</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Which generates:</p>
+<img alt="_images/bcl_hists.png" class="align-center" src="_images/bcl_hists.png" />
+<p>There are a number of parameters which control the style of the generated exhibits.
+Refer to the docstring for more information.</p>
+<div class="section" id="contact">
+<h4>Contact<a class="headerlink" href="#contact" title="Permalink to this headline">¶</a></h4>
+<p>Please contact <a class="reference external" href="mailto:james&#46;triveri&#37;&#52;&#48;gmail&#46;com">james<span>&#46;</span>triveri<span>&#64;</span>gmail<span>&#46;</span>com</a> with suggestions or feature requests.</p>
+<p class="rubric">Footnotes</p>
+<dl class="footnote brackets">
+<dt class="label" id="f1"><span class="brackets">1</span></dt>
+<dd><p><a class="reference external" href="https://www.casact.org/research/index.cfm?fa=loss_reserves_data">https://www.casact.org/research/index.cfm?fa=loss_reserves_data</a></p>
+</dd>
+<dt class="label" id="f2"><span class="brackets">2</span><span class="fn-backref">(<a href="#id2">1</a>,<a href="#id3">2</a>,<a href="#id4">3</a>,<a href="#id5">4</a>)</span></dt>
+<dd><p>Mack, Thomas (1993) <em>Measuring the Variability of Chain Ladder Reserve
+Estimates</em>, 1993 CAS Prize Paper Competition on ‘Variability of Loss Reserves’.</p>
+</dd>
+<dt class="label" id="f3"><span class="brackets">3</span></dt>
+<dd><p>Mack, Thomas, (1993), <em>Distribution-Free Calculation of the Standard Error
+of Chain Ladder Reserve Estimates</em>, ASTIN Bulletin 23, no. 2:213-225.</p>
+</dd>
+<dt class="label" id="f4"><span class="brackets">4</span></dt>
+<dd><p>Mack, Thomas, (1999), <em>The Standard Error of Chain Ladder Reserve Estimates:
+Recursive Calculation and Inclusion of a Tail Factor</em>, ASTIN Bulletin 29,
+no. 2:361-366.</p>
+</dd>
+<dt class="label" id="f5"><span class="brackets">5</span></dt>
+<dd><p>England, P., and R. Verrall, (2002), <em>Stochastic Claims Reserving in General
+Insurance</em>, British Actuarial Journal 8(3): 443-518.</p>
+</dd>
+<dt class="label" id="f6"><span class="brackets">6</span></dt>
+<dd><p>Murphy, Daniel, (2007), <em>Chain Ladder Reserve Risk Estimators</em>, CAS E-Forum,
+Summer 2007.</p>
+</dd>
+<dt class="label" id="f7"><span class="brackets">7</span></dt>
+<dd><p>Carrato, A., McGuire, G. and Scarth, R. 2016. <em>A Practitioner’s
+Introduction to Stochastic Reserving</em>, The Institute and Faculty of
+Actuaries. 2016.</p>
+</dd>
+</dl>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="triangle.html" class="btn btn-neutral float-right" title="Incremental and Cumulative Triangle Objects" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="overview.html" class="btn btn-neutral float-left" title="Project Overview" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2018, James D. Triveri
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

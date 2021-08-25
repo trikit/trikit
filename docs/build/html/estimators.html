@@ -1,0 +1,1674 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Reserve Estimators &mdash; trikit 0.3.2 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Sample Datasets" href="datasets.html" />
+    <link rel="prev" title="Incremental and Cumulative Triangle Objects" href="triangle.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> trikit
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Project Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="triangle.html">Triangles</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Estimators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">Sample Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lrdb.html">CAS Loss Reserving Database</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial/correlated.html">Correlated Reserve Indications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial/smoothing.html">Smoothing Loss Development Patterns</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">trikit</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Reserve Estimators</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/estimators.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="reserve-estimators">
+<span id="estimators"></span><h1>Reserve Estimators<a class="headerlink" href="#reserve-estimators" title="Permalink to this headline">¶</a></h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Refer to the <a class="reference internal" href="quickstart.html#quickstart"><span class="std std-ref">Quickstart Guide</span></a> for invocation examples.</p>
+</div>
+<dl class="py class">
+<dt id="trikit.estimators.base.BaseChainLadder">
+<em class="property">class </em><code class="sig-name descname">BaseChainLadder</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cumtri</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/base.html#BaseChainLadder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.base.BaseChainLadder" title="Permalink to this definition">¶</a></dt>
+<dd><p>From the Casualty Actuarial Society’s <em>Estimating Unpaid Claims Using
+Basic Techniques</em> Version 3 (Friedland, Jacqueline - 2010), the
+development method (‘Chain Ladder’) consists of seven basic steps:</p>
+<ol class="arabic simple">
+<li><p>Compile claims data in a development triangle.</p></li>
+<li><p>Calculate age-to-age factors.</p></li>
+<li><p>Calculate averages of the age-to-age factors.</p></li>
+<li><p>Select claim development factors.</p></li>
+<li><p>Select tail factor.</p></li>
+<li><p>Calculate cumulative claims.</p></li>
+<li><p>Project ultimate claims.</p></li>
+</ol>
+<p>The BaseChainLadder class encapsulates logic to perform steps 1-7.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>cumtri</strong> (<a class="reference internal" href="triangle.html#trikit.triangle.CumTriangle" title="trikit.triangle.CumTriangle"><em>trikit.triangle.CumTriangle</em></a>) – A cumulative triangle instance.</p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<ol class="arabic simple">
+<li><p>Friedland, J., <em>Estimating Unpaid Claims Using Basic Techniques</em>,
+Casualty Actuarial Society, 2010.</p></li>
+</ol>
+<dl class="py method">
+<dt id="trikit.estimators.base.BaseChainLadder._cldfs">
+<code class="sig-name descname">_cldfs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ldfs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/base.html#BaseChainLadder._cldfs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.base.BaseChainLadder._cldfs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate cumulative loss development factors by successive
+multiplication beginning with the tail factor and the oldest
+age-to-age factor. The cumulative claim development factor projects
+the total growth over the remaining valuations. Cumulative claim
+development factors are also known as “Age-to-Ultimate Factors”
+or “Claim Development Factors to Ultimate”.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>ldfs</strong> (<em>pd.Series</em>) – Selected ldfs, typically the output of calling <code class="docutils literal notranslate"><span class="pre">self._ldfs</span></code>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.Series</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.base.BaseChainLadder._ldfs">
+<code class="sig-name descname">_ldfs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sel</span><span class="o">=</span><span class="default_value">'all-weighted'</span></em>, <em class="sig-param"><span class="n">tail</span><span class="o">=</span><span class="default_value">1.0</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/base.html#BaseChainLadder._ldfs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.base.BaseChainLadder._ldfs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Lookup loss development factors corresponding to <code class="docutils literal notranslate"><span class="pre">sel</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sel</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The ldf average to select from <code class="docutils literal notranslate"><span class="pre">triangle._CumTriangle.a2a_avgs</span></code>.
+Defaults to “all-weighted”.</p></li>
+<li><p><strong>tail</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Tail factor. Defaults to 1.0.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.Series</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.base.BaseChainLadder._reserves">
+<code class="sig-name descname">_reserves</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ultimates</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/base.html#BaseChainLadder._reserves"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.base.BaseChainLadder._reserves" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return IBNR/reserve estimates by origin and in aggregate. Represents
+the difference between ultimate projections for each origin period
+and the latest cumulative value.
+Since outstanding claim liabilities can be referred to differently
+based on the type of losses represented in the triangle (“ibnr” if
+reported/incurred, “unpaid” if paid losses), we use the general term
+“reserve” to represent the difference between ultimate projections
+and latest cumulative value by origin and in total.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>ultimates</strong> (<em>pd.Series</em>) – Estimated ultimate losses, conventionally obtained from
+BaseChainLadder’s <code class="docutils literal notranslate"><span class="pre">_ultimates</span></code> method.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.Series</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.base.BaseChainLadder._trisqrd">
+<code class="sig-name descname">_trisqrd</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ldfs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/base.html#BaseChainLadder._trisqrd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.base.BaseChainLadder._trisqrd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Project claims growth for each future development period. Returns a
+DataFrame of loss projections for each subsequent development period
+for each origin period. Populates the triangle’s lower-right or
+southeast portion (i.e., the result of “squaring the triangle”).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>ldfs</strong> (<em>pd.Series</em>) – Selected ldfs, typically the output of calling <code class="docutils literal notranslate"><span class="pre">self._ldfs</span></code>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.base.BaseChainLadder._ultimates">
+<code class="sig-name descname">_ultimates</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cldfs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/base.html#BaseChainLadder._ultimates"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.base.BaseChainLadder._ultimates" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ultimate claims are equal to the product of the latest valuation of
+losses (the amount along latest diagonal of any <code class="docutils literal notranslate"><span class="pre">_CumTriangle</span></code>
+instance) and the appropriate cldf/age-to-ultimate factor. We
+determine the appropriate age-to-ultimate factor based on the age
+of each origin year relative to the evaluation date.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>cldfs</strong> (<em>pd.Series</em>) – Cumulative loss development factors, conventionally obtained
+via BaseChainLadder’s <code class="docutils literal notranslate"><span class="pre">_cldfs</span></code> method.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.Series</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trikit.estimators.base.BaseChainLadderResult">
+<em class="property">class </em><code class="sig-name descname">BaseChainLadderResult</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">summary</span></em>, <em class="sig-param"><span class="n">tri</span></em>, <em class="sig-param"><span class="n">sel</span></em>, <em class="sig-param"><span class="n">ldfs</span></em>, <em class="sig-param"><span class="n">tail</span></em>, <em class="sig-param"><span class="n">trisqrd</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/base.html#BaseChainLadderResult"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.base.BaseChainLadderResult" title="Permalink to this definition">¶</a></dt>
+<dd><p>Container object for BaseChainLadder output.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>summary</strong> (<em>pd.DataFrame</em>) – Chain Ladder summary compilation.</p></li>
+<li><p><strong>tri</strong> (<em>trikit.triangle._CumTriangle</em>) – A cumulative triangle instance.</p></li>
+<li><p><strong>sel</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em> or </em><em>array_like</em>) – Reference to loss development selection. If ldf overrides are
+utilized, <code class="docutils literal notranslate"><span class="pre">sel</span></code> will be identical to <code class="docutils literal notranslate"><span class="pre">ldfs</span></code>.</p></li>
+<li><p><strong>ldfs</strong> (<em>pd.Series</em>) – Loss development factors.</p></li>
+<li><p><strong>tail</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Tail factor. Defaults to 1.0.</p></li>
+<li><p><strong>trisqrd</strong> (<em>pd.DataFrame</em>) – Projected claims growth for each future development period.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trikit.estimators.base.BaseChainLadderResult._data_transform">
+<code class="sig-name descname">_data_transform</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/base.html#BaseChainLadderResult._data_transform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.base.BaseChainLadderResult._data_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transform dataset for use in FacetGrid plot by origin exhibting chain
+ladder reserve estimates.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.base.BaseChainLadderResult._get_yticks">
+<em class="property">static </em><code class="sig-name descname">_get_yticks</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">x</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/base.html#BaseChainLadderResult._get_yticks"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.base.BaseChainLadderResult._get_yticks" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine y axis tick labels for a given maximum loss amount x.
+Return tuple of tick values and ticklabels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>x</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Maximum value for a given origin period.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>tuple of ndarrays</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.base.BaseChainLadderResult.plot">
+<code class="sig-name descname">plot</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">actuals_color</span><span class="o">=</span><span class="default_value">'#334488'</span></em>, <em class="sig-param"><span class="n">forecasts_color</span><span class="o">=</span><span class="default_value">'#FFFFFF'</span></em>, <em class="sig-param"><span class="n">axes_style</span><span class="o">=</span><span class="default_value">'darkgrid'</span></em>, <em class="sig-param"><span class="n">context</span><span class="o">=</span><span class="default_value">'notebook'</span></em>, <em class="sig-param"><span class="n">col_wrap</span><span class="o">=</span><span class="default_value">4</span></em>, <em class="sig-param"><span class="n">hue_kws</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">exhibit_path</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/base.html#BaseChainLadderResult.plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.base.BaseChainLadderResult.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Visualize actual losses along with projected chain ladder development.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>actuals_color</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – A color name or hexidecimal code used to represent actual
+observations. Defaults to “#00264C”.</p></li>
+<li><p><strong>forecasts_color</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – A color name or hexidecimal code used to represent forecast
+observations. Defaults to “#FFFFFF”.</p></li>
+<li><p><strong>axes_style</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Aesthetic style of plots. Defaults to “darkgrid”. Other options
+include: {whitegrid, dark, white, ticks}.</p></li>
+<li><p><strong>context</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Set the plotting context parameters. According to the seaborn
+documentation, This affects things like the size of the labels,
+lines, and other elements of the plot, but not the overall style.
+Defaults to “notebook”. Additional options include
+{“paper”, “talk”, “poster”}.</p></li>
+<li><p><strong>col_wrap</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – The maximum number of origin period axes to have on a single row
+of the resulting FacetGrid. Defaults to 5.</p></li>
+<li><p><strong>hue_kws</strong> (<em>dictionary of param:list of values mapping</em>) – Other keyword arguments to insert into the plotting call to let
+other plot attributes vary across levels of the hue variable
+(e.g. the markers in a scatterplot). Each list of values should
+have length 2, with each index representing aesthetic
+overrides for forecasts and actuals respectively. Defaults to
+<code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+<li><p><strong>exhibit_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Path to which exhibit should be written. If None, exhibit will be
+rendered via <code class="docutils literal notranslate"><span class="pre">plt.show()</span></code>.</p></li>
+<li><p><strong>kwargs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.9)"><em>dict</em></a>) – Additional styling options for scatter points. This can override
+default values for <code class="docutils literal notranslate"><span class="pre">plt.plot</span></code> objects. For a demonstration,
+See the Examples section.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p>Demonstration of passing a dictionary of plot properties in order
+to update the scatter size and marker:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">import</span> <span class="nn">trikit</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">tri</span> <span class="o">=</span> <span class="n">trikit</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">dataset</span><span class="o">=</span><span class="s2">&quot;raa&quot;</span><span class="p">,</span> <span class="n">tri_type</span><span class="o">=</span><span class="s2">&quot;cum&quot;</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">cl</span> <span class="o">=</span> <span class="n">tri</span><span class="o">.</span><span class="n">base_cl</span><span class="p">(</span><span class="n">sel</span><span class="o">=</span><span class="s2">&quot;all-weighted&quot;</span><span class="p">,</span> <span class="n">tail</span><span class="o">=</span><span class="mf">1.005</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="n">kwds</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">marker</span><span class="o">=</span><span class="s2">&quot;s&quot;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">5</span><span class="p">]:</span> <span class="n">cl</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="o">**</span><span class="n">kwds</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trikit.estimators.mack.MackChainLadder">
+<em class="property">class </em><code class="sig-name descname">MackChainLadder</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cumtri</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/mack.html#MackChainLadder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.mack.MackChainLadder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Mack Chain Ladder estimator. The predicition variance is comprised
+of the estimation variance and the process variance. Estimation variance
+arises from the inability to accurately define the distribution from which
+past events have been generated. Process variance arises from the
+inability to accurately predict which single outcome from the distribution
+will occur at a given time. The predicition error is defined as the
+standard deviation of the forecast.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>cumtri</strong> (<em>triangle._CumTriangle</em>) – A cumulative.CumTriangle instance</p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<ol class="arabic simple">
+<li><p>Mack, Thomas (1993) <em>Measuring the Variability of Chain Ladder Reserve
+Estimates</em>, 1993 CAS Prize Paper Competition on Variability of Loss Reserves.</p></li>
+<li><p>Mack, Thomas, (1993), <em>Distribution-Free Calculation of the Standard Error
+of Chain Ladder Reserve Estimates</em>, ASTIN Bulletin 23, no. 2:213-225.</p></li>
+<li><p>Mack, Thomas, (1999), <em>The Standard Error of Chain Ladder Reserve Estimates:
+Recursive Calculation and Inclusion of a Tail Factor</em>, ASTIN Bulletin 29,
+no. 2:361-366.</p></li>
+<li><p>England, P., and R. Verrall, (2002), <em>Stochastic Claims Reserving in General Insurance</em>, British Actuarial Journal 8(3): 443-518.</p></li>
+<li><p>Murphy, Daniel, (2007), <em>Chain Ladder Reserve Risk Estimators</em>, CAS E-Forum, Summer 2007.</p></li>
+<li><p>Carrato, A., McGuire, G. and Scarth, R. 2016. <em>A Practitioner’s
+Introduction to Stochastic Reserving</em>, The Institute and Faculty of
+Actuaries. 2016.</p></li>
+</ol>
+<dl class="py method">
+<dt id="trikit.estimators.mack.MackChainLadder._devp_variance">
+<code class="sig-name descname">_devp_variance</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ldfs</span></em>, <em class="sig-param"><span class="n">alpha</span><span class="o">=</span><span class="default_value">1</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/mack.html#MackChainLadder._devp_variance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.mack.MackChainLadder._devp_variance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the development period variance, usually represented as
+<img class="math" src="_images/math/12a0d588be6f8c7d0fa558071b7bbf4066d07054.png" alt="\hat{\sigma}^{2}_{k}"/> in the literature. For a triangle with
+n development periods, result will contain n-1 elements.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>ldfs</strong> (<em>pd.Series</em>) – <dl class="simple">
+<dt>Selected ldfs, typically the output of calling <code class="docutils literal notranslate"><span class="pre">self._ldfs</span></code>, or a series</dt><dd><p>of values indexed by development period.</p>
+</dd>
+<dt>alpha: {0, 1, 2}</dt><dd><ul class="simple">
+<li><p>0: Straight average of observed individual link ratios.</p></li>
+<li><p>1: Historical Chain Ladder age-to-age factors.</p></li>
+<li><p>2: Regression of <img class="math" src="_images/math/1bead0a08cdab1fe3f2a736e1f8415d92471d75a.png" alt="C_{k+1}"/> on <img class="math" src="_images/math/e3abe42aff12d2540074535c8e20e3664471401d.png" alt="C_{k}"/> with 0 intercept.</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.Series</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.mack.MackChainLadder._ldf_variance">
+<code class="sig-name descname">_ldf_variance</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">devpvar</span></em>, <em class="sig-param"><span class="n">alpha</span><span class="o">=</span><span class="default_value">1</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/mack.html#MackChainLadder._ldf_variance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.mack.MackChainLadder._ldf_variance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the variance of a given development period’s link ratios
+w.r.t. selected ldfs.</p>
+<dl class="simple">
+<dt>devpvar: pd.Series</dt><dd><p>The development period variance, usually represented as
+<img class="math" src="_images/math/12a0d588be6f8c7d0fa558071b7bbf4066d07054.png" alt="\hat{\sigma}^{2}_{k}"/> in the literature. For a triangle with
+n development periods, devpvar will contain n-1 elements.</p>
+</dd>
+<dt>alpha: {0, 1, 2}</dt><dd><ul class="simple">
+<li><p>0: Straight average of observed individual link ratios.</p></li>
+<li><p>1: Historical Chain Ladder age-to-age factors.</p></li>
+<li><p>2: Regression of :math`C_{k+1}` on :math: <cite>C_{k}</cite> with 0 intercept.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.Series</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.mack.MackChainLadder._ldfs">
+<code class="sig-name descname">_ldfs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">alpha</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">tail</span><span class="o">=</span><span class="default_value">1.0</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/mack.html#MackChainLadder._ldfs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.mack.MackChainLadder._ldfs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute Mack loss development factors.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>alpha</strong> (<em>{0</em><em>, </em><em>1</em><em>, </em><em>2}</em>) – <ul>
+<li><p>0: Straight average of observed individual link ratios.</p></li>
+<li><p>1: Historical Chain Ladder age-to-age factors.</p></li>
+<li><p>2: Regression of <img class="math" src="_images/math/1bead0a08cdab1fe3f2a736e1f8415d92471d75a.png" alt="C_{k+1}"/> on <img class="math" src="_images/math/e3abe42aff12d2540074535c8e20e3664471401d.png" alt="C_{k}"/> with 0 intercept.</p></li>
+</ul>
+</p></li>
+<li><p><strong>tail</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Tail factor. At present, must be 1.0. This may change in a future release.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.Series</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.mack.MackChainLadder._mean_squared_error">
+<code class="sig-name descname">_mean_squared_error</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">process_error</span></em>, <em class="sig-param"><span class="n">parameter_error</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/mack.html#MackChainLadder._mean_squared_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.mack.MackChainLadder._mean_squared_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the mean squared error of reserve estimates for each
+origin period. The standard error for each origin period
+is the square root of the mean squared error.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>process_error</strong> (<em>pd.Series</em>) – Reserve estimate process error indexed by origin. Represents the
+risk associated with the projection of future contingencies that
+are inherently variable, even if the parameters are known
+with certainty.</p></li>
+<li><p><strong>parameter_error</strong> (<em>pd.Series</em>) – Reserve estimate parameter error indexed by origin. Represents
+the risk that the parameters used in the methods or models are not
+representative of future outcomes.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.Series</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.mack.MackChainLadder._parameter_error">
+<code class="sig-name descname">_parameter_error</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ldfs</span></em>, <em class="sig-param"><span class="n">ldfvar</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/mack.html#MackChainLadder._parameter_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.mack.MackChainLadder._parameter_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a triangle-shaped DataFrame containing elementwise parameter
+error. To obtain the parameter error for a given origin period,
+cells are aggregated across columns.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ldfs</strong> (<em>pd.Series</em>) – Selected ldfs, typically the output of calling <code class="docutils literal notranslate"><span class="pre">self._ldfs</span></code>,
+or a series of values indexed by development period.</p></li>
+<li><p><strong>ldfvar</strong> (<em>pd.Series</em>) – Link ratio variance. For a triangle with n development
+periods, ldfvar will contain n-1 elements.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.mack.MackChainLadder._process_error">
+<code class="sig-name descname">_process_error</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ldfs</span></em>, <em class="sig-param"><span class="n">devpvar</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/mack.html#MackChainLadder._process_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.mack.MackChainLadder._process_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a triangle-shaped DataFrame containing elementwise process
+error. To obtain the process error for a given origin period,
+cells are aggregated across columns.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ldfs</strong> (<em>pd.Series</em>) – Selected ldfs, typically the output of calling <code class="docutils literal notranslate"><span class="pre">self._ldfs</span></code>,
+or a series of values indexed by development period.</p></li>
+<li><p><strong>devpvar</strong> (<em>pd.Series</em>) – The development period variance, usually represented as
+<img class="math" src="_images/math/12a0d588be6f8c7d0fa558071b7bbf4066d07054.png" alt="\hat{\sigma}^{2}_{k}"/> in the literature. For a triangle with
+n development periods, devpvar will contain n-1 elements.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.mack.MackChainLadder.mod_a2aind">
+<em class="property">property </em><code class="sig-name descname">mod_a2aind</code><a class="headerlink" href="#trikit.estimators.mack.MackChainLadder.mod_a2aind" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return self.tri.a2aind with lower right 0s replaced with NaN.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.mack.MackChainLadder.mod_tri">
+<em class="property">property </em><code class="sig-name descname">mod_tri</code><a class="headerlink" href="#trikit.estimators.mack.MackChainLadder.mod_tri" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return modified triangle-shaped DataFrame with same indices as <code class="docutils literal notranslate"><span class="pre">self.tri.a2a</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trikit.estimators.mack.MackChainLadderResult">
+<em class="property">class </em><code class="sig-name descname">MackChainLadderResult</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">summary</span></em>, <em class="sig-param"><span class="n">tri</span></em>, <em class="sig-param"><span class="n">alpha</span></em>, <em class="sig-param"><span class="n">tail</span></em>, <em class="sig-param"><span class="n">ldfs</span></em>, <em class="sig-param"><span class="n">trisqrd</span></em>, <em class="sig-param"><span class="n">dist</span></em>, <em class="sig-param"><span class="n">process_error</span></em>, <em class="sig-param"><span class="n">parameter_error</span></em>, <em class="sig-param"><span class="n">devpvar</span></em>, <em class="sig-param"><span class="n">ldfvar</span></em>, <em class="sig-param"><span class="n">rvs</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/mack.html#MackChainLadderResult"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.mack.MackChainLadderResult" title="Permalink to this definition">¶</a></dt>
+<dd><p>Container class for <code class="docutils literal notranslate"><span class="pre">MackChainLadder</span></code> output.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>summary</strong> (<em>pd.DataFrame</em>) – <code class="docutils literal notranslate"><span class="pre">MackChainLadder</span></code> summary.</p></li>
+<li><p><strong>tri</strong> (<a class="reference internal" href="triangle.html#trikit.triangle.CumTriangle" title="trikit.triangle.CumTriangle"><em>trikit.triangle.CumTriangle</em></a>) – A cumulative triangle instance.</p></li>
+<li><p><strong>alpha</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – MackChainLadder alpha parameter.</p></li>
+<li><p><strong>tail</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Tail factor.</p></li>
+<li><p><strong>ldfs</strong> (<em>pd.Series</em>) – Loss development factors.</p></li>
+<li><p><strong>trisqrd</strong> (<em>pd.DataFrame</em>) – Projected claims growth for each future development period.</p></li>
+<li><p><strong>dist</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – The distribution function chosen to approximate the true distribution of
+reserves by origin period. Wither “norm” or “lognorm”.</p></li>
+<li><p><strong>process_error</strong> (<em>pd.Series</em>) – Reserve estimate process error indexed by origin. Represents the
+risk associated with the projection of future contingencies that
+are inherently variable, even if parameters are known with certainty.</p></li>
+<li><p><strong>parameter_error</strong> (<em>pd.Series</em>) – Reserve estimate parameter error indexed by origin. Represents
+the risk that the parameters used in the methods or models are not
+representative of future outcomes.</p></li>
+<li><p><strong>devpvar</strong> (<em>pd.Series</em>) – The development period variance, usually represented as
+<img class="math" src="_images/math/12a0d588be6f8c7d0fa558071b7bbf4066d07054.png" alt="\hat{\sigma}^{2}_{k}"/> in the literature. For a triangle having
+n development periods, <code class="docutils literal notranslate"><span class="pre">devpvar</span></code> will contain n-1
+elements.</p></li>
+<li><p><strong>ldfvar</strong> (<em>pd.Series</em>) – Variance of age-to-age factors. Required for Murphy’s recursive
+estimator of parameter risk. For a triangle having n
+development periods, <code class="docutils literal notranslate"><span class="pre">ldfvar</span></code> will contain n-1 elements.</p></li>
+<li><p><strong>rvs</strong> (<em>pd.Series</em>) – Series indexed by origin containing Scipy frozen random variable
+with parameters mu and sigma having distribution specified by
+<code class="docutils literal notranslate"><span class="pre">dist</span></code>.</p></li>
+<li><p><strong>kwargs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.9)"><em>dict</em></a>) – Additional parameters originally passed into <code class="docutils literal notranslate"><span class="pre">MackChainLadder</span></code>’s
+<code class="docutils literal notranslate"><span class="pre">__call__</span></code> method.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trikit.estimators.mack.MackChainLadderResult._cy_effects_table">
+<code class="sig-name descname">_cy_effects_table</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/mack.html#MackChainLadderResult._cy_effects_table"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.mack.MackChainLadderResult._cy_effects_table" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct a tabular summary of values used in assessing the presence of
+significant calendar year influences in the set of age-to-age factors.
+Resulting DataFrame contains the following columns:</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt>j:</dt><dd><p>The diagonal in question. For a triangle with n periods, j ranges
+from 2 to n - 1. The most recent diagonal is associated with
+j = n - 1.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>S:</dt><dd><p>Represents the number of small age-to-age factors for a given
+diagonal. Recall that small age-to-age factors are those less
+than the median for a given development period.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>L:</dt><dd><p>Represents the number of large age-to-age factors for a given
+diagonal. Recall that large age-to-age factors are those greater
+than the median for a given development period.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Z:</dt><dd><p>For a given j, <img class="math" src="_images/math/fbe26d3feb387ddc2c6bfdf79449381d59bc50fc.png" alt="Z = min(S, L)"/>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>n:</dt><dd><p>For a given j, is defined as <img class="math" src="_images/math/7695306a8b36dc4a0daf5313669b83d67ae5ad61.png" alt="S + L"/>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>m:</dt><dd><p>For a given j, is defined as <img class="math" src="_images/math/86d56efba50d50a45372eb3262507e845b7753a5.png" alt="floor([n - 1] / 2)"/>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>E_Z:</dt><dd><p>For a given j, is defined as <img class="math" src="_images/math/ae855d4a7bd2833ef4b85e7ea2a176d57b1e810b.png" alt="\frac{n}{2} - \binom{n-1}{m} \times \frac{n}{2^{n}}"/>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>V_Z:</dt><dd><p>For a given j, is defined as
+<img class="math" src="_images/math/1bd0df38f950a21a2cb17883917c9293e57ff9c9.png" alt="\frac{n(n-1)}{4} - \binom{n-1}{m} \times \frac{n(n-1)}{2^{n}} + \mu - \mu^{2}"/>.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.mack.MackChainLadderResult._devp_corr_test_var">
+<code class="sig-name descname">_devp_corr_test_var</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/mack.html#MackChainLadderResult._devp_corr_test_var"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.mack.MackChainLadderResult._devp_corr_test_var" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the variance used in the development period correlation test.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.mack.MackChainLadderResult._mack_data_transform">
+<code class="sig-name descname">_mack_data_transform</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/mack.html#MackChainLadderResult._mack_data_transform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.mack.MackChainLadderResult._mack_data_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate data by origin period and in total to plot estimated reserve distributions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.mack.MackChainLadderResult._residuals_by_devp">
+<code class="sig-name descname">_residuals_by_devp</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/mack.html#MackChainLadderResult._residuals_by_devp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.mack.MackChainLadderResult._residuals_by_devp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate standardized residuals by development period.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.mack.MackChainLadderResult._residuals_by_origin">
+<code class="sig-name descname">_residuals_by_origin</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/mack.html#MackChainLadderResult._residuals_by_origin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.mack.MackChainLadderResult._residuals_by_origin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate standardized residuals by origin period.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.mack.MackChainLadderResult._spearman_corr_coeffs">
+<code class="sig-name descname">_spearman_corr_coeffs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/mack.html#MackChainLadderResult._spearman_corr_coeffs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.mack.MackChainLadderResult._spearman_corr_coeffs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the Spearman correlation coefficients for each pair of equal
+sized columns from <code class="docutils literal notranslate"><span class="pre">self.tri._ranked_a2a</span></code>.</p>
+<p>For adjacent columns, a Spearman coefficient close to 0 indicates that
+the development factors between development years k - 1 and k and
+those between developmenr years k and k+1 are uncorrelated. Any
+other value of <img class="math" src="_images/math/973106ec7cfb5ed094373f7168dc10df07e33140.png" alt="T_{k}"/> indicates that the factors are positively or
+negatively correlated.</p>
+<p>In the resulting DataFrame, columns are defined as:</p>
+<blockquote>
+<div><ul class="simple">
+<li><dl class="simple">
+<dt>k:</dt><dd><p>An enumeration of the target development period.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>w:</dt><dd><p>Quanity used to weight the Spearman coefficient, specified
+as n - k - 1, where n is the number of origin periods
+in the triangle.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>T_k:</dt><dd><p>Spearman correlation coefficient. Defined as <img class="math" src="_images/math/9887577875412878f03cdfa845046e1b8572c869.png" alt="T_{k} = 1 - 6 \sum_{i=1}^{n-k}"/>.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p>1. Mack, Thomas (1993) <em>Measuring the Variability of Chain Ladder Reserve
+Estimates</em>, 1993 CAS Prize Paper Competition on Variability of Loss Reserves.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.mack.MackChainLadderResult._spearman_corr_total">
+<code class="sig-name descname">_spearman_corr_total</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/mack.html#MackChainLadderResult._spearman_corr_total"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.mack.MackChainLadderResult._spearman_corr_total" title="Permalink to this definition">¶</a></dt>
+<dd><p>Weighted average of each adjacent column’s Spearman coefficient
+from <code class="docutils literal notranslate"><span class="pre">self._spearman_corr_coeffs</span></code>. Correlation coefficients are weighted
+by</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.mack.MackChainLadderResult.cy_effects_test">
+<code class="sig-name descname">cy_effects_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p</span><span class="o">=</span><span class="default_value">0.05</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/mack.html#MackChainLadderResult.cy_effects_test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.mack.MackChainLadderResult.cy_effects_test" title="Permalink to this definition">¶</a></dt>
+<dd><p>We reject the hypothesis, with an error probability of p, of having no
+significant calendar year effects only if not:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">E_Z</span> <span class="o">-</span> <span class="mf">1.96</span> <span class="o">*</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">V_Z</span><span class="p">)</span>  <span class="o">&lt;=</span>  <span class="n">Z</span>  <span class="o">&lt;=</span>  <span class="n">E_Z</span> <span class="o">+</span> <span class="mf">1.96</span> <span class="o">*</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">V_Z</span><span class="p">)</span> <span class="p">(</span><span class="k">if</span> <span class="n">p</span> <span class="o">=</span> <span class="o">.</span><span class="mi">05</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>p</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Significance level with which to perform test for calendar year
+effects. Test is two-sided (see above).</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.9)">tuple</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.mack.MackChainLadderResult.devp_corr_test">
+<code class="sig-name descname">devp_corr_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p</span><span class="o">=</span><span class="default_value">0.5</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/mack.html#MackChainLadderResult.devp_corr_test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.mack.MackChainLadderResult.devp_corr_test" title="Permalink to this definition">¶</a></dt>
+<dd><p>Significance test to assess the degree of development period correlation.
+The first element of the returned tuple contains the upper and lower
+bounds of the test interval. The second element represents the test
+statistic, the weighted average of Spearman rank correlation coefficients.
+If the test statistic falls within the range bounded by the first element,
+the null hypothesis of having uncorrelated development factors is not
+rejected. If the test statistic falls outside the interval, development
+period correlations should be analyzed in greater detail.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>p</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Represents the central normal interval outside of which
+development factors are assumed to exhibit some degree of
+correlation.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.9)">tuple</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.mack.MackChainLadderResult.diagnostics">
+<code class="sig-name descname">diagnostics</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/mack.html#MackChainLadderResult.diagnostics"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.mack.MackChainLadderResult.diagnostics" title="Permalink to this definition">¶</a></dt>
+<dd><p>Statistical diagnostics plots of Mack Chain Ladder estimator.
+Exhibit is a faceted quad plot, representing the estimated
+reserve distribution, the path to ultimate for each origin period,
+and residuals by origin and development period.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.mack.MackChainLadderResult.get_quantiles">
+<code class="sig-name descname">get_quantiles</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">q</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/mack.html#MackChainLadderResult.get_quantiles"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.mack.MackChainLadderResult.get_quantiles" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get quantiles of estimated reserve distribution for an individual origin periods and
+in total. Returns a DataFrame, with columns representing the percentiles of interest.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>q</strong> (<em>array_like of float</em><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Quantile or sequence of quantiles to compute, which must be between 0 and 1
+inclusive.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.mack.MackChainLadderResult.plot">
+<code class="sig-name descname">plot</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">q</span><span class="o">=</span><span class="default_value">0.95</span></em>, <em class="sig-param"><span class="n">dist_color</span><span class="o">=</span><span class="default_value">'#000000'</span></em>, <em class="sig-param"><span class="n">q_color</span><span class="o">=</span><span class="default_value">'#E02C70'</span></em>, <em class="sig-param"><span class="n">axes_style</span><span class="o">=</span><span class="default_value">'darkgrid'</span></em>, <em class="sig-param"><span class="n">context</span><span class="o">=</span><span class="default_value">'notebook'</span></em>, <em class="sig-param"><span class="n">col_wrap</span><span class="o">=</span><span class="default_value">4</span></em>, <em class="sig-param"><span class="n">exhibit_path</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/mack.html#MackChainLadderResult.plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.mack.MackChainLadderResult.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot estimated reserve distribution by origin year and in total.
+The mean of the reserve estimate will be highlighted, along with
+and quantiles specified in <code class="docutils literal notranslate"><span class="pre">q</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>q</strong> (<em>float in range of</em><em> [</em><em>0</em><em>,</em><em>1</em><em>]</em>) – The quantile to highlight, which must be between 0 and 1 inclusive.</p></li>
+<li><p><strong>dist_color</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Color or hexidecimal color code of estimated reserve distribution.</p></li>
+<li><p><strong>q_color</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Color or hexidecimal color code of estimated reserve mean
+and quantiles.</p></li>
+<li><p><strong>axes_style</strong> (<em>{&quot;darkgrid&quot;</em><em>, </em><em>&quot;whitegrid&quot;</em><em>, </em><em>&quot;dark&quot;</em><em>, </em><em>&quot;white&quot;</em><em>, </em><em>&quot;ticks&quot;}</em>) – Aesthetic style of seaborn plots. Default values is “darkgrid”.</p></li>
+<li><p><strong>context</strong> (<em>{&quot;notebook&quot;</em><em>, </em><em>&quot;paper&quot;</em><em>, </em><em>&quot;talk&quot;</em><em>, </em><em>&quot;poster&quot;}.</em>) – Set the plotting context parameters. According to the seaborn
+documentation, This affects things like the size of the labels,
+lines, and other elements of the plot, but not the overall style.
+Default value is “notebook”.</p></li>
+<li><p><strong>col_wrap</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – The maximum number of origin period axes to have on a single row
+of the resulting FacetGrid. Defaults to 5.</p></li>
+<li><p><strong>exhibit_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Path to which exhibit should be written. If None, exhibit will be
+rendered via <code class="docutils literal notranslate"><span class="pre">plt.show()</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadder">
+<em class="property">class </em><code class="sig-name descname">BootstrapChainLadder</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cumtri</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/bootstrap.html#BootstrapChainLadder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadder" title="Permalink to this definition">¶</a></dt>
+<dd><p>The purpose of the bootstrap technique is to estimate the predicition
+error of the total reserve estimate and to approximate the predictive
+distribution. It is often impractical to obtain the prediction error
+using an analytical approach due to the complexity of reserve estimators.</p>
+<p>Predicition error is comprised of two components: process error
+and estimation error (Prediction Error = Estimation Error + Process Error).
+The estimation error (parameter error) represents the uncertainty in the
+parameter estimates given that the model is correctly specified. The
+process error is analogous to the variance of a random variable,
+representing the uncertainty in future outcomes.</p>
+<p>The procedure used to generate the predicitive distribution of reserve
+estimates is based on Leong et al. Appendix A, assuming the starting point
+is a triangle of cumulative losses:</p>
+<ol class="arabic simple">
+<li><p>Calculate the all-year volume-weighted age-to-age factors.</p></li>
+<li><p>Estimate the fitted historical cumulative paid loss and ALAE
+using the latest diagonal of the original triangle and the
+age-to-age factors from [1] to un-develop the losses.</p></li>
+<li><p>Calculate the unscaled Pearson residuals, degrees of freedom
+and scale parameter.</p></li>
+<li><p>Calculate the adjusted Pearson residuals.</p></li>
+<li><p>Sample with replacement from the adjusted Pearson residuals.</p></li>
+<li><p>Calculate the triangle of sampled incremental losses
+(I^ = m + r_adj * sqrt(m)), where I^ = Resampled incremental loss,
+m = Incremental fitted loss (from [2]) and r_adj = Adjusted Pearson
+residuals.</p></li>
+<li><p>Using the triangle from [6], project future losses using the
+Chain Ladder method.</p></li>
+<li><p>Include Process variance by simulating each incremental future
+loss from a Gamma distribution with mean = I^ and
+variance = I^ * scale parameter.</p></li>
+<li><p>Estimate unpaid losses using the Chain Ladder technique.</p></li>
+<li><p>Repeat for the number of cycles specified.</p></li>
+</ol>
+<p>The collection of projected ultimates for each origin year over all
+bootstrap cycles comprises the predictive distribtuion of reserve
+estimates.
+Note that the estimate of the distribution of losses assumes
+development is complete by the final development period. This is
+to avoid the complication associated with modeling a tail factor.</p>
+<p class="rubric">References</p>
+<ol class="arabic simple">
+<li><p>England, P., and R. Verrall, (2002), <em>Stochastic Claims Reserving in General
+Insurance</em>, British Actuarial Journal 8(3): 443-518.</p></li>
+<li><p>CAS Working Party on Quantifying Variability in Reserve Estimates,
+<em>The Analysis and Estimation of Loss &amp; ALAE Variability: A Summary Report</em>,
+Casualty Actuarial Society Forum, Fall 2005.</p></li>
+<li><p>Leong et al., (2012), <em>Back-Testing the ODP Bootstrap of the Paid
+Chain-Ladder Model with Actual Historical Claims Data</em>, Casualty Actuarial
+Society E-Forum.</p></li>
+<li><p>Kirschner, et al., <em>Two Approaches to Calculating Correlated Reserve
+Indications Across Multiple Lines of Business</em> Appendix III, Variance
+Journal, Volume 2/Issue 1.</p></li>
+<li><p>Shapland, Mark R., (2016), <em>Using the ODP Bootstrap Model: A
+Practicioner’s Guide</em>, CAS Monograph Series Number 4: Casualty Actuarial
+Society, 2016.</p></li>
+</ol>
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadder._bs_forecasts">
+<code class="sig-name descname">_bs_forecasts</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dfsamples</span></em>, <em class="sig-param"><span class="n">dfldfs</span></em>, <em class="sig-param"><span class="n">scale_param</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/bootstrap.html#BootstrapChainLadder._bs_forecasts"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadder._bs_forecasts" title="Permalink to this definition">¶</a></dt>
+<dd><p>Populate lower-right of each simulated triangle using values from
+<code class="docutils literal notranslate"><span class="pre">self._bs_samples</span></code> and development factors from <code class="docutils literal notranslate"><span class="pre">self._bs_ldfs</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dfsamples</strong> (<em>pd.DataFrame</em>) – Output from <code class="docutils literal notranslate"><span class="pre">self._bs_samples</span></code>.</p></li>
+<li><p><strong>dfldfs</strong> (<em>pd.DataFrame</em>) – Output from <code class="docutils literal notranslate"><span class="pre">self._bs_ldfs</span></code>.</p></li>
+<li><p><strong>scale_param</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – the sum of the squared unscaled Pearson residuals over the
+degrees of freedom. Output from <code class="docutils literal notranslate"><span class="pre">self._scale_param</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadder._bs_ldfs">
+<code class="sig-name descname">_bs_ldfs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dfsamples</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/bootstrap.html#BootstrapChainLadder._bs_ldfs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadder._bs_ldfs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute and return loss development factors for each set of synthetic
+loss data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>dfsamples</strong> (<em>pd.DataFrame</em>) – Output from <code class="docutils literal notranslate"><span class="pre">self._bs_samples</span></code>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadder._bs_process_error">
+<em class="property">static </em><code class="sig-name descname">_bs_process_error</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dfforecasts</span></em>, <em class="sig-param"><span class="n">scale_param</span></em>, <em class="sig-param"><span class="n">procdist</span><span class="o">=</span><span class="default_value">'gamma'</span></em>, <em class="sig-param"><span class="n">random_state</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/bootstrap.html#BootstrapChainLadder._bs_process_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadder._bs_process_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>Incorporate process error by simulating each incremental future
+loss from <code class="docutils literal notranslate"><span class="pre">procdist</span></code>. The mean is set to the forecast incremental
+loss amount and variance to <cite>mean x self.scale_param</cite>.
+The parameters for <code class="docutils literal notranslate"><span class="pre">procdist</span></code> must be positive. Since the mean
+and variance used to parameterize <code class="docutils literal notranslate"><span class="pre">procdist</span></code> depend on the
+resampled incremental losses, it is necessary to incorporate logic
+to address the possibility of negative incremental losses arising
+in the resampling stage. The approach used to handle negative
+incremental values is described in  Shapland[1], and replaces the
+distribution mean with the absolute value of the mean, and the
+variance with the absolute value of the mean multiplied by <code class="docutils literal notranslate"><span class="pre">scale_param</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dfforecasts</strong> (<em>pd.DataFrame</em>) – DateFrame of bootstraps forecasts generated within
+<code class="docutils literal notranslate"><span class="pre">self._bs_forecasts</span></code>.</p></li>
+<li><p><strong>scale_param</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – the sum of the squared unscaled Pearson residuals over the
+degrees of freedom. Available in <code class="docutils literal notranslate"><span class="pre">self._scale_param</span></code>.</p></li>
+<li><p><strong>procdist</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Specifies the distribution used to incorporate process error.
+Currently, can only be set to “gamma”. Any other distribution
+will result in an error.</p></li>
+<li><p><strong>random_state</strong> (<em>np.random.RandomState</em>) – If int, random_state is the seed used by the random number
+generator; If RandomState instance, random_state is the random
+number generator; If None, the random number generator is the
+RandomState instance used by np.random.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadder._bs_reserves">
+<em class="property">static </em><code class="sig-name descname">_bs_reserves</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dfprocerror</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/bootstrap.html#BootstrapChainLadder._bs_reserves"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadder._bs_reserves" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute unpaid loss reserve estimate using output from
+<code class="docutils literal notranslate"><span class="pre">self._bs_process_error</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>dfprocerror</strong> (<em>pd.DataFrame</em>) – Output from <code class="docutils literal notranslate"><span class="pre">self._bs_process_error</span></code>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadder._bs_samples">
+<code class="sig-name descname">_bs_samples</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sampling_dist</span></em>, <em class="sig-param"><span class="n">fitted_tri_incr</span></em>, <em class="sig-param"><span class="n">sims</span><span class="o">=</span><span class="default_value">1000</span></em>, <em class="sig-param"><span class="n">parametric</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">random_state</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/bootstrap.html#BootstrapChainLadder._bs_samples"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadder._bs_samples" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return DataFrame containing sims resampled-with-replacement
+incremental loss triangles if <code class="docutils literal notranslate"><span class="pre">parametric=False</span></code>, otherwise
+random variates from a normal distribution with mean zero and
+variance derived from <code class="docutils literal notranslate"><span class="pre">resid_adj</span></code>. Randomly generated incremental
+data gets cumulated in preparation for ldf calculation in next
+step.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sampling_dist</strong> (<em>np.ndarray</em>) – The residuals from the fitted incremental triangle coerced
+into a one-dimensional numpy array.</p></li>
+<li><p><strong>fitted_tri_incr</strong> (<em>pd.DataFrame</em>) – The incremental triangle fitted using backwards recursion.
+Typically the output of <code class="docutils literal notranslate"><span class="pre">self._tri_fit_incr</span></code>.</p></li>
+<li><p><strong>sims</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – The number of bootstrap simulations to run. Defaults to 1000.</p></li>
+<li><p><strong>parametric</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><em>bool</em></a>) – If True, fit standardized residuals to a normal distribution, and
+sample from the parameterized distribution. Otherwise, bootstrap
+procedure proceeds by sampling with replacement from the array
+of standardized residuals. Defaults to False.</p></li>
+<li><p><strong>random_state</strong> (<em>np.random.RandomState</em>) – If int, random_state is the seed used by the random number
+generator; If RandomState instance, random_state is the random
+number generator; If None, the random number generator is the
+RandomState instance used by np.random.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadder._bs_std_error">
+<em class="property">static </em><code class="sig-name descname">_bs_std_error</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dfreserves</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/bootstrap.html#BootstrapChainLadder._bs_std_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadder._bs_std_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute standard error of bootstrapped reserves by origin and in aggregate.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>dfreserves</strong> (<em>pd.DataFrame</em>) – Output from <code class="docutils literal notranslate"><span class="pre">self._bs_reserves</span></code>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.Series</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadder._get_dfcombined">
+<code class="sig-name descname">_get_dfcombined</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dfsamples</span></em>, <em class="sig-param"><span class="n">dfldfs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/bootstrap.html#BootstrapChainLadder._get_dfcombined"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadder._get_dfcombined" title="Permalink to this definition">¶</a></dt>
+<dd><p>Merge output of <code class="docutils literal notranslate"><span class="pre">self._bs_samples</span></code> and <code class="docutils literal notranslate"><span class="pre">self._bs_ldfs</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dfsamples</strong> (<em>pd.DataFrame</em>) – Output from <code class="docutils literal notranslate"><span class="pre">self._bs_samples</span></code>.</p></li>
+<li><p><strong>dfldfs</strong> (<em>pd.DataFrame</em>) – Output from <code class="docutils literal notranslate"><span class="pre">self._bs_ldfs</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadder._resid_adj">
+<code class="sig-name descname">_resid_adj</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">resid_us</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/bootstrap.html#BootstrapChainLadder._resid_adj"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadder._resid_adj" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute and return the adjusted Pearson residuals, given by
+<img class="math" src="_images/math/05064e29df292cc5af4656458cb29e1a5df9518f.png" alt="r_{adj} = \sqrt{\frac{N}{dof}} * r_{us}"/>, where <em>r_adj</em>
+represents the adjusted Pearson residuals, <em>N</em> the number of triangle cells,
+<em>dof</em> the degress of freedom and <em>r_us</em> the unscaled Pearson residuals.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>resid_us</strong> (<em>pd.DataFrame</em>) – Unscaled Pearson residuals, typically output by <code class="docutils literal notranslate"><span class="pre">self._resid_us</span></code>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadder._resid_us">
+<code class="sig-name descname">_resid_us</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">fitted_tri_incr</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/bootstrap.html#BootstrapChainLadder._resid_us"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadder._resid_us" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return unscaled Pearson residuals, given by
+<img class="math" src="_images/math/0ef2985147f52251ce311e8f2d31cf3c6ade65ed.png" alt="r_{us} = \frac{I - m}{\sqrt{|m|}}"/>, where <img class="math" src="_images/math/464e71c51ff2fddb84a79d47bd6e9fe19f10cc19.png" alt="r_{us}"/> represents the
+unscaled Pearson residuals, <img class="math" src="_images/math/015755a22b6219b345c36a9a47b091dc56007486.png" alt="I"/> the actual incremental losses and <img class="math" src="_images/math/e9bc7da808d33a16a8347f27a519bd067186aa66.png" alt="m"/>
+fitted incremental losses.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>fitted_tri_incr</strong> (<em>pd.DataFrame</em>) – Typically the output from <code class="docutils literal notranslate"><span class="pre">self._tri_fit_incr</span></code>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadder._sampling_dist">
+<em class="property">static </em><code class="sig-name descname">_sampling_dist</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">resid_adj</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/bootstrap.html#BootstrapChainLadder._sampling_dist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadder._sampling_dist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">resid_adj</span></code> as a 1-dimensional array, which will be sampled
+from with replacement in order to produce synthetic triangles for
+bootstrapping. Any NaN’s and 0’s present in <code class="docutils literal notranslate"><span class="pre">resid_adj</span></code> will not be
+present in the returned array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>resid_adj</strong> (<em>pd.DataFrame</em>) – Adjusted Pearson residuals, typically output by <code class="docutils literal notranslate"><span class="pre">self._resid_adj</span></code>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadder._scale_param">
+<code class="sig-name descname">_scale_param</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">resid_us</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/bootstrap.html#BootstrapChainLadder._scale_param"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadder._scale_param" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the scale parameter, which is the sum of the squared unscaled
+Pearson residuals over the degrees of freedom. This method is intended
+for internal use only.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>resid_us</strong> (<em>pd.DataFrame</em>) – Unscaled Pearson residuals, typically output by
+<code class="docutils literal notranslate"><span class="pre">self._resid_us</span></code>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadder._tri_fit_cum">
+<code class="sig-name descname">_tri_fit_cum</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ldfs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/bootstrap.html#BootstrapChainLadder._tri_fit_cum"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadder._tri_fit_cum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the cumulative fitted triangle using backwards recursion,
+starting with the observed cumulative paid/incurred-to-date along the
+latest diagonal.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>ldfs</strong> (<em>pd.Series</em>) – Selected ldfs, typically the output of calling <code class="docutils literal notranslate"><span class="pre">self._ldfs</span></code>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadder._tri_fit_incr">
+<em class="property">static </em><code class="sig-name descname">_tri_fit_incr</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">fitted_tri_cum</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/bootstrap.html#BootstrapChainLadder._tri_fit_incr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadder._tri_fit_incr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a fitted incremental triangle.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>fitted_tri_cum</strong> (<em>pd.DataFrame</em>) – Typically the output from <code class="docutils literal notranslate"><span class="pre">self._tri_fit_cum</span></code>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadder.dfrlvi">
+<em class="property">property </em><code class="sig-name descname">dfrlvi</code><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadder.dfrlvi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transform triangle’s last valid origin index into DataFrame format.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadder.dof">
+<em class="property">property </em><code class="sig-name descname">dof</code><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadder.dof" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the degress of freedom.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadderResult">
+<em class="property">class </em><code class="sig-name descname">BootstrapChainLadderResult</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">summary</span></em>, <em class="sig-param"><span class="n">tri</span></em>, <em class="sig-param"><span class="n">ldfs</span></em>, <em class="sig-param"><span class="n">tail</span></em>, <em class="sig-param"><span class="n">trisqrd</span></em>, <em class="sig-param"><span class="n">reserve_dist</span></em>, <em class="sig-param"><span class="n">sims_data</span></em>, <em class="sig-param"><span class="n">scale_param</span></em>, <em class="sig-param"><span class="n">dof</span></em>, <em class="sig-param"><span class="n">unscaled_residuals</span></em>, <em class="sig-param"><span class="n">adjusted_residuals</span></em>, <em class="sig-param"><span class="n">sampling_dist</span></em>, <em class="sig-param"><span class="n">fitted_tri_cum</span></em>, <em class="sig-param"><span class="n">fitted_tri_incr</span></em>, <em class="sig-param"><span class="n">sims</span></em>, <em class="sig-param"><span class="n">procdist</span></em>, <em class="sig-param"><span class="n">parametric</span></em>, <em class="sig-param"><span class="n">q</span></em>, <em class="sig-param"><span class="n">interpolation</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/bootstrap.html#BootstrapChainLadderResult"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadderResult" title="Permalink to this definition">¶</a></dt>
+<dd><p>Container class for <code class="docutils literal notranslate"><span class="pre">BootstrapChainLadder</span></code> output.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>summary</strong> (<em>pd.DataFrame</em>) – Chain Ladder summary compilation.</p></li>
+<li><p><strong>reserve_dist</strong> (<em>pd.DataFrame</em>) – The predicitive distribution of reserve estimates generated via
+bootstrapping. <code class="docutils literal notranslate"><span class="pre">reserve_dist</span></code> is a five column DataFrame
+consisting of the simulation number, origin period, the latest
+loss amount for the associated origin period, and the predictive
+distribution of ultimates and reserves.</p></li>
+<li><p><strong>sims_data</strong> (<em>pd.DataFrame</em>) – <p>A DataFrame consiting of all simulated values an intermediate
+fields. When a large number of bootstrap iterations are run,
+<code class="docutils literal notranslate"><span class="pre">sims_data</span></code> will be correspondingly large. The fields include:</p>
+<blockquote>
+<div><ul>
+<li><dl class="simple">
+<dt>dev:</dt><dd><p>The simulated development period.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>incr:</dt><dd><p>The actual incremental loss amount obtain from the fitted triangle.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>incr_sqrt:</dt><dd><p>The square root of incr.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>l_act_cum:</dt><dd><p>The latest actual cumulative loss amount for dev/origin.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>l_act_dev:</dt><dd><p>The latest dev period with actual losses for a given origin period.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>ldf:</dt><dd><p>Loss development factors computed on syntehtic triangle data.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>origin:</dt><dd><p>The simulated origin period.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>rectype:</dt><dd><p>Whether the dev/origin combination represent actual or forecast data
+in the squared triangle.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>resid:</dt><dd><p>The resampled adjusted residuals if <code class="docutils literal notranslate"><span class="pre">parametric=False</span></code>, otherwise a
+random sampling from a normal distribution with mean zero and variance
+based on the variance of the adjusted residuals.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>samp_cum:</dt><dd><p>A syntehtic cumulative loss amount.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>samp_incr:</dt><dd><p>A synthetic incremental loss amount.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>sim:</dt><dd><p>Bootstrap iteration.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>var:</dt><dd><p>The variance, computed as scale_param x samp_incr.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>sign:</dt><dd><p>The sign of samp_incr.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>param2/param1:</dt><dd><p>Parameters for the process error distribution.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>final_incr:</dt><dd><p>Final simulated incremetnal loss amount after the incorporation of
+process error.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>final_cum:</dt><dd><p>Final simulated cumulative loss amount after the incorporation of
+process error.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+</p></li>
+<li><p><strong>tri</strong> (<a class="reference internal" href="triangle.html#trikit.triangle.CumTriangle" title="trikit.triangle.CumTriangle"><em>trikit.triangle.CumTriangle</em></a>) – A cumulative triangle instance.</p></li>
+<li><p><strong>ldfs</strong> (<em>pd.Series</em>) – Loss development factors.</p></li>
+<li><p><strong>scale_param</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – The the sum of the squared unscaled Pearson residuals over the triangle’s
+degrees of freedom.</p></li>
+<li><p><strong>dof</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – Triangle degrees of freedom.</p></li>
+<li><p><strong>unscaled_residuals</strong> (<em>pd.DataFrame</em>) – The unscaled residuals.</p></li>
+<li><p><strong>adjusted_residuals</strong> (<em>pd.DataFrame</em>) – The adjusted residuals.</p></li>
+<li><p><strong>sampling_dist</strong> (<em>np.ndarray</em>) – Same as <code class="docutils literal notranslate"><span class="pre">adjusted_residuals</span></code> but as a numpy array with NaN’s and 0’s
+removed. None if <code class="docutils literal notranslate"><span class="pre">parametric=True</span></code>.</p></li>
+<li><p><strong>fitted_tri_cum</strong> (<em>pd.DataFrame</em>) – Cumulative triangle fit using backwards recursion.</p></li>
+<li><p><strong>fitted_tri_incr</strong> (<em>pd.DataFrame</em>) – Incremental triangle fit using backwards recursion.</p></li>
+<li><p><strong>sims</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – Number of bootstrap iterations performed.</p></li>
+<li><p><strong>procdist</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Distribution used to incorporate process variance. Currently “gamma” is
+the only option.</p></li>
+<li><p><strong>parametric</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><em>bool</em></a>) – Whether parametric or non-parametric bootstrap was performed.</p></li>
+<li><p><strong>q</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a><em> or </em><em>array_like of float</em>) – Quantiles over which to evaluate reserve distribution in summary output.</p></li>
+<li><p><strong>interpolation</strong> (<em>{&quot;linear&quot;</em><em>, </em><em>&quot;lower&quot;</em><em>, </em><em>&quot;higher&quot;</em><em>, </em><em>&quot;midpoint&quot;</em><em>, </em><em>&quot;nearest&quot;}</em>) – Optional parameter which specifies the interpolation method to use
+when the desired quantile lies between two data points i &lt; j. See
+<code class="docutils literal notranslate"><span class="pre">numpy.quantile</span></code> for more information. Default value is “linear”.</p></li>
+<li><p><strong>kwargs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.9)"><em>dict</em></a>) – Additional keyword arguments passed into <code class="docutils literal notranslate"><span class="pre">BootstrapChainLadder</span></code>’s
+<code class="docutils literal notranslate"><span class="pre">__call__</span></code> method.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadderResult._bs_data_transform">
+<code class="sig-name descname">_bs_data_transform</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">qtls</span></em>, <em class="sig-param"><span class="n">qtlhdrs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/bootstrap.html#BootstrapChainLadderResult._bs_data_transform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadderResult._bs_data_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Starts with BaseChainLadderResult’s <code class="docutils literal notranslate"><span class="pre">_data_transform</span></code>, and performs additional
+pre-processing in order to generate plot of bootstrapped reserve ranges by
+origin period.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadderResult._get_quantiles_by_devp">
+<code class="sig-name descname">_get_quantiles_by_devp</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">qtls</span></em>, <em class="sig-param"><span class="n">qtlhdrs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/bootstrap.html#BootstrapChainLadderResult._get_quantiles_by_devp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadderResult._get_quantiles_by_devp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get quantile of boostrapped reserve distribution for an individual origin
+period and in total.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>q</strong> (<em>array_like</em>) – A length-2 sequence representing to upper and lower bounds of
+the estimated reserve distribution.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadderResult.get_quantiles">
+<code class="sig-name descname">get_quantiles</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">q</span></em>, <em class="sig-param"><span class="n">interpolation</span><span class="o">=</span><span class="default_value">'linear'</span></em>, <em class="sig-param"><span class="n">lb</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/bootstrap.html#BootstrapChainLadderResult.get_quantiles"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadderResult.get_quantiles" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get quantiles of bootstrapped reserve distribution for an individual origin
+periods and in total. Returns a DataFrame, with columns representing the
+percentiles of interest.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>q</strong> (<em>array_like of float</em><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Quantile or sequence of quantiles to compute, which must be between 0 and 1
+inclusive.</p></li>
+<li><p><strong>interpolation</strong> (<em>{&quot;linear&quot;</em><em>, </em><em>&quot;lower&quot;</em><em>, </em><em>&quot;higher&quot;</em><em>, </em><em>&quot;midpoint&quot;</em><em>, </em><em>&quot;nearest&quot;}</em>) – Optional parameter which specifies the interpolation method to use
+when the desired quantile lies between two data points i &lt; j. See
+<code class="docutils literal notranslate"><span class="pre">numpy.quantile</span></code> for more information. Default value is “linear”.</p></li>
+<li><p><strong>lb</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Lower bound of simulated values. If <code class="docutils literal notranslate"><span class="pre">lb</span></code> is not None, quantiles less
+than <code class="docutils literal notranslate"><span class="pre">lb</span></code> will be set to <code class="docutils literal notranslate"><span class="pre">lb</span></code>. To eliminate negative quantiles,
+set <code class="docutils literal notranslate"><span class="pre">lb=0</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadderResult.hist">
+<code class="sig-name descname">hist</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">color</span><span class="o">=</span><span class="default_value">'#FFFFFF'</span></em>, <em class="sig-param"><span class="n">axes_style</span><span class="o">=</span><span class="default_value">'darkgrid'</span></em>, <em class="sig-param"><span class="n">context</span><span class="o">=</span><span class="default_value">'notebook'</span></em>, <em class="sig-param"><span class="n">col_wrap</span><span class="o">=</span><span class="default_value">4</span></em>, <em class="sig-param"><span class="n">exhibit_path</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/bootstrap.html#BootstrapChainLadderResult.hist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadderResult.hist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate histogram of estimated reserve distribution by accident
+year and in total.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>color</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Determines histogram color in each facet. Can also be specified as
+a key-value pair in <code class="docutils literal notranslate"><span class="pre">kwargs</span></code>.</p></li>
+<li><p><strong>axes_style</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Aesthetic style of plots. Defaults to “darkgrid”. Other options
+include {whitegrid, dark, white, ticks}.</p></li>
+<li><p><strong>context</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Set the plotting context parameters. According to the seaborn
+documentation, This affects things like the size of the labels,
+lines, and other elements of the plot, but not the overall style.
+Defaults to <code class="docutils literal notranslate"><span class="pre">&quot;notebook&quot;</span></code>. Additional options include
+{paper, talk, poster}.</p></li>
+<li><p><strong>col_wrap</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – The maximum number of origin period axes to have on a single row
+of the resulting FacetGrid. Defaults to 5.</p></li>
+<li><p><strong>exhibit_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Path to which exhibit should be written. If None, exhibit will be
+rendered via <code class="docutils literal notranslate"><span class="pre">plt.show()</span></code>.</p></li>
+<li><p><strong>kwargs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.9)"><em>dict</em></a>) – Dictionary of optional matplotlib styling parameters.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadderResult.origin_dist">
+<em class="property">property </em><code class="sig-name descname">origin_dist</code><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadderResult.origin_dist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return distribution of bootstrapped ultimates/reserves by origin period.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadderResult.plot">
+<code class="sig-name descname">plot</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">q</span><span class="o">=</span><span class="default_value">0.9</span></em>, <em class="sig-param"><span class="n">actuals_color</span><span class="o">=</span><span class="default_value">'#334488'</span></em>, <em class="sig-param"><span class="n">forecasts_color</span><span class="o">=</span><span class="default_value">'#FFFFFF'</span></em>, <em class="sig-param"><span class="n">fill_color</span><span class="o">=</span><span class="default_value">'#FCFCB1'</span></em>, <em class="sig-param"><span class="n">fill_alpha</span><span class="o">=</span><span class="default_value">0.75</span></em>, <em class="sig-param"><span class="n">axes_style</span><span class="o">=</span><span class="default_value">'darkgrid'</span></em>, <em class="sig-param"><span class="n">context</span><span class="o">=</span><span class="default_value">'notebook'</span></em>, <em class="sig-param"><span class="n">col_wrap</span><span class="o">=</span><span class="default_value">4</span></em>, <em class="sig-param"><span class="n">hue_kws</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">exhibit_path</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/trikit/estimators/bootstrap.html#BootstrapChainLadderResult.plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadderResult.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate exhibit representing the distribution of reserve estimates
+resulting from bootstrap resampling, along with percentiles from the
+distribution given by <code class="docutils literal notranslate"><span class="pre">q</span></code>, the percentile(s) of interest.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>q</strong> (<em>float in range of</em><em> [</em><em>0</em><em>,</em><em>1</em><em>]</em>) – two_sided percentile interval to highlight, which must be between
+0 and 1 inclusive. For example, when <code class="docutils literal notranslate"><span class="pre">q=.90</span></code>, the 5th and
+95th percentile of the ultimate/reserve distribution will be
+highlighted in the exhibit <img class="math" src="_images/math/a2c56c760d5afe952cf9afc4ebf903963a26d258.png" alt="(\frac{1 - q}{2}, \frac{1 + q}{2})"/>.</p></li>
+<li><p><strong>actuals_color</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Color or hexidecimal color code used to represent actuals.
+Defaults to “#00264C”.</p></li>
+<li><p><strong>forecasts_color</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Color or hexidecimal color code used to represent forecasts.
+Defaults to “#FFFFFF”.</p></li>
+<li><p><strong>fill_color</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Color or hexidecimal color code used to represent the fill color
+between reserve distribution quantiles associated with <code class="docutils literal notranslate"><span class="pre">q</span></code>.
+Defaults to “#FCFCB1”.</p></li>
+<li><p><strong>fill_alpha</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.9)"><em>float</em></a>) – Control transparency of <code class="docutils literal notranslate"><span class="pre">fill_color</span></code> between upper and lower
+percentile bounds of the ultimate/reserve distribution. Defaults
+to .75.</p></li>
+<li><p><strong>axes_style</strong> (<em>{&quot;darkgrid&quot;</em><em>, </em><em>&quot;whitegrid&quot;</em><em>, </em><em>&quot;dark&quot;</em><em>, </em><em>&quot;white&quot;</em><em>, </em><em>&quot;ticks&quot;}</em>) – Aesthetic style of seaborn plots. Default values is “darkgrid”.</p></li>
+<li><p><strong>context</strong> (<em>{&quot;notebook&quot;</em><em>, </em><em>&quot;paper&quot;</em><em>, </em><em>&quot;talk&quot;</em><em>, </em><em>&quot;poster&quot;}.</em>) – Set the plotting context parameters. According to the seaborn
+documentation, This affects things like the size of the labels,
+lines, and other elements of the plot, but not the overall style.
+Default value is “notebook”.</p></li>
+<li><p><strong>col_wrap</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – The maximum number of origin period axes to have on a single row
+of the resulting FacetGrid. Defaults to 5.</p></li>
+<li><p><strong>hue_kws</strong> (<em>dictionary of param:list of values mapping</em>) – Other keyword arguments to insert into the plotting call to let
+other plot attributes vary across levels of the hue variable
+(e.g. the markers in a scatterplot). Each list of values should
+have length 4, with each index representing aesthetic
+overrides for forecasts, actuals, lower percentile and upper
+percentile renderings respectively. Defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+<li><p><strong>exhibit_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – Path to which exhibit should be written. If None, exhibit will be
+rendered via <code class="docutils literal notranslate"><span class="pre">plt.show()</span></code>.</p></li>
+<li><p><strong>kwargs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.9)"><em>dict</em></a>) – Additional styling options for scatter points. This should include
+additional options accepted by <code class="docutils literal notranslate"><span class="pre">plt.plot</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trikit.estimators.bootstrap.BootstrapChainLadderResult.residuals_detail">
+<em class="property">property </em><code class="sig-name descname">residuals_detail</code><a class="headerlink" href="#trikit.estimators.bootstrap.BootstrapChainLadderResult.residuals_detail" title="Permalink to this definition">¶</a></dt>
+<dd><p>Summary statistics based on triangle residuals.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="datasets.html" class="btn btn-neutral float-right" title="Sample Datasets" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="triangle.html" class="btn btn-neutral float-left" title="Incremental and Cumulative Triangle Objects" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2018, James D. Triveri
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
