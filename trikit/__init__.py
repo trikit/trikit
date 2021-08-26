@@ -22,4 +22,4 @@ get_datasets = partial(_get_datasets, dataref=dataref)
 get_lrdb_lobs = partial(_get_lrdb_lobs, lrdb_path=lrdb_path)
 get_lrdb_specs = partial(_get_lrdb_specs, lrdb_path=lrdb_path)
 
-__version__ = '0.3.2'
+__version__ = '0.3.3'

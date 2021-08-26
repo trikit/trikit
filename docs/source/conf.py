@@ -23,7 +23,7 @@ import sphinx_rtd_theme
 
 
 sys.path.insert(0, os.path.abspath("../../trikit"))
-sys.path.insert(0, os.path.abspath("../../.."))
+# sys.path.insert(0, os.path.abspath("../../.."))
 sys.path.insert(0, os.path.abspath("../.."))
 
 # -- General configuration ------------------------------------------------
@@ -44,7 +44,7 @@ extensions = [
     'sphinx.ext.imgmath',
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
-	'sphinxcontrib.napoleon'
+	'sphinx.ext.napoleon'
 	]
 
 
