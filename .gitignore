@@ -10,6 +10,8 @@
 *.iml
 *.ipr
 *.iws
+.asv
+.asv/
 *.org
 .project
 pmip
