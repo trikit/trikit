@@ -1,3 +1,8 @@
+
+## Version 0.3.5
+
+* Additional Pandas compatibility changes.
+
 ## Version 0.3.4
 
 * Updated deprecated Pandas and Numpy methods (applymap, append, etc.)

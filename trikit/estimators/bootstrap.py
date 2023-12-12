@@ -1126,7 +1126,7 @@ class BootstrapChainLadderResult(BaseRangeEstimatorResult):
                 }
             dfqq = pd.DataFrame().from_dict(dqq).set_index(self.summary.index)
             if lb is not None:
-                dfqq = dfqq.applymap(lambda v: lb if v < lb else v)
+                dfqq = dfqq.map(lambda v: lb if v < lb else v)
         return(dfqq)
 
 
@@ -1337,7 +1337,7 @@ class BootstrapChainLadderResult(BaseRangeEstimatorResult):
         max_data = data.groupby("origin", as_index=False)[["reserve"]].max().rename(
             {"reserve": "max_res"}, axis=1).set_index("origin")
         dfmetrics = functools.reduce(lambda df1, df2: df1.join(df2), (med_data, min_data, max_data))
-        dfmetrics = dfmetrics.applymap(lambda v: 0 if v < 0 else v).reset_index(drop=False)
+        dfmetrics = dfmetrics.map(lambda v: 0 if v < 0 else v).reset_index(drop=False)
 
         with sns.axes_style(axes_style):
 
