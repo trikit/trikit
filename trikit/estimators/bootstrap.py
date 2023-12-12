@@ -733,7 +733,7 @@ class BootstrapChainLadder(BaseRangeEstimator):
         total_se = pd.Series(
             data=dftotal["reserve"].std(ddof=1), index=["total"], name="std_error"
             )
-        return(origin_se.append(total_se))
+        return(pd.concat([origin_se, total_se]))
 
 
 

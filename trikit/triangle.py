@@ -601,7 +601,7 @@ class _BaseCumTriangle(_BaseTriangle):
         pd.DataFrame
         """
         if self._a2aind is None:
-            self._a2aind = self.a2a.applymap(lambda v: 0 if np.isnan(v) else 1)
+            self._a2aind = self.a2a.map(lambda v: 0 if np.isnan(v) else 1)
         return(self._a2aind)
 
 
