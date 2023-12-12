@@ -1,3 +1,8 @@
+## Version 0.3.4
+
+* Updated deprecated Pandas and Numpy methods (applymap, append, etc.)
+
+
 ## Version 0.3.2
 
 * Removed instances using Pandas lookup method. 

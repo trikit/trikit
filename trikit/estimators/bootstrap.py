@@ -216,7 +216,7 @@ class BootstrapChainLadder(BaseRangeEstimator):
             dfsumm[jj] = dfsumm.index.map(
                 lambda v: np.percentile(
                     dfreserves[dfreserves.origin == v]["reserve"].values,
-                    100 * ii, interpolation=interpolation
+                    100 * ii, method=interpolation
                     )
                 )
 
@@ -1069,11 +1069,11 @@ class BootstrapChainLadderResult(BaseRangeEstimatorResult):
         dflist = []
         for ii, jj in zip(qtls, qtlhdrs):
             dfqtl = dfsims.groupby(["origin", "dev"], as_index=False).aggregate(
-                "quantile", q=ii, interpolation="linear").rename(
+                "quantile", q=ii, method="linear").rename(
                 {"ultimate": jj}, axis=1
                 )
             dftotal_qtl = dftotal.aggregate(
-                "quantile", q=ii, interpolation="linear").rename({"ultimate": jj},
+                "quantile", q=ii, method="linear").rename({"ultimate": jj},
                 axis=1
                 )
             dflist.append(pd.concat([dfqtl, dftotal_qtl]))
@@ -1121,7 +1121,7 @@ class BootstrapChainLadderResult(BaseRangeEstimatorResult):
                 str(ii[0]): [
                     np.percentile(
                         self.reserve_dist[self.reserve_dist.origin == origin]["reserve"].values,
-                        100 * ii[-1], interpolation=interpolation
+                        100 * ii[-1], method=interpolation
                         ) for origin in self.summary.index] for ii in qtl_pairs
                 }
             dfqq = pd.DataFrame().from_dict(dqq).set_index(self.summary.index)
