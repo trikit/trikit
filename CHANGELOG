@@ -1,7 +1,12 @@
+## Version 0.3.6
+
+* Pinned dependencies in requirements.txt.
+
 
 ## Version 0.3.5
 
 * Additional Pandas compatibility changes.
+
 
 ## Version 0.3.4
 
