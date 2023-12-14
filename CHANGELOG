@@ -1,3 +1,9 @@
+
+## Version v0.3.7
+
+* Updated Scipy in requirements.txt.
+
+
 ## Version 0.3.6
 
 * Pinned dependencies in requirements.txt.
